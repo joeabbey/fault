@@ -1,15 +1,18 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/joeabbey/fault/pkg/analyzer"
 	"github.com/joeabbey/fault/pkg/config"
 	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/llm"
 	"github.com/joeabbey/fault/pkg/parser"
 	"github.com/joeabbey/fault/pkg/reporter"
 )
@@ -40,13 +43,14 @@ func checkCmd() *cobra.Command {
 		unstaged bool
 		branch   string
 		noColor  bool
+		format   string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCheck(staged, unstaged, branch, noColor)
+			return runCheck(staged, unstaged, branch, noColor, format)
 		},
 	}
 
@@ -54,11 +58,12 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&unstaged, "unstaged", false, "Check unstaged changes only")
 	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
 	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif")
 
 	return cmd
 }
 
-func runCheck(staged, unstaged bool, branch string, noColor bool) error {
+func runCheck(staged, unstaged bool, branch string, noColor bool, format string) error {
 	// 1. Load config
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -97,8 +102,6 @@ func runCheck(staged, unstaged bool, branch string, noColor bool) error {
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
 
 	// 6. Run analyzers
-	// No concrete analyzers yet — Phase 2 will add them.
-	// The runner will run with an empty analyzer list for now.
 	analyzers := make([]analyzer.Analyzer, 0)
 	runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -110,8 +113,13 @@ func runCheck(staged, unstaged bool, branch string, noColor bool) error {
 		result.Branch = currentBranch
 	}
 
-	// 7. Report results
-	rep := reporter.NewTerminalReporter(noColor)
+	// 7. LLM-assisted analysis (optional)
+	if cfg.LLM.Enabled {
+		runLLMAnalysis(cfg, diff, parsedFiles, result, repoRoot)
+	}
+
+	// 8. Report results
+	rep := selectReporter(format, noColor)
 	exitCode := rep.Report(result, cfg.BlockOn)
 
 	if exitCode != 0 {
@@ -119,6 +127,59 @@ func runCheck(staged, unstaged bool, branch string, noColor bool) error {
 	}
 
 	return nil
+}
+
+// runLLMAnalysis performs LLM-assisted confidence scoring and spec comparison.
+func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*parser.ParsedFile, result *analyzer.AnalysisResult, repoRoot string) {
+	ctx := context.Background()
+	client := llm.NewClient(cfg.LLM.APIKey)
+
+	// Confidence scoring
+	confidenceResult, err := llm.ScoreConfidence(ctx, client, diff, parsedFiles)
+	if err != nil {
+		log.Printf("warning: LLM confidence scoring failed: %v", err)
+	} else {
+		result.Confidence = &analyzer.Confidence{
+			Score:   confidenceResult.Overall,
+			Factors: []string{confidenceResult.Reasoning},
+		}
+	}
+
+	// Spec comparison (if spec file is configured)
+	if cfg.LLM.SpecFile != "" {
+		specPath := cfg.LLM.SpecFile
+		if !filepath.IsAbs(specPath) {
+			specPath = filepath.Join(repoRoot, specPath)
+		}
+
+		specContent, err := os.ReadFile(specPath)
+		if err != nil {
+			log.Printf("warning: could not read spec file %s: %v", specPath, err)
+			return
+		}
+
+		specResult, err := llm.CompareSpec(ctx, client, string(specContent), diff)
+		if err != nil {
+			log.Printf("warning: LLM spec comparison failed: %v", err)
+			return
+		}
+
+		// Convert spec results to issues and append
+		specIssues := llm.SpecResultToIssues(specResult)
+		result.Issues = append(result.Issues, specIssues...)
+	}
+}
+
+// selectReporter returns the appropriate reporter based on the format flag.
+func selectReporter(format string, noColor bool) reporter.Reporter {
+	switch format {
+	case "json":
+		return reporter.NewJSONReporter()
+	case "sarif":
+		return reporter.NewSARIFReporter()
+	default:
+		return reporter.NewTerminalReporter(noColor)
+	}
 }
 
 // getDiff returns the appropriate diff based on flags.
