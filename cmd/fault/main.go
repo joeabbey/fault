@@ -102,7 +102,13 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
 
 	// 6. Run analyzers
-	analyzers := make([]analyzer.Analyzer, 0)
+	analyzers := []analyzer.Analyzer{
+		analyzer.NewImportAnalyzer(),
+		analyzer.NewConsistencyAnalyzer(),
+		analyzer.NewReferenceAnalyzer(),
+		analyzer.NewTestImpactAnalyzer(),
+		analyzer.NewAntiPatternAnalyzer(),
+	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
 	repoRoot, _ := repo.RepoRoot()
