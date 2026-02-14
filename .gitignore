@@ -18,3 +18,6 @@ coverage.out
 
 # Config (local overrides)
 .fault.yaml
+
+# Cache
+.fault-cache/
