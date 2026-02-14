@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fault
+  namespace: fault
+  labels:
+    app: fault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fault
+  template:
+    metadata:
+      labels:
+        app: fault
+    spec:
+      containers:
+        - name: fault-cloud
+          image: fault:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8082
+              name: http
+          envFrom:
+            - secretRef:
+                name: fault-secrets
+          env:
+            - name: PORT
+              value: "8082"
+            - name: LOG_LEVEL
+              value: "info"
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 8082
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "1000m"
