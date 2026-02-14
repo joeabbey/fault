@@ -26,6 +26,7 @@ func main() {
 
 	rootCmd.AddCommand(checkCmd())
 	rootCmd.AddCommand(initCmd())
+	rootCmd.AddCommand(hookCmd())
 	rootCmd.AddCommand(versionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
@@ -226,6 +227,120 @@ ignore:
 			return nil
 		},
 	}
+	return cmd
+}
+
+func hookCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "hook",
+		Short: "Manage the git pre-commit hook",
+	}
+
+	cmd.AddCommand(hookInstallCmd())
+	cmd.AddCommand(hookUninstallCmd())
+	cmd.AddCommand(hookStatusCmd())
+
+	return cmd
+}
+
+func hookInstallCmd() *cobra.Command {
+	var force bool
+
+	cmd := &cobra.Command{
+		Use:   "install",
+		Short: "Install the pre-commit hook",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			repoRoot, err := repo.RepoRoot()
+			if err != nil {
+				return fmt.Errorf("getting repo root: %w", err)
+			}
+
+			if err := git.InstallHook(repoRoot, force); err != nil {
+				return err
+			}
+
+			fmt.Println("Installed pre-commit hook")
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&force, "force", false, "Overwrite existing hook")
+
+	return cmd
+}
+
+func hookUninstallCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "uninstall",
+		Short: "Remove the pre-commit hook",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			repoRoot, err := repo.RepoRoot()
+			if err != nil {
+				return fmt.Errorf("getting repo root: %w", err)
+			}
+
+			if err := git.UninstallHook(repoRoot); err != nil {
+				return err
+			}
+
+			fmt.Println("Removed pre-commit hook")
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func hookStatusCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Check if the pre-commit hook is installed",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			repoRoot, err := repo.RepoRoot()
+			if err != nil {
+				return fmt.Errorf("getting repo root: %w", err)
+			}
+
+			if git.IsHookInstalled(repoRoot) {
+				fmt.Println("Pre-commit hook is installed")
+			} else {
+				fmt.Println("Pre-commit hook is not installed")
+			}
+
+			return nil
+		},
+	}
+
 	return cmd
 }
 
