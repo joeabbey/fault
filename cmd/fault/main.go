@@ -2,9 +2,16 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/joeabbey/fault/pkg/analyzer"
+	"github.com/joeabbey/fault/pkg/config"
+	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/parser"
+	"github.com/joeabbey/fault/pkg/reporter"
 )
 
 // Version is set at build time via -ldflags
@@ -27,15 +34,163 @@ func main() {
 }
 
 func checkCmd() *cobra.Command {
+	var (
+		staged   bool
+		unstaged bool
+		branch   string
+		noColor  bool
+	)
+
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Println("no analyzers configured")
-			return nil
+			return runCheck(staged, unstaged, branch, noColor)
 		},
 	}
+
+	cmd.Flags().BoolVar(&staged, "staged", false, "Check staged changes only")
+	cmd.Flags().BoolVar(&unstaged, "unstaged", false, "Check unstaged changes only")
+	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+
 	return cmd
+}
+
+func runCheck(staged, unstaged bool, branch string, noColor bool) error {
+	// 1. Load config
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// 2. Open git repo
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	// 3. Get diff based on mode
+	diff, err := getDiff(repo, staged, unstaged, branch)
+	if err != nil {
+		return fmt.Errorf("getting diff: %w", err)
+	}
+
+	if len(diff.Files) == 0 {
+		fmt.Println("No changes detected")
+		return nil
+	}
+
+	// 4. Set up parser registry
+	reg := parser.NewRegistry()
+	reg.Register(parser.NewGoParser())
+	reg.Register(parser.NewTypeScriptParser())
+	reg.Register(parser.NewPythonParser())
+
+	// 5. Parse changed files
+	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
+
+	// 6. Run analyzers
+	// No concrete analyzers yet — Phase 2 will add them.
+	// The runner will run with an empty analyzer list for now.
+	analyzers := make([]analyzer.Analyzer, 0)
+	runner := analyzer.NewRunner(cfg, analyzers)
+
+	repoRoot, _ := repo.RepoRoot()
+	result := runner.Run(repoRoot, diff, parsedFiles)
+
+	// Set branch info if available
+	if currentBranch, err := repo.CurrentBranch(); err == nil {
+		result.Branch = currentBranch
+	}
+
+	// 7. Report results
+	rep := reporter.NewTerminalReporter(noColor)
+	exitCode := rep.Report(result, cfg.BlockOn)
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
+
+	return nil
+}
+
+// getDiff returns the appropriate diff based on flags.
+func getDiff(repo *git.Repo, staged, unstaged bool, branch string) (*git.Diff, error) {
+	switch {
+	case branch != "":
+		return repo.BranchDiff(branch)
+	case staged:
+		return repo.StagedDiff()
+	case unstaged:
+		return repo.UnstagedDiff()
+	default:
+		return repo.AutoDiff()
+	}
+}
+
+// parseChangedFiles parses all non-ignored changed files.
+func parseChangedFiles(repo *git.Repo, diff *git.Diff, reg *parser.Registry, cfg *config.Config) map[string]*parser.ParsedFile {
+	parsed := make(map[string]*parser.ParsedFile)
+
+	for _, fileDiff := range diff.Files {
+		path := fileDiff.Path
+
+		// Skip ignored files
+		if cfg.IsIgnored(path) {
+			continue
+		}
+
+		// Skip deleted and binary files
+		if fileDiff.Status == "deleted" || fileDiff.IsBinary {
+			continue
+		}
+
+		// Detect language
+		lang := parser.DetectLanguage(path)
+		if lang == "" {
+			continue
+		}
+
+		// Check if language is in config
+		if !languageEnabled(cfg, lang) {
+			continue
+		}
+
+		// Read file content
+		content, err := repo.FileContent(path, "")
+		if err != nil {
+			log.Printf("warning: could not read %s: %v", path, err)
+			continue
+		}
+
+		// Parse
+		pf, err := reg.ParseFile(path, content)
+		if err != nil {
+			log.Printf("warning: could not parse %s: %v", path, err)
+			continue
+		}
+		if pf != nil {
+			parsed[path] = pf
+		}
+	}
+
+	return parsed
+}
+
+// languageEnabled checks if a language is in the config's language list.
+func languageEnabled(cfg *config.Config, lang string) bool {
+	for _, l := range cfg.Languages {
+		if l == lang {
+			return true
+		}
+	}
+	return false
 }
 
 func initCmd() *cobra.Command {
