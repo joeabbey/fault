@@ -1,6 +1,7 @@
 package analyzer
 
 import (
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -33,8 +34,24 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 			continue
 		}
 
+		// Skip non-source files (docs, config, data files).
+		if !isAnalyzableFile(fileDiff.Path) {
+			continue
+		}
+
+		testFile := isTestFile(fileDiff.Path)
+
+		// Credentials are checked in all source files including tests,
+		// but test files get extra exclusions applied.
+		issues = append(issues, checkHardcodedCredentials(fileDiff, testFile)...)
+
+		// Skip remaining pattern checks for test files — test data
+		// legitimately contains TODOs, console.log strings, etc.
+		if testFile {
+			continue
+		}
+
 		issues = append(issues, checkTODOPlaceholders(fileDiff)...)
-		issues = append(issues, checkHardcodedCredentials(fileDiff)...)
 		issues = append(issues, checkConsoleDebug(fileDiff)...)
 		issues = append(issues, checkCommentedOutCode(fileDiff)...)
 		issues = append(issues, checkUnreachableCode(fileDiff)...)
@@ -123,7 +140,12 @@ var credentialExclusions = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)password\s*=\s*"(test|example|dummy)"`),   // obvious test values
 }
 
-func checkHardcodedCredentials(fileDiff git.FileDiff) []Issue {
+func checkHardcodedCredentials(fileDiff git.FileDiff, testFile bool) []Issue {
+	// Don't flag credentials in test files — they contain fake test data.
+	if testFile {
+		return make([]Issue, 0)
+	}
+
 	issues := make([]Issue, 0)
 
 	for _, hunk := range fileDiff.Hunks {
@@ -174,8 +196,31 @@ var consolePatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\bprint\(`),
 }
 
+// isCLIEntryPoint returns true for files that legitimately use print/Println for
+// user-facing output (CLI entry points, scripts).
+func isCLIEntryPoint(path string) bool {
+	normalized := filepath.ToSlash(path)
+
+	// Scripts in scripts/ directory.
+	if strings.HasPrefix(normalized, "scripts/") {
+		return true
+	}
+
+	// Go main packages in cmd/ directories.
+	if strings.Contains(normalized, "cmd/") && filepath.Base(path) == "main.go" {
+		return true
+	}
+
+	return false
+}
+
 func checkConsoleDebug(fileDiff git.FileDiff) []Issue {
 	issues := make([]Issue, 0)
+
+	// CLI tools and scripts legitimately use print for user output.
+	if isCLIEntryPoint(fileDiff.Path) {
+		return issues
+	}
 
 	for _, hunk := range fileDiff.Hunks {
 		for _, line := range hunk.Lines {
@@ -230,29 +275,69 @@ func isCommentLine(content string) bool {
 	return false
 }
 
+// codeLikePatterns detect whether a comment line contains code-like constructs
+// (assignments, function calls, braces, etc.) as opposed to natural language.
+var codeLikePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`[{;]`),                     // braces, semicolons (but not plain parens — common in prose)
+	regexp.MustCompile(`\w+\.\w+\(`),               // method calls: foo.bar(
+	regexp.MustCompile(`\w+\s*:=\s*`),               // short assignments: x :=
+	regexp.MustCompile(`^\s*(if|for|while|switch|case)\s`), // control flow keywords
+	regexp.MustCompile(`^\s*(return|import|from|var|let|const|func|def|class)\b`), // declaration keywords
+}
+
+// looksLikeCode checks if a comment body (after stripping the comment prefix)
+// contains code-like patterns rather than just natural language prose.
+func looksLikeCode(content string) bool {
+	// Strip comment prefix.
+	body := strings.TrimSpace(content)
+	for _, prefix := range []string{"//", "#", "/*", "*", "* "} {
+		body = strings.TrimPrefix(body, prefix)
+	}
+	body = strings.TrimSpace(body)
+
+	// Empty line inside comment block isn't code.
+	if body == "" {
+		return false
+	}
+
+	for _, pat := range codeLikePatterns {
+		if pat.MatchString(body) {
+			return true
+		}
+	}
+	return false
+}
+
 func checkCommentedOutCode(fileDiff git.FileDiff) []Issue {
 	issues := make([]Issue, 0)
 
 	for _, hunk := range fileDiff.Hunks {
 		consecutiveComments := 0
+		codeLikeCount := 0
 		blockStartLine := 0
+
+		emitIfNeeded := func(endLine int) {
+			// Only flag if at least 3 consecutive comment lines AND
+			// at least one line looks like code (not just prose/docs).
+			if consecutiveComments >= 3 && codeLikeCount > 0 {
+				issues = append(issues, Issue{
+					ID:         "patterns/commented-code",
+					Severity:   SeverityWarning,
+					Category:   "patterns",
+					File:       fileDiff.Path,
+					Line:       blockStartLine,
+					EndLine:    endLine,
+					Message:    "Large block of commented-out code detected",
+					Suggestion: "Remove commented-out code; use version control to recover it if needed",
+				})
+			}
+			consecutiveComments = 0
+			codeLikeCount = 0
+		}
 
 		for _, line := range hunk.Lines {
 			if line.Type != "added" {
-				// Reset streak on non-added lines.
-				if consecutiveComments >= 3 {
-					issues = append(issues, Issue{
-						ID:       "patterns/commented-code",
-						Severity: SeverityWarning,
-						Category: "patterns",
-						File:     fileDiff.Path,
-						Line:     blockStartLine,
-						EndLine:  line.NewNum - 1,
-						Message:  "Large block of commented-out code detected",
-						Suggestion: "Remove commented-out code; use version control to recover it if needed",
-					})
-				}
-				consecutiveComments = 0
+				emitIfNeeded(line.NewNum - 1)
 				continue
 			}
 
@@ -261,34 +346,25 @@ func checkCommentedOutCode(fileDiff git.FileDiff) []Issue {
 					blockStartLine = line.NewNum
 				}
 				consecutiveComments++
-			} else {
-				if consecutiveComments >= 3 {
-					issues = append(issues, Issue{
-						ID:       "patterns/commented-code",
-						Severity: SeverityWarning,
-						Category: "patterns",
-						File:     fileDiff.Path,
-						Line:     blockStartLine,
-						EndLine:  line.NewNum - 1,
-						Message:  "Large block of commented-out code detected",
-						Suggestion: "Remove commented-out code; use version control to recover it if needed",
-					})
+				if looksLikeCode(line.Content) {
+					codeLikeCount++
 				}
-				consecutiveComments = 0
+			} else {
+				emitIfNeeded(line.NewNum - 1)
 			}
 		}
 
 		// Check at end of hunk.
-		if consecutiveComments >= 3 {
+		if consecutiveComments >= 3 && codeLikeCount > 0 {
 			lastLine := hunk.Lines[len(hunk.Lines)-1]
 			issues = append(issues, Issue{
-				ID:       "patterns/commented-code",
-				Severity: SeverityWarning,
-				Category: "patterns",
-				File:     fileDiff.Path,
-				Line:     blockStartLine,
-				EndLine:  lastLine.NewNum,
-				Message:  "Large block of commented-out code detected",
+				ID:         "patterns/commented-code",
+				Severity:   SeverityWarning,
+				Category:   "patterns",
+				File:       fileDiff.Path,
+				Line:       blockStartLine,
+				EndLine:    lastLine.NewNum,
+				Message:    "Large block of commented-out code detected",
 				Suggestion: "Remove commented-out code; use version control to recover it if needed",
 			})
 		}
@@ -321,46 +397,89 @@ func isBlockEnd(content string) bool {
 	return trimmed == "}" || trimmed == "})" || trimmed == ""
 }
 
+// indentLevel returns the number of leading whitespace characters (tabs count as 1).
+func indentLevel(content string) int {
+	for i, ch := range content {
+		if ch != ' ' && ch != '\t' {
+			return i
+		}
+	}
+	return len(content)
+}
+
 func checkUnreachableCode(fileDiff git.FileDiff) []Issue {
 	issues := make([]Issue, 0)
 
 	for _, hunk := range fileDiff.Hunks {
-		addedLines := make([]git.Line, 0)
-		for _, line := range hunk.Lines {
-			if line.Type == "added" {
-				addedLines = append(addedLines, line)
-			}
-		}
+		// Use ALL lines in the hunk (not just added) to understand block structure.
+		// We only flag added lines, but we need context lines too.
+		allLines := hunk.Lines
 
-		for i := 0; i < len(addedLines)-1; i++ {
-			if isReturnLike(addedLines[i].Content) {
-				// Look at the next added line.
-				next := addedLines[i+1]
+		for i := 0; i < len(allLines)-1; i++ {
+			line := allLines[i]
+			// Only check return statements that are in added lines.
+			if line.Type != "added" {
+				continue
+			}
+
+			if !isReturnLike(line.Content) {
+				continue
+			}
+
+			returnIndent := indentLevel(line.Content)
+
+			// Scan forward to find the next meaningful line (skip blank, closing braces, comments).
+			foundUnreachable := false
+			for j := i + 1; j < len(allLines); j++ {
+				next := allLines[j]
 				nextTrimmed := strings.TrimSpace(next.Content)
 
-				// Skip if next line is a block-end or empty.
-				if isBlockEnd(next.Content) {
+				// Skip blank lines.
+				if nextTrimmed == "" {
 					continue
 				}
-				// Skip if next line is a comment.
+
+				// A closing brace at same or lower indent means we exited the block scope.
+				// Code after is reachable (it's in the enclosing scope).
+				if nextTrimmed == "}" || nextTrimmed == "})" {
+					break
+				}
+
+				// Skip comments.
 				if isCommentLine(next.Content) {
 					continue
 				}
-				// Skip if next line is a case/default label.
+
+				// Skip case/default labels.
 				if strings.HasPrefix(nextTrimmed, "case ") || strings.HasPrefix(nextTrimmed, "default:") {
-					continue
+					break
 				}
 
-				issues = append(issues, Issue{
-					ID:         "patterns/unreachable-code",
-					Severity:   SeverityWarning,
-					Category:   "patterns",
-					File:       fileDiff.Path,
-					Line:       next.NewNum,
-					Message:    "Potentially unreachable code after return/throw/panic",
-					Suggestion: "Remove unreachable code or restructure the control flow",
-				})
+				nextIndent := indentLevel(next.Content)
+
+				// If the next code line has LESS indent than the return, we've
+				// exited the block scope — this code is reachable.
+				if nextIndent < returnIndent {
+					break
+				}
+
+				// If at the same indent and this is an added line, it may be unreachable.
+				// But only if it's at the SAME indent level as the return (same block).
+				if nextIndent == returnIndent && next.Type == "added" {
+					foundUnreachable = true
+					issues = append(issues, Issue{
+						ID:         "patterns/unreachable-code",
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       next.NewNum,
+						Message:    "Potentially unreachable code after return/throw/panic",
+						Suggestion: "Remove unreachable code or restructure the control flow",
+					})
+				}
+				break
 			}
+			_ = foundUnreachable
 		}
 	}
 
@@ -368,6 +487,39 @@ func checkUnreachableCode(fileDiff git.FileDiff) []Issue {
 }
 
 // --- Helpers ---
+
+// nonSourceExtensions are file extensions that should not be analyzed for code patterns.
+var nonSourceExtensions = map[string]bool{
+	".md":       true,
+	".markdown": true,
+	".txt":      true,
+	".rst":      true,
+	".yaml":     true,
+	".yml":      true,
+	".json":     true,
+	".toml":     true,
+	".xml":      true,
+	".html":     true,
+	".css":      true,
+	".scss":     true,
+	".less":     true,
+	".svg":      true,
+	".csv":      true,
+	".lock":     true,
+	".sum":      true,
+	".mod":      true,
+	".cfg":      true,
+	".ini":      true,
+	".env":      true,
+}
+
+// isAnalyzableFile returns true if the file is source code that should be
+// checked for anti-patterns. Returns false for documentation, config, and
+// data files where patterns like "#" headers or "TODO" text are normal.
+func isAnalyzableFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return !nonSourceExtensions[ext]
+}
 
 func isPythonFile(path string) bool {
 	return strings.HasSuffix(path, ".py")
