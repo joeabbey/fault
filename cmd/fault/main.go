@@ -16,6 +16,7 @@ import (
 	"github.com/joeabbey/fault/pkg/analyzer"
 	"github.com/joeabbey/fault/pkg/config"
 	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/index"
 	"github.com/joeabbey/fault/pkg/llm"
 	"github.com/joeabbey/fault/pkg/parser"
 	"github.com/joeabbey/fault/pkg/reporter"
@@ -107,7 +108,17 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
 
-	// 6. Run analyzers
+	// 6. Build or load repo index for cross-file analysis
+	repoRoot, _ := repo.RepoRoot()
+	var repoIndex *index.Index
+	idx := index.NewIndex(repoRoot, cfg)
+	if err := idx.BuildOrLoad(reg); err != nil {
+		log.Printf("warning: could not build repo index: %v", err)
+	} else {
+		repoIndex = idx
+	}
+
+	// 7. Run analyzers
 	analyzers := []analyzer.Analyzer{
 		analyzer.NewImportAnalyzer(),
 		analyzer.NewConsistencyAnalyzer(),
@@ -117,20 +128,19 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
-	repoRoot, _ := repo.RepoRoot()
-	result := runner.Run(repoRoot, diff, parsedFiles)
+	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
 
 	// Set branch info if available
 	if currentBranch, err := repo.CurrentBranch(); err == nil {
 		result.Branch = currentBranch
 	}
 
-	// 7. LLM-assisted analysis (optional)
+	// 8. LLM-assisted analysis (optional)
 	if cfg.LLM.Enabled {
 		runLLMAnalysis(cfg, diff, parsedFiles, result, repoRoot)
 	}
 
-	// 8. Report results
+	// 9. Report results
 	rep := selectReporter(format, noColor)
 	exitCode := rep.Report(result, cfg.BlockOn)
 
@@ -281,6 +291,8 @@ analyzers:
   references: true
   tests: true
   patterns: true
+  security: true
+  hallucination: true
 llm:
   enabled: false
   spec_file: ""

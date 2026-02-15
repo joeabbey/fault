@@ -22,11 +22,13 @@ type Config struct {
 
 // AnalyzersConfig controls which analyzers are enabled.
 type AnalyzersConfig struct {
-	Imports     bool `yaml:"imports" json:"imports"`
-	Consistency bool `yaml:"consistency" json:"consistency"`
-	References  bool `yaml:"references" json:"references"`
-	Tests       bool `yaml:"tests" json:"tests"`
-	Patterns    bool `yaml:"patterns" json:"patterns"`
+	Imports       bool `yaml:"imports" json:"imports"`
+	Consistency   bool `yaml:"consistency" json:"consistency"`
+	References    bool `yaml:"references" json:"references"`
+	Tests         bool `yaml:"tests" json:"tests"`
+	Patterns      bool `yaml:"patterns" json:"patterns"`
+	Security      bool `yaml:"security" json:"security"`
+	Hallucination bool `yaml:"hallucination" json:"hallucination"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -43,11 +45,13 @@ func DefaultConfig() *Config {
 		Languages: []string{"typescript", "python", "go"},
 		BlockOn:   "error",
 		Analyzers: AnalyzersConfig{
-			Imports:     true,
-			Consistency: true,
-			References:  true,
-			Tests:       true,
-			Patterns:    true,
+			Imports:       true,
+			Consistency:   true,
+			References:    true,
+			Tests:         true,
+			Patterns:      true,
+			Security:      true,
+			Hallucination: true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

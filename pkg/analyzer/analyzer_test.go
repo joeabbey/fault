@@ -45,7 +45,7 @@ func TestRunnerCallsEnabledAnalyzers(t *testing.T) {
 		Mode: "staged",
 	}
 
-	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile))
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
 
 	if len(result.Issues) != 2 {
 		t.Fatalf("expected 2 issues, got %d", len(result.Issues))
@@ -80,7 +80,7 @@ func TestRunnerSkipsDisabledAnalyzers(t *testing.T) {
 	runner := NewRunner(cfg, []Analyzer{a1, a2})
 	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
 
-	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile))
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
 
 	if len(result.Issues) != 1 {
 		t.Fatalf("expected 1 issue (imports disabled), got %d", len(result.Issues))
@@ -107,7 +107,7 @@ func TestRunnerHandlesAnalyzerErrors(t *testing.T) {
 	runner := NewRunner(cfg, []Analyzer{a1, a2})
 	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
 
-	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile))
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
 
 	// Should have the consistency issue plus an info issue about the failure
 	if len(result.Issues) < 2 {
@@ -142,7 +142,7 @@ func TestRunnerIssuesSorted(t *testing.T) {
 	runner := NewRunner(cfg, []Analyzer{a1})
 	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
 
-	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile))
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
 
 	if len(result.Issues) != 4 {
 		t.Fatalf("expected 4 issues, got %d", len(result.Issues))
@@ -277,6 +277,75 @@ func TestBuildSummary(t *testing.T) {
 				t.Errorf("summary %q does not contain %q", summary, tt.contains)
 			}
 		})
+	}
+}
+
+func TestRunnerPassesNilIndexWithoutPanic(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	a := &mockAnalyzer{
+		name:   "imports",
+		issues: make([]Issue, 0),
+	}
+
+	runner := NewRunner(cfg, []Analyzer{a})
+	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
+
+	// Verify Run accepts nil index without panic
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
+	if result == nil {
+		t.Fatal("expected non-nil result")
+	}
+}
+
+func TestRunnerNewAnalyzersEnabledByDefault(t *testing.T) {
+	cfg := config.DefaultConfig()
+
+	a := &mockAnalyzer{
+		name: "some-future-analyzer",
+		issues: []Issue{
+			{ID: "future-1", Severity: SeverityInfo, Category: "future", Message: "found something"},
+		},
+	}
+
+	runner := NewRunner(cfg, []Analyzer{a})
+	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
+
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
+
+	if len(result.Issues) != 1 {
+		t.Fatalf("expected 1 issue (unknown analyzers enabled by default), got %d", len(result.Issues))
+	}
+}
+
+func TestRunnerSecurityHallucinationDisable(t *testing.T) {
+	cfg := config.DefaultConfig()
+	cfg.Analyzers.Security = false
+	cfg.Analyzers.Hallucination = false
+
+	a1 := &mockAnalyzer{
+		name:   "security",
+		issues: []Issue{{ID: "sec-1", Severity: SeverityError, Message: "should not appear"}},
+	}
+	a2 := &mockAnalyzer{
+		name:   "hallucination",
+		issues: []Issue{{ID: "hal-1", Severity: SeverityError, Message: "should not appear"}},
+	}
+	a3 := &mockAnalyzer{
+		name:   "imports",
+		issues: []Issue{{ID: "imp-1", Severity: SeverityWarning, Category: "imports", Message: "should appear"}},
+	}
+
+	runner := NewRunner(cfg, []Analyzer{a1, a2, a3})
+	diff := &git.Diff{Files: make([]git.FileDiff, 0), Mode: "staged"}
+
+	result := runner.Run("/repo", diff, make(map[string]*parser.ParsedFile), nil)
+
+	if len(result.Issues) != 1 {
+		t.Fatalf("expected 1 issue (security+hallucination disabled), got %d", len(result.Issues))
+	}
+	if result.Issues[0].ID != "imp-1" {
+		t.Errorf("expected imp-1, got %s", result.Issues[0].ID)
 	}
 }
 

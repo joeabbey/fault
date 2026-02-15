@@ -52,10 +52,16 @@ func (a *ConsistencyAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 	// 1. Detect signature changes from diff hunks
 	sigChanges := a.detectSignatureChanges(ctx)
 
-	// 2. For each changed signature, check if callers (other changed files) are updated
+	// 2. For each changed signature, check if callers are updated
 	for _, sc := range sigChanges {
 		callerIssues := a.checkCallers(ctx, sc, changedFiles)
 		issues = append(issues, callerIssues...)
+
+		// Also check non-changed files across the repo via index
+		if ctx.Index != nil {
+			indexIssues := a.checkCallersViaIndex(ctx, sc, changedFiles)
+			issues = append(issues, indexIssues...)
+		}
 	}
 
 	// 3. Check for type/struct definition changes with stale usages
@@ -357,6 +363,115 @@ func (a *ConsistencyAnalyzer) checkCallers(
 				})
 			}
 		}
+	}
+
+	return issues
+}
+
+// checkCallersViaIndex uses the repo index to find files outside the changeset
+// that import a file whose signature changed and may reference the symbol.
+func (a *ConsistencyAnalyzer) checkCallersViaIndex(
+	ctx *AnalysisContext,
+	sc signatureChange,
+	changedFiles map[string]bool,
+) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, entry := range ctx.Index.AllFiles() {
+		// Skip files already in ParsedFiles (handled by checkCallers)
+		if _, inParsed := ctx.ParsedFiles[entry.Path]; inParsed {
+			continue
+		}
+		// Skip changed files
+		if changedFiles[entry.Path] {
+			continue
+		}
+		// Skip the changed file itself
+		if entry.Path == sc.File {
+			continue
+		}
+
+		// Check if this index file imports from the changed file
+		importsFrom := false
+		for _, imp := range entry.Imports {
+			switch entry.Language {
+			case "typescript":
+				if isRelativeImport(imp.Path) {
+					resolved := resolveRelativeImport(entry.Path, imp.Path)
+					if matchesTSPath(resolved, sc.File) {
+						importsFrom = true
+					}
+				}
+			case "python":
+				if strings.HasPrefix(imp.Path, ".") {
+					resolved := resolvePythonImport(entry.Path, imp.Path)
+					if matchesPythonPath(resolved, sc.File) {
+						importsFrom = true
+					}
+				}
+			case "go":
+				// For Go, check same directory (same package)
+				if sameDirectory(entry.Path, sc.File) {
+					importsFrom = true
+				}
+			}
+			if importsFrom {
+				break
+			}
+		}
+
+		// For Go: same-package files
+		if !importsFrom && entry.Language == "go" && sameDirectory(entry.Path, sc.File) {
+			importsFrom = true
+		}
+
+		if !importsFrom {
+			continue
+		}
+
+		// Check if any import references the changed symbol by name
+		referencesSymbol := false
+		for _, imp := range entry.Imports {
+			for _, name := range imp.Names {
+				if name == sc.SymbolName {
+					referencesSymbol = true
+					break
+				}
+			}
+			if referencesSymbol {
+				break
+			}
+		}
+
+		// For Go: check exports list for references to the symbol
+		if !referencesSymbol && entry.Language == "go" {
+			for _, exp := range entry.Exports {
+				if strings.Contains(exp.Name, sc.SymbolName) {
+					referencesSymbol = true
+					break
+				}
+			}
+		}
+
+		if !referencesSymbol {
+			continue
+		}
+
+		issues = append(issues, Issue{
+			ID:       fmt.Sprintf("sig-change-index-%s-%s-%s", sc.File, entry.Path, sc.SymbolName),
+			Severity: SeverityWarning,
+			Category: "consistency",
+			File:     entry.Path,
+			Message: fmt.Sprintf(
+				"Function %q signature changed in %s but this file was not updated (found via repo index)",
+				sc.SymbolName, sc.File,
+			),
+			Suggestion: fmt.Sprintf(
+				"Review usages of %s: was %q, now %q",
+				sc.SymbolName, sc.OldSignature, sc.NewSignature,
+			),
+			RelatedFiles: []string{sc.File},
+		})
 	}
 
 	return issues

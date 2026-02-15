@@ -30,6 +30,12 @@ func TestDefaultConfig(t *testing.T) {
 	if !cfg.Analyzers.Patterns {
 		t.Error("expected patterns analyzer enabled by default")
 	}
+	if !cfg.Analyzers.Security {
+		t.Error("expected security analyzer enabled by default")
+	}
+	if !cfg.Analyzers.Hallucination {
+		t.Error("expected hallucination analyzer enabled by default")
+	}
 	if cfg.LLM.Enabled {
 		t.Error("expected LLM disabled by default")
 	}

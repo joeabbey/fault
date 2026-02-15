@@ -91,6 +91,60 @@ func (a *ReferenceAnalyzer) checkDeletedFileReferences(ctx *AnalysisContext) []I
 		}
 	}
 
+	// Use the index to find non-changed files that also import deleted files
+	if ctx.Index != nil {
+		issues = append(issues, a.checkDeletedFileReferencesViaIndex(ctx, deletedPaths)...)
+	}
+
+	return issues
+}
+
+// checkDeletedFileReferencesViaIndex uses the repo index to find files outside
+// the changeset that import deleted files.
+func (a *ReferenceAnalyzer) checkDeletedFileReferencesViaIndex(ctx *AnalysisContext, deletedPaths []string) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, entry := range ctx.Index.AllFiles() {
+		// Skip files already in ParsedFiles (checked above)
+		if _, inParsed := ctx.ParsedFiles[entry.Path]; inParsed {
+			continue
+		}
+
+		for _, imp := range entry.Imports {
+			var resolvedTarget string
+			switch entry.Language {
+			case "typescript":
+				if isRelativeImport(imp.Path) {
+					resolvedTarget = resolveRelativeImport(entry.Path, imp.Path)
+				}
+			case "python":
+				if strings.HasPrefix(imp.Path, ".") {
+					resolvedTarget = resolvePythonImport(entry.Path, imp.Path)
+				}
+			}
+			if resolvedTarget == "" {
+				continue
+			}
+
+			for _, deletedPath := range deletedPaths {
+				if matchesDeletedFile(resolvedTarget, deletedPath, entry.Language) {
+					issues = append(issues, Issue{
+						ID:       fmt.Sprintf("ref-deleted-%s-index-%s", entry.Path, deletedPath),
+						Severity: SeverityError,
+						Category: "reference",
+						File:     entry.Path,
+						Message: fmt.Sprintf(
+							"Import references deleted file %q (found via repo index)",
+							deletedPath,
+						),
+						Suggestion:   "Remove this import or update it to point to a replacement file",
+						RelatedFiles: []string{deletedPath},
+					})
+				}
+			}
+		}
+	}
+
 	return issues
 }
 

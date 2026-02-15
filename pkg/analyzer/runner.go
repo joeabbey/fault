@@ -9,6 +9,7 @@ import (
 
 	"github.com/joeabbey/fault/pkg/config"
 	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/index"
 	"github.com/joeabbey/fault/pkg/parser"
 )
 
@@ -35,7 +36,7 @@ type analyzerResult struct {
 }
 
 // Run executes all enabled analyzers and returns the combined result.
-func (r *Runner) Run(repoPath string, diff *git.Diff, parsedFiles map[string]*parser.ParsedFile) *AnalysisResult {
+func (r *Runner) Run(repoPath string, diff *git.Diff, parsedFiles map[string]*parser.ParsedFile, idx *index.Index) *AnalysisResult {
 	startTime := time.Now()
 
 	ctx := &AnalysisContext{
@@ -43,6 +44,7 @@ func (r *Runner) Run(repoPath string, diff *git.Diff, parsedFiles map[string]*pa
 		Diff:        diff,
 		ParsedFiles: parsedFiles,
 		Config:      r.config,
+		Index:       idx,
 	}
 
 	// Filter to enabled analyzers
@@ -111,6 +113,10 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.Tests
 	case "patterns":
 		return r.config.Analyzers.Patterns
+	case "security":
+		return r.config.Analyzers.Security
+	case "hallucination":
+		return r.config.Analyzers.Hallucination
 	default:
 		// Unknown analyzers are enabled by default
 		return true

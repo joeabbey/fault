@@ -5,6 +5,7 @@ import (
 
 	"github.com/joeabbey/fault/pkg/config"
 	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/index"
 	"github.com/joeabbey/fault/pkg/parser"
 )
 
@@ -63,6 +64,7 @@ type AnalysisContext struct {
 	Diff        *git.Diff
 	ParsedFiles map[string]*parser.ParsedFile
 	Config      *config.Config
+	Index       *index.Index // Full repo index (may be nil if index build fails)
 }
 
 // ErrorCount returns the number of error-severity issues.

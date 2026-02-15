@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/joeabbey/fault/pkg/git"
+	"github.com/joeabbey/fault/pkg/index"
 	"github.com/joeabbey/fault/pkg/parser"
 )
 
@@ -32,7 +33,11 @@ func (a *ImportAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 	}
 
 	// Build the export map: filePath -> exportName -> Export
+	// Start with parsed (changed) files, then merge in index data for full coverage.
 	exportMap := buildExportMap(ctx.ParsedFiles)
+	if ctx.Index != nil {
+		mergeIndexExports(exportMap, ctx.Index)
+	}
 
 	// Build the set of changed file paths for quick lookup
 	changedFiles := buildChangedFileSet(ctx)
@@ -104,8 +109,13 @@ func (a *ImportAnalyzer) validateTSImport(
 	// Try common extensions for TS/JS
 	targetPath := findTSFile(resolvedPath, ctx.ParsedFiles)
 
+	// If not found in parsed files, try the full repo index
+	if targetPath == "" && ctx.Index != nil {
+		targetPath = findTSFileInIndex(resolvedPath, ctx.Index)
+	}
+
 	if targetPath == "" {
-		// Could not resolve — the target file doesn't exist in parsed files
+		// Could not resolve — the target file doesn't exist in parsed files or index
 		if deletedFiles[resolvedPath] || deletedFiles[resolvedPath+".ts"] ||
 			deletedFiles[resolvedPath+".tsx"] || deletedFiles[resolvedPath+".js"] ||
 			deletedFiles[resolvedPath+".jsx"] {
@@ -310,6 +320,71 @@ func (a *ImportAnalyzer) checkRemovedExports(
 							RelatedFiles: []string{fd.Path},
 						})
 					}
+				}
+			}
+		}
+
+		// When the index is available, also check NON-changed files across the
+		// whole repo that import the removed exports.
+		if ctx.Index != nil {
+			issues = append(issues, a.checkRemovedExportsViaIndex(ctx, fd, removedExports)...)
+		}
+	}
+
+	return issues
+}
+
+// checkRemovedExportsViaIndex uses the repo index to find files outside the
+// changeset that import removed exports from a changed file.
+func (a *ImportAnalyzer) checkRemovedExportsViaIndex(
+	ctx *AnalysisContext,
+	fd git.FileDiff,
+	removedExports map[string]bool,
+) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, entry := range ctx.Index.AllFiles() {
+		// Skip the changed file itself and any file already in ParsedFiles
+		// (those were already checked above).
+		if entry.Path == fd.Path {
+			continue
+		}
+		if _, inParsed := ctx.ParsedFiles[entry.Path]; inParsed {
+			continue
+		}
+
+		// Check if this index file imports from the changed file
+		for _, imp := range entry.Imports {
+			// For TS/JS: resolve relative import
+			if entry.Language == "typescript" && isRelativeImport(imp.Path) {
+				resolved := resolveRelativeImport(entry.Path, imp.Path)
+				if !matchesTSPath(resolved, fd.Path) {
+					continue
+				}
+			} else if entry.Language == "python" && strings.HasPrefix(imp.Path, ".") {
+				resolved := resolvePythonImport(entry.Path, imp.Path)
+				if !matchesPythonPath(resolved, fd.Path) {
+					continue
+				}
+			} else {
+				continue
+			}
+
+			// This index file imports from the changed file -- check names
+			for _, name := range imp.Names {
+				if removedExports[name] {
+					issues = append(issues, Issue{
+						ID:       fmt.Sprintf("export-removed-%s-%s-%s", fd.Path, entry.Path, name),
+						Severity: SeverityWarning,
+						Category: "import",
+						File:     entry.Path,
+						Message: fmt.Sprintf(
+							"Import %q was removed from %q but is still imported in this file (found via repo index)",
+							name, fd.Path,
+						),
+						Suggestion:   fmt.Sprintf("Update or remove the import of %q", name),
+						RelatedFiles: []string{fd.Path},
+					})
 				}
 			}
 		}
@@ -622,6 +697,81 @@ func extractGoExportedName(line string) string {
 		}
 	}
 	return ""
+}
+
+// mergeIndexExports adds export data from the index for files not already in exportMap.
+func mergeIndexExports(exportMap map[string]map[string]bool, idx *index.Index) {
+	for _, entry := range idx.AllFiles() {
+		if _, exists := exportMap[entry.Path]; exists {
+			continue // ParsedFiles data takes precedence
+		}
+		exports := make(map[string]bool)
+		for _, exp := range entry.Exports {
+			exports[exp.Name] = true
+		}
+		if len(exports) > 0 {
+			exportMap[entry.Path] = exports
+		}
+	}
+}
+
+// findTSFileInIndex tries to find a TypeScript/JavaScript file in the index,
+// trying common extensions if the path doesn't have one.
+func findTSFileInIndex(basePath string, idx *index.Index) string {
+	if idx.GetFile(basePath) != nil {
+		return basePath
+	}
+
+	extensions := []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
+	for _, ext := range extensions {
+		candidate := basePath + ext
+		if idx.GetFile(candidate) != nil {
+			return candidate
+		}
+	}
+
+	for _, ext := range extensions {
+		candidate := filepath.Join(basePath, "index"+ext)
+		if idx.GetFile(candidate) != nil {
+			return candidate
+		}
+	}
+
+	return ""
+}
+
+// matchesTSPath checks if a resolved import base path matches a target file path,
+// accounting for TypeScript extension resolution.
+func matchesTSPath(resolvedBase, targetPath string) bool {
+	if resolvedBase == targetPath {
+		return true
+	}
+	extensions := []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
+	for _, ext := range extensions {
+		if resolvedBase+ext == targetPath {
+			return true
+		}
+	}
+	for _, ext := range extensions {
+		if filepath.Join(resolvedBase, "index"+ext) == targetPath {
+			return true
+		}
+	}
+	return false
+}
+
+// matchesPythonPath checks if a resolved import base path matches a target file path.
+func matchesPythonPath(resolvedBase, targetPath string) bool {
+	if resolvedBase == targetPath {
+		return true
+	}
+	if resolvedBase+".py" == targetPath {
+		return true
+	}
+	if filepath.Join(resolvedBase, "__init__.py") == targetPath {
+		return true
+	}
+	return false
 }
 
 // resolveImportToFile resolves an import to the actual file path in parsedFiles.
