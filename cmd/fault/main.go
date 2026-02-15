@@ -126,6 +126,7 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 		analyzer.NewTestImpactAnalyzer(),
 		analyzer.NewAntiPatternAnalyzer(),
 		analyzer.NewSecurityAnalyzer(),
+		analyzer.NewHallucinationAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
