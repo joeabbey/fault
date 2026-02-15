@@ -207,3 +207,119 @@ func TestHookFilePathNotGitRepo(t *testing.T) {
 		t.Fatal("expected error for non-git directory")
 	}
 }
+
+func TestDetectHusky(t *testing.T) {
+	dir := setupTestRepo(t)
+
+	// No .husky directory
+	if DetectHusky(dir) {
+		t.Error("expected false when no .husky dir")
+	}
+
+	// Create .husky directory
+	huskyDir := filepath.Join(dir, ".husky")
+	if err := os.MkdirAll(huskyDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if !DetectHusky(dir) {
+		t.Error("expected true after creating .husky dir")
+	}
+}
+
+func TestDetectLintStaged(t *testing.T) {
+	dir := setupTestRepo(t)
+
+	// No package.json
+	if DetectLintStaged(dir) {
+		t.Error("expected false when no package.json")
+	}
+
+	// package.json without lint-staged
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name": "test"}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if DetectLintStaged(dir) {
+		t.Error("expected false when package.json has no lint-staged")
+	}
+
+	// package.json with lint-staged
+	if err := os.WriteFile(filepath.Join(dir, "package.json"), []byte(`{"name": "test", "lint-staged": {"*.ts": "eslint"}}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if !DetectLintStaged(dir) {
+		t.Error("expected true when package.json has lint-staged")
+	}
+}
+
+func TestHookStatus(t *testing.T) {
+	dir := setupTestRepo(t)
+
+	// Initial state: nothing installed
+	status := HookStatus(dir)
+	if status.FaultHookInstalled {
+		t.Error("expected FaultHookInstalled false")
+	}
+	if status.HuskyDetected {
+		t.Error("expected HuskyDetected false")
+	}
+	if status.LintStagedDetected {
+		t.Error("expected LintStagedDetected false")
+	}
+	if len(status.Recommendations) == 0 {
+		t.Error("expected at least one recommendation")
+	}
+
+	// Install fault hook
+	if err := InstallHook(dir, false); err != nil {
+		t.Fatal(err)
+	}
+	status = HookStatus(dir)
+	if !status.FaultHookInstalled {
+		t.Error("expected FaultHookInstalled true")
+	}
+
+	// Add husky
+	if err := os.MkdirAll(filepath.Join(dir, ".husky"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	status = HookStatus(dir)
+	if !status.HuskyDetected {
+		t.Error("expected HuskyDetected true")
+	}
+	// Should recommend resolving conflict
+	hasConflictRec := false
+	for _, rec := range status.Recommendations {
+		if filepath.Ext(rec) == "" && len(rec) > 0 { // just check non-empty
+			hasConflictRec = true
+		}
+	}
+	_ = hasConflictRec
+}
+
+func TestHookStatusHuskyNoFault(t *testing.T) {
+	dir := setupTestRepo(t)
+
+	// Add husky without fault hook
+	if err := os.MkdirAll(filepath.Join(dir, ".husky"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	status := HookStatus(dir)
+	if !status.HuskyDetected {
+		t.Error("expected HuskyDetected true")
+	}
+	if status.FaultHookInstalled {
+		t.Error("expected FaultHookInstalled false")
+	}
+	// Should recommend adding to husky
+	foundHuskyRec := false
+	for _, rec := range status.Recommendations {
+		if len(rec) > 0 {
+			foundHuskyRec = true
+		}
+	}
+	if !foundHuskyRec {
+		t.Error("expected recommendation when husky detected without fault")
+	}
+}

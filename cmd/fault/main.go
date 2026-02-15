@@ -712,6 +712,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	fixRegistry.Register(fixer.NewPatternFixer())
 	fixRegistry.Register(fixer.NewJavaFixer())
 	fixRegistry.Register(fixer.NewRustFixer())
+	fixRegistry.Register(fixer.NewTypeScriptFixer())
 
 	// 9. Generate fixes for fixable issues
 	var fixes []*fixer.Fix

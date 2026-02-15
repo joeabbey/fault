@@ -59,6 +59,7 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkPathTraversal(fileDiff)...)
 		issues = append(issues, checkInsecureCrypto(fileDiff)...)
 		issues = append(issues, checkRustSecurity(fileDiff)...)
+		issues = append(issues, checkTSCodeExecution(fileDiff)...)
 
 		// Java-specific security checks
 		ext := strings.ToLower(filepath.Ext(fileDiff.Path))
@@ -739,6 +740,97 @@ func checkRustSecurity(fileDiff git.FileDiff) []Issue {
 					Line:       line.NewNum,
 					Message:    rule.message,
 					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- TypeScript/JS code execution detection ---
+
+type codeExecRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	label      string
+}
+
+var codeExecRules = []codeExecRule{
+	// eval() usage
+	{
+		pattern: regexp.MustCompile(`\beval\s*\(`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)(json\.parse|JSON\.parse)`),
+		},
+		label: "eval() allows arbitrary code execution",
+	},
+	// new Function() with string argument
+	{
+		pattern:    regexp.MustCompile(`new\s+Function\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		label:      "new Function() allows arbitrary code execution",
+	},
+	// setTimeout/setInterval with string argument (not a function reference)
+	{
+		pattern:    regexp.MustCompile(`\b(setTimeout|setInterval)\s*\(\s*["'\x60]`),
+		exclusions: []*regexp.Regexp{},
+		label:      "setTimeout/setInterval with string argument allows code injection",
+	},
+	// document.writeln()
+	{
+		pattern:    regexp.MustCompile(`document\.writeln\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		label:      "document.writeln() can introduce XSS vulnerabilities",
+	},
+}
+
+func checkTSCodeExecution(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	ext := strings.ToLower(filepath.Ext(fileDiff.Path))
+	if ext != ".ts" && ext != ".tsx" && ext != ".js" && ext != ".jsx" && ext != ".mjs" {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range codeExecRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         "security/code-execution",
+					Severity:   SeverityError,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    "Unsafe code execution: " + rule.label,
+					Suggestion: "Avoid eval(), new Function(), and string arguments to setTimeout/setInterval; use safer alternatives",
 				})
 				break
 			}

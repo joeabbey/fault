@@ -245,6 +245,154 @@ import App from './App';
 	}
 }
 
+func TestTypeScriptParserConstEnum(t *testing.T) {
+	src := `export const enum Direction {
+  Up = "UP",
+  Down = "DOWN",
+}
+
+const enum InternalStatus {
+  Active,
+  Inactive,
+}
+`
+	p := NewTypeScriptParser()
+	pf, err := p.Parse("enums.ts", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check exports
+	exportNames := make(map[string]string)
+	for _, exp := range pf.Exports {
+		exportNames[exp.Name] = exp.Kind
+	}
+	if kind, ok := exportNames["Direction"]; !ok || kind != "type" {
+		t.Errorf("expected exported Direction type, got %v", exportNames)
+	}
+
+	// Check symbols
+	symbolMap := make(map[string]Symbol)
+	for _, sym := range pf.Symbols {
+		symbolMap[sym.Name] = sym
+	}
+	if _, ok := symbolMap["Direction"]; !ok {
+		t.Error("expected Direction symbol for const enum")
+	}
+	if s, ok := symbolMap["InternalStatus"]; !ok {
+		t.Error("expected InternalStatus symbol for const enum")
+	} else if s.Exported {
+		t.Error("expected InternalStatus to not be exported")
+	}
+}
+
+func TestTypeScriptParserDecorators(t *testing.T) {
+	src := `@Component
+export class AppComponent {}
+
+@Injectable({providedIn: 'root'})
+export class UserService {}
+`
+	p := NewTypeScriptParser()
+	pf, err := p.Parse("app.ts", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Should find decorators as symbols
+	decorators := make(map[string]bool)
+	for _, sym := range pf.Symbols {
+		if sym.Kind == "decorator" {
+			decorators[sym.Name] = true
+		}
+	}
+	if !decorators["Component"] {
+		t.Error("expected @Component decorator symbol")
+	}
+	if !decorators["Injectable"] {
+		t.Error("expected @Injectable decorator symbol")
+	}
+
+	// Classes should still be found
+	exportNames := make(map[string]string)
+	for _, exp := range pf.Exports {
+		exportNames[exp.Name] = exp.Kind
+	}
+	if _, ok := exportNames["AppComponent"]; !ok {
+		t.Error("expected AppComponent export")
+	}
+	if _, ok := exportNames["UserService"]; !ok {
+		t.Error("expected UserService export")
+	}
+}
+
+func TestTypeScriptParserGenericInterfaces(t *testing.T) {
+	src := `export interface Repository<T> {
+  find(id: string): T;
+  findAll(): T[];
+  save(entity: T): void;
+}
+
+interface Cache<K, V> {
+  get(key: K): V | undefined;
+  set(key: K, value: V): void;
+}
+`
+	p := NewTypeScriptParser()
+	pf, err := p.Parse("repo.ts", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Check exports
+	exportNames := make(map[string]string)
+	for _, exp := range pf.Exports {
+		exportNames[exp.Name] = exp.Kind
+	}
+	if kind, ok := exportNames["Repository"]; !ok || kind != "type" {
+		t.Errorf("expected exported Repository type, got %v", exportNames)
+	}
+
+	// Check symbols
+	symbolMap := make(map[string]Symbol)
+	for _, sym := range pf.Symbols {
+		symbolMap[sym.Name] = sym
+	}
+	if _, ok := symbolMap["Repository"]; !ok {
+		t.Error("expected Repository symbol")
+	}
+	if s, ok := symbolMap["Cache"]; !ok {
+		t.Error("expected Cache symbol")
+	} else if s.Exported {
+		t.Error("expected Cache to not be exported")
+	}
+}
+
+func TestTypeScriptParserTypeReExports(t *testing.T) {
+	src := `export type { User, Profile } from './models';
+export type { Config } from './config';
+`
+	p := NewTypeScriptParser()
+	pf, err := p.Parse("index.ts", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	exportNames := make(map[string]string)
+	for _, exp := range pf.Exports {
+		exportNames[exp.Name] = exp.Kind
+	}
+	if _, ok := exportNames["User"]; !ok {
+		t.Error("expected type re-export User")
+	}
+	if _, ok := exportNames["Profile"]; !ok {
+		t.Error("expected type re-export Profile")
+	}
+	if _, ok := exportNames["Config"]; !ok {
+		t.Error("expected type re-export Config")
+	}
+}
+
 func TestTypeScriptParserEmptyFile(t *testing.T) {
 	p := NewTypeScriptParser()
 	pf, err := p.Parse("empty.ts", []byte(""))

@@ -56,7 +56,7 @@ var (
 	reExportFunction = regexp.MustCompile(`(?m)^export\s+(?:default\s+)?(?:async\s+)?function\s+(\w+)`)
 	reExportClass    = regexp.MustCompile(`(?m)^export\s+(?:default\s+)?class\s+(\w+)`)
 	reExportConst    = regexp.MustCompile(`(?m)^export\s+(?:default\s+)?(?:const|let|var)\s+(\w+)`)
-	reExportType     = regexp.MustCompile(`(?m)^export\s+(?:type|interface|enum)\s+(\w+)`)
+	reExportType     = regexp.MustCompile(`(?m)^export\s+(?:type|interface|(?:const\s+)?enum)\s+(\w+)`)
 	reExportDefault  = regexp.MustCompile(`(?m)^export\s+default\s+`)
 
 	// Re-exports: export { Foo, Bar } from 'module'
@@ -69,9 +69,18 @@ var (
 	reClassDecl    = regexp.MustCompile(`(?m)^(?:export\s+)?(?:default\s+)?class\s+(\w+)`)
 	reConstDecl    = regexp.MustCompile(`(?m)^(?:export\s+)?(?:const|let|var)\s+(\w+)`)
 	reTypeDecl     = regexp.MustCompile(`(?m)^(?:export\s+)?(?:type|interface)\s+(\w+)`)
-	reEnumDecl     = regexp.MustCompile(`(?m)^(?:export\s+)?enum\s+(\w+)`)
+	reEnumDecl     = regexp.MustCompile(`(?m)^(?:export\s+)?(?:const\s+)?enum\s+(\w+)`)
 	reArrowFunc    = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[a-zA-Z_]\w*)\s*=>`)
 	reMethodInline = regexp.MustCompile(`(?m)^(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?function`)
+
+	// Decorator: @Name or @Name(args)
+	reTSDecorator = regexp.MustCompile(`^@(\w+)`)
+
+	// Generic interface: interface Foo<T> { ... }
+	reGenericInterfaceDecl = regexp.MustCompile(`(?m)^(?:export\s+)?interface\s+(\w+)\s*<[^>]+>`)
+
+	// Type-only re-export: export type { Foo } from './bar'
+	reTypeReExport = regexp.MustCompile(`(?m)^export\s+type\s+\{([^}]+)\}\s+from\s+['"]([^'"]+)['"]`)
 )
 
 // Parse extracts structural info from TypeScript/JavaScript content.
@@ -181,6 +190,19 @@ func (p *TypeScriptParser) extractExports(pf *ParsedFile, line string, lineNo in
 		return
 	}
 
+	// Type-only re-exports: export type { Foo } from './bar'
+	if matches := reTypeReExport.FindStringSubmatch(line); matches != nil {
+		names := parseNamedImports("{" + matches[1] + "}")
+		for _, name := range names {
+			pf.Exports = append(pf.Exports, Export{
+				Name: name,
+				Kind: "type",
+				Line: lineNo,
+			})
+		}
+		return
+	}
+
 	// Re-exports
 	if matches := reReExport.FindStringSubmatch(line); matches != nil {
 		names := parseNamedImports("{" + matches[1] + "}")
@@ -217,6 +239,16 @@ func (p *TypeScriptParser) extractExports(pf *ParsedFile, line string, lineNo in
 		pf.Exports = append(pf.Exports, Export{
 			Name: matches[1],
 			Kind: "class",
+			Line: lineNo,
+		})
+		return
+	}
+
+	// Generic interfaces: export interface Foo<T> { ... }
+	if matches := reGenericInterfaceDecl.FindStringSubmatch(line); matches != nil {
+		pf.Exports = append(pf.Exports, Export{
+			Name: matches[1],
+			Kind: "type",
 			Line: lineNo,
 		})
 		return
@@ -264,7 +296,28 @@ func (p *TypeScriptParser) extractExports(pf *ParsedFile, line string, lineNo in
 
 // extractSymbols finds symbol declarations on a line.
 func (p *TypeScriptParser) extractSymbols(pf *ParsedFile, line string, lineNo int) {
+	// Track decorators as metadata on the next symbol.
+	if matches := reTSDecorator.FindStringSubmatch(line); matches != nil {
+		pf.Symbols = append(pf.Symbols, Symbol{
+			Name: matches[1],
+			Kind: "decorator",
+			Line: lineNo,
+		})
+		return
+	}
+
 	exported := strings.HasPrefix(line, "export")
+
+	// Generic interfaces: interface Foo<T> { ... }
+	if matches := reGenericInterfaceDecl.FindStringSubmatch(line); matches != nil {
+		pf.Symbols = append(pf.Symbols, Symbol{
+			Name:     matches[1],
+			Kind:     "type",
+			Exported: exported,
+			Line:     lineNo,
+		})
+		return
+	}
 
 	// Functions
 	if matches := reFuncDecl.FindStringSubmatch(line); matches != nil {
