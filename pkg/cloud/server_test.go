@@ -520,6 +520,44 @@ func TestRotateKey(t *testing.T) {
 	}
 }
 
+func TestLandingPage(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", w.Code)
+	}
+
+	ct := w.Header().Get("Content-Type")
+	if ct != "text/html; charset=utf-8" {
+		t.Errorf("expected text/html content type, got %q", ct)
+	}
+
+	if !strings.Contains(w.Body.String(), "Fault") {
+		t.Error("expected body to contain 'Fault'")
+	}
+}
+
+func TestLandingPage_NoAuth(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	// No Authorization header — landing page should still work
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("landing page should be accessible without auth, got %d", w.Code)
+	}
+}
+
 func TestRotateKey_NoAuth(t *testing.T) {
 	store := newMockStore()
 	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)

@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fault - Catch AI agent mistakes before they hit your codebase</title>
+<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — catching broken imports, stale references, and missing tests before you commit.">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #0f172a;
+  color: #f8fafc;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: #38bdf8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Layout */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* Nav */
+nav {
+  border-bottom: 1px solid #334155;
+  padding: 16px 0;
+}
+nav .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-size: 20px;
+  font-weight: 700;
+  color: #f8fafc;
+  letter-spacing: -0.5px;
+}
+.nav-links { display: flex; gap: 24px; }
+.nav-links a {
+  color: #94a3b8;
+  font-size: 14px;
+  font-weight: 500;
+}
+.nav-links a:hover { color: #f8fafc; text-decoration: none; }
+
+/* Hero */
+.hero {
+  padding: 80px 0 64px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 48px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+  margin-bottom: 20px;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.hero .subhead {
+  font-size: 18px;
+  color: #94a3b8;
+  max-width: 640px;
+  margin: 0 auto 40px;
+  line-height: 1.7;
+}
+.install-block {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 16px 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+  max-width: 100%;
+}
+.install-block code {
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 15px;
+  color: #22d3ee;
+  white-space: nowrap;
+}
+.copy-btn {
+  background: #334155;
+  color: #f8fafc;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.copy-btn:hover { background: #475569; }
+.hero .cta-text {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* Section */
+section { padding: 64px 0; }
+section + section { border-top: 1px solid #1e293b; }
+.section-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 12px;
+}
+.section-heading {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 20px;
+}
+.section-desc {
+  color: #94a3b8;
+  font-size: 17px;
+  max-width: 640px;
+  line-height: 1.7;
+  margin-bottom: 40px;
+}
+
+/* Problem */
+.problem-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 680px;
+}
+.problem-list li {
+  padding: 16px 20px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  font-size: 15px;
+  color: #cbd5e1;
+  line-height: 1.6;
+  position: relative;
+  padding-left: 48px;
+}
+.problem-list li::before {
+  content: "\2715";
+  position: absolute;
+  left: 18px;
+  top: 16px;
+  color: #f87171;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Feature grid */
+.feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.feature-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 28px;
+}
+.feature-card .badge {
+  display: inline-block;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 100px;
+  margin-bottom: 12px;
+}
+.feature-card h3 {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.feature-card p {
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* How it works */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  max-width: 680px;
+}
+.step {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.step-content h3 {
+  font-size: 17px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.step-content p {
+  color: #94a3b8;
+  font-size: 15px;
+  line-height: 1.6;
+}
+.step-connector {
+  width: 2px;
+  height: 24px;
+  background: #334155;
+  margin-left: 19px;
+}
+
+/* Comparison table */
+.comparison-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 15px;
+}
+.comparison-table th,
+.comparison-table td {
+  padding: 14px 18px;
+  text-align: left;
+  border-bottom: 1px solid #334155;
+}
+.comparison-table th {
+  font-weight: 600;
+  font-size: 13px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: #1e293b;
+}
+.comparison-table th:first-child { border-radius: 8px 0 0 0; }
+.comparison-table th:last-child { border-radius: 0 8px 0 0; }
+.comparison-table td { color: #cbd5e1; }
+.comparison-table tr:last-child td { border-bottom: none; }
+.check { color: #22d3ee; font-weight: 700; }
+.no { color: #64748b; }
+.partial { color: #fbbf24; }
+.table-wrap {
+  border: 1px solid #334155;
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 720px;
+}
+
+/* Tools */
+.tools-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tool-tag {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #cbd5e1;
+}
+
+/* Pricing */
+.pricing-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.pricing-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  padding: 32px 28px;
+  position: relative;
+}
+.pricing-card.recommended {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #38bdf8;
+}
+.pricing-card .rec-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #38bdf8;
+  color: #0f172a;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 14px;
+  border-radius: 100px;
+  white-space: nowrap;
+}
+.pricing-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.pricing-card .price {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+.pricing-card .price span {
+  font-size: 16px;
+  font-weight: 400;
+  color: #94a3b8;
+}
+.pricing-card .price-desc {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+.pricing-card ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pricing-card li {
+  font-size: 14px;
+  color: #cbd5e1;
+  padding-left: 22px;
+  position: relative;
+  line-height: 1.5;
+}
+.pricing-card li::before {
+  content: "\2713";
+  position: absolute;
+  left: 0;
+  color: #22d3ee;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* CTA */
+.final-cta {
+  text-align: center;
+  padding: 80px 0 64px;
+  border-top: 1px solid #1e293b;
+}
+.final-cta h2 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 24px;
+}
+.final-cta .install-block { margin-bottom: 24px; }
+.final-cta .links {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+}
+.final-cta .links a {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* Footer */
+footer {
+  border-top: 1px solid #1e293b;
+  padding: 32px 0;
+  text-align: center;
+}
+footer p {
+  color: #64748b;
+  font-size: 14px;
+}
+footer a { color: #64748b; }
+footer a:hover { color: #94a3b8; }
+
+/* Code blocks in CTA */
+.cta-code {
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 20px 24px;
+  text-align: left;
+  max-width: 540px;
+  margin: 0 auto 24px;
+  font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #94a3b8;
+  overflow-x: auto;
+}
+.cta-code .cmd { color: #22d3ee; }
+.cta-code .comment { color: #64748b; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero h1 { font-size: 32px; }
+  .hero .subhead { font-size: 16px; }
+  .install-block {
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+  }
+  .install-block code { font-size: 13px; }
+  .feature-grid { grid-template-columns: 1fr; }
+  .pricing-grid { grid-template-columns: 1fr; }
+  .section-heading { font-size: 26px; }
+  section { padding: 48px 0; }
+  .hero { padding: 48px 0 40px; }
+  .comparison-table { font-size: 13px; }
+  .comparison-table th,
+  .comparison-table td { padding: 10px 12px; }
+  .step { gap: 14px; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="container">
+    <div class="logo">Fault</div>
+    <div class="nav-links">
+      <a href="https://github.com/joeabbey/fault">GitHub</a>
+      <a href="https://github.com/joeabbey/fault/blob/master/README.md">Docs</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="container">
+    <h1>Catch AI agent mistakes before they hit your codebase</h1>
+    <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; catching broken imports, stale references, and missing tests before you commit.</p>
+    <div class="install-block">
+      <code>curl -sSf https://fault.jabbey.io/install.sh | sh</code>
+      <button class="copy-btn" id="copy-btn" onclick="copyInstall()">Copy</button>
+    </div>
+    <div><span class="cta-text">Get started &mdash; it's free</span></div>
+  </div>
+</header>
+
+<section>
+  <div class="container">
+    <div class="section-label">The problem</div>
+    <h2 class="section-heading">AI agents are fast. But they make structural mistakes.</h2>
+    <p class="section-desc">AI coding agents can scaffold an entire feature across a dozen files in seconds. But they make structural mistakes that are easy to miss during review:</p>
+    <ul class="problem-list">
+      <li>An import references a module that was never created</li>
+      <li>A function signature changed but not all callers were updated</li>
+      <li>A file was renamed but old references remain in three other files</li>
+      <li>TODO placeholders were left behind as "implementation notes"</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Features</div>
+    <h2 class="section-heading">Everything you need to validate AI-generated code</h2>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <h3>Static analysis that works offline</h3>
+        <p>Five analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Multi-language support</h3>
+        <p>Parses and validates Go, TypeScript, and Python. Understands imports, exports, function signatures, and cross-file references for each language.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Git native</h3>
+        <p>Installs as a pre-commit hook with <code style="color:#22d3ee">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge">Pro</div>
+        <h3>AI-enhanced validation</h3>
+        <p>LLM-powered confidence scoring rates how likely each changed file is to be correct. Optional spec comparison flags when changes deviate from your requirements.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <h2 class="section-heading">Three steps to validated commits</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>AI agent makes changes</h3>
+          <p>Claude Code, aider, or Cursor edits files across your project &mdash; new endpoints, refactored modules, updated types.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Fault validates the diff</h3>
+          <p>When you commit, <code style="color:#22d3ee">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs five analyzers in parallel.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Fix issues or commit with confidence</h3>
+          <p>If Fault finds errors, the commit is blocked and you see exactly what to fix. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Built for AI agent workflows</div>
+    <h2 class="section-heading">Fault checks what single-file linters can't</h2>
+    <p class="section-desc">Traditional linters check syntax within a single file. Fault checks the relationships between files.</p>
+    <div class="table-wrap">
+      <table class="comparison-table">
+        <thead>
+          <tr>
+            <th>Check</th>
+            <th>Single-file linter</th>
+            <th>Fault</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Syntax errors</td>
+            <td><span class="check">Yes</span></td>
+            <td><span class="no">No (use your linter)</span></td>
+          </tr>
+          <tr>
+            <td>Broken imports across files</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Signature changes with stale callers</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>References to deleted files</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Missing test updates</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Agent artifacts (TODOs, debug logs)</td>
+            <td><span class="partial">Partial</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Integrations</div>
+    <h2 class="section-heading">Works with your tools</h2>
+    <div class="tools-grid">
+      <div class="tool-tag">Claude Code</div>
+      <div class="tool-tag">aider</div>
+      <div class="tool-tag">Cursor</div>
+      <div class="tool-tag">GitHub Actions</div>
+      <div class="tool-tag">Any git workflow</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Pricing</div>
+    <h2 class="section-heading">Start free, scale when you need to</h2>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <h3>Free</h3>
+        <div class="price">$0</div>
+        <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
+        <ul>
+          <li>5 analyzers (imports, consistency, references, tests, patterns)</li>
+          <li>Go, TypeScript, Python</li>
+          <li>Terminal, JSON, SARIF output</li>
+          <li>Pre-commit hook</li>
+          <li>Works offline</li>
+        </ul>
+      </div>
+      <div class="pricing-card recommended">
+        <div class="rec-badge">Recommended</div>
+        <h3>Pro</h3>
+        <div class="price">$15<span>/mo</span></div>
+        <div class="price-desc">LLM-powered analysis for deeper validation.</div>
+        <ul>
+          <li>Everything in Free</li>
+          <li>Confidence scoring per file</li>
+          <li>Spec comparison (compare changes against requirements)</li>
+          <li>Priority support</li>
+        </ul>
+      </div>
+      <div class="pricing-card">
+        <h3>Team</h3>
+        <div class="price">$30<span>/user/mo</span></div>
+        <div class="price-desc">Shared rules and visibility across your team.</div>
+        <ul>
+          <li>Everything in Pro</li>
+          <li>Shared analyzer configurations</li>
+          <li>Team dashboard with change audit trail</li>
+          <li>Custom analyzer rules</li>
+          <li>SSO integration</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="final-cta">
+  <div class="container">
+    <h2>Get started in 30 seconds</h2>
+    <div class="cta-code">
+      <div><span class="comment"># Install</span></div>
+      <div><span class="cmd">curl -sSf https://fault.jabbey.io/install.sh | sh</span></div>
+      <br>
+      <div><span class="comment"># Set up your project</span></div>
+      <div><span class="cmd">cd your-project</span></div>
+      <div><span class="cmd">fault init</span></div>
+      <div><span class="cmd">fault hook install</span></div>
+      <br>
+      <div><span class="comment"># That's it. Next time you commit, Fault validates your changes.</span></div>
+    </div>
+    <div class="links">
+      <a href="https://github.com/joeabbey/fault/blob/master/README.md">Read the docs</a>
+      <a href="https://github.com/joeabbey/fault">View on GitHub</a>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <p>Built by <a href="https://github.com/joeabbey">Joe Abbey</a> &middot; <a href="https://github.com/joeabbey/fault">GitHub</a> &middot; &copy; 2025</p>
+  </div>
+</footer>
+
+<script>
+function copyInstall() {
+  navigator.clipboard.writeText('curl -sSf https://fault.jabbey.io/install.sh | sh');
+  var btn = document.getElementById('copy-btn');
+  btn.textContent = 'Copied!';
+  setTimeout(function() { btn.textContent = 'Copy'; }, 2000);
+}
+</script>
+
+</body>
+</html>

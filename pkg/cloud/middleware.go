@@ -102,6 +102,7 @@ func APIKeyAuth(store Store, logger *slog.Logger) func(http.Handler) http.Handle
 // isPublicPath returns true for endpoints that do not require authentication.
 func isPublicPath(path string) bool {
 	publicPaths := []string{
+		"/",
 		"/api/health",
 		"/api/v1/signup",
 		"/install.sh",
