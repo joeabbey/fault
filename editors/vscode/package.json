@@ -1,0 +1,87 @@
+{
+  "name": "fault-vscode",
+  "displayName": "Fault - AI Code Validator",
+  "description": "Integrates the Fault AI code validator into VS Code. Catches bugs, security issues, and logic errors in your diffs.",
+  "version": "0.1.0",
+  "publisher": "joeabbey",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joeabbey/fault"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "fault",
+    "ai",
+    "code review",
+    "linter",
+    "static analysis"
+  ],
+  "activationEvents": [
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python",
+    "onLanguage:go",
+    "onLanguage:java",
+    "onLanguage:rust"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "fault.check",
+        "title": "Fault: Run Check"
+      },
+      {
+        "command": "fault.fix",
+        "title": "Fault: Run Auto-Fix"
+      },
+      {
+        "command": "fault.watch",
+        "title": "Fault: Toggle Watch Mode"
+      }
+    ],
+    "configuration": {
+      "title": "Fault",
+      "properties": {
+        "fault.executablePath": {
+          "type": "string",
+          "default": "fault",
+          "description": "Path to the fault executable."
+        },
+        "fault.autoCheckOnSave": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run fault check when a file is saved."
+        },
+        "fault.severity": {
+          "type": "string",
+          "enum": [
+            "error",
+            "warning",
+            "info"
+          ],
+          "default": "info",
+          "description": "Minimum severity level to display. 'error' shows only errors, 'warning' shows errors and warnings, 'info' shows all."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "package": "npx @vscode/vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.85.0",
+    "@types/node": "^20.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.3.0"
+  }
+}
