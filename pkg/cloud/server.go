@@ -2,6 +2,7 @@ package cloud
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -10,6 +11,9 @@ import (
 	"syscall"
 	"time"
 )
+
+//go:embed install.sh
+var installScript []byte
 
 // Config holds configuration for the cloud API server.
 type Config struct {
@@ -80,6 +84,14 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/v1/analyze/confidence", s.handlers.HandleAnalyzeConfidence)
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
+
+	// Public: serve install script for `curl -sSf https://fault.jabbey.io/install.sh | sh`
+	s.mux.HandleFunc("GET /install.sh", handleInstallScript)
+}
+
+func handleInstallScript(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Write(installScript)
 }
 
 // Handler returns the fully wrapped HTTP handler with all middleware applied.
