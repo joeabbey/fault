@@ -77,9 +77,11 @@ func NewServer(cfg Config, store Store) *Server {
 // registerRoutes sets up the HTTP route handlers.
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/health", s.handlers.HandleHealth)
+	s.mux.HandleFunc("POST /api/v1/signup", s.handlers.HandleSignup)
 	s.mux.HandleFunc("POST /api/v1/analyze/confidence", s.handlers.HandleAnalyzeConfidence)
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
+	s.mux.HandleFunc("POST /api/v1/api-keys/rotate", s.handlers.HandleRotateKey)
 }
 
 // Handler returns the fully wrapped HTTP handler with all middleware applied.

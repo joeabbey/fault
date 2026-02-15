@@ -8,7 +8,8 @@ RUN go mod download
 
 # Copy source and build
 COPY . .
-RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /fault-cloud ./cmd/fault-cloud
+ARG VERSION=dev
+RUN CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /fault-cloud ./cmd/fault-cloud
 
 FROM alpine:3.19
 
