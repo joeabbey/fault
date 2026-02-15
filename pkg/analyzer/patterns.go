@@ -55,6 +55,7 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkConsoleDebug(fileDiff)...)
 		issues = append(issues, checkCommentedOutCode(fileDiff)...)
 		issues = append(issues, checkUnreachableCode(fileDiff)...)
+		issues = append(issues, checkRustAntiPatterns(fileDiff)...)
 
 		// Java-specific patterns
 		if isJavaFile(fileDiff.Path) {
@@ -74,6 +75,8 @@ var todoPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)raise\s+NotImplementedError`),
 	regexp.MustCompile(`(?i)throw\s+new\s+Error\(\s*['"]not\s+implemented`),
 	regexp.MustCompile(`panic\(\s*"not implemented"`),
+	regexp.MustCompile(`\btodo!\(`),
+	regexp.MustCompile(`\bunimplemented!\(`),
 }
 
 // standalonePythonPass matches "pass" as a standalone statement (the only non-whitespace on the line).
@@ -208,6 +211,9 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bSystem\.out\.println\(`), "anti-sysout"},
 	{regexp.MustCompile(`\bSystem\.err\.println\(`), "anti-sysout"},
 	{regexp.MustCompile(`\.printStackTrace\(\)`), "anti-printstacktrace"},
+	{regexp.MustCompile(`\bprintln!\(`), "anti-debug-macro"},
+	{regexp.MustCompile(`\beprintln!\(`), "anti-debug-macro"},
+	{regexp.MustCompile(`\bdbg!\(`), "anti-debug-macro"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -544,6 +550,10 @@ func isJavaFile(path string) bool {
 	return strings.HasSuffix(path, ".java")
 }
 
+func isRustFile(path string) bool {
+	return strings.HasSuffix(path, ".rs")
+}
+
 // --- Java-specific pattern detection ---
 
 // emptyCatchPattern matches catch blocks that are empty or contain only a comment.
@@ -636,6 +646,75 @@ func checkJavaStringEquals(fileDiff git.FileDiff) []Issue {
 					Message:    "String comparison using == instead of .equals(): " + strings.TrimSpace(content),
 					Suggestion: "Use .equals() for String comparison in Java; == compares references, not values",
 				})
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Rust-specific anti-pattern detection ---
+
+var rustAntiPatterns = []struct {
+	pattern *regexp.Regexp
+	id      string
+	message string
+	suggest string
+}{
+	{
+		pattern: regexp.MustCompile(`\.unwrap\(\)`),
+		id:      "patterns/rust-unwrap",
+		message: "Calling .unwrap() may panic at runtime",
+		suggest: "Use the ? operator or match/if-let to handle errors properly",
+	},
+	{
+		pattern: regexp.MustCompile(`\.expect\("[^"]*"\)`),
+		id:      "patterns/rust-expect",
+		message: "Calling .expect() may panic at runtime",
+		suggest: "Use the ? operator or match/if-let to handle errors, or ensure the message is descriptive",
+	},
+	{
+		pattern: regexp.MustCompile(`\.clone\(\)`),
+		id:      "patterns/rust-unnecessary-clone",
+		message: "Potentially unnecessary .clone() call",
+		suggest: "Consider using references instead of cloning to avoid unnecessary allocations",
+	},
+}
+
+func checkRustAntiPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isRustFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range rustAntiPatterns {
+				if rule.pattern.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         rule.id,
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    rule.message + ": " + strings.TrimSpace(content),
+						Suggestion: rule.suggest,
+					})
+					break
+				}
 			}
 		}
 	}

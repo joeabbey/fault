@@ -58,6 +58,7 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkXSS(fileDiff)...)
 		issues = append(issues, checkPathTraversal(fileDiff)...)
 		issues = append(issues, checkInsecureCrypto(fileDiff)...)
+		issues = append(issues, checkRustSecurity(fileDiff)...)
 
 		// Java-specific security checks
 		ext := strings.ToLower(filepath.Ext(fileDiff.Path))
@@ -561,7 +562,6 @@ type javaSecurityRule struct {
 }
 
 var javaSecurityRules = []javaSecurityRule{
-	// XXE: DocumentBuilderFactory without disabling external entities
 	{
 		pattern:    regexp.MustCompile(`DocumentBuilderFactory\.newInstance\(\)`),
 		exclusions: []*regexp.Regexp{regexp.MustCompile(`setFeature`)},
@@ -569,7 +569,6 @@ var javaSecurityRules = []javaSecurityRule{
 		message:    "Potential XXE vulnerability: DocumentBuilderFactory without disabling external entities",
 		suggestion: "Call factory.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true) to prevent XXE attacks",
 	},
-	// Insecure deserialization
 	{
 		pattern:    regexp.MustCompile(`ObjectInputStream\s*\(`),
 		exclusions: []*regexp.Regexp{},
@@ -577,7 +576,6 @@ var javaSecurityRules = []javaSecurityRule{
 		message:    "Potential insecure deserialization: ObjectInputStream on untrusted data",
 		suggestion: "Avoid deserializing untrusted data. Use allowlists (ObjectInputFilter) or safer formats like JSON",
 	},
-	// JNDI injection with variable argument
 	{
 		pattern:    regexp.MustCompile(`\.lookup\s*\(\s*[a-zA-Z]`),
 		exclusions: []*regexp.Regexp{regexp.MustCompile(`\.lookup\s*\(\s*"[^"]*"\s*\)`)},
@@ -585,7 +583,6 @@ var javaSecurityRules = []javaSecurityRule{
 		message:    "Potential JNDI injection: lookup() with variable argument",
 		suggestion: "Validate and sanitize JNDI lookup names; restrict allowed protocols and hosts",
 	},
-	// Hardcoded passwords/secrets in Java
 	{
 		pattern: regexp.MustCompile(`(?i)(password|passwd|secret|apiKey|api_key)\s*=\s*"[^"]{8,}"`),
 		exclusions: []*regexp.Regexp{
@@ -612,7 +609,6 @@ func checkJavaSecurity(fileDiff git.FileDiff) []Issue {
 			content := line.Content
 			trimmed := strings.TrimSpace(content)
 
-			// Skip comments.
 			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
 				continue
 			}
@@ -642,7 +638,109 @@ func checkJavaSecurity(fileDiff git.FileDiff) []Issue {
 					Message:    rule.message,
 					Suggestion: rule.suggestion,
 				})
-				break // one issue per line
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Rust-specific security checks ---
+
+type rustSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var rustSecurityRules = []rustSecurityRule{
+	{
+		pattern:    regexp.MustCompile(`\bunsafe\s*\{`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-unsafe",
+		severity:   SeverityWarning,
+		message:    "Unsafe block detected — requires manual review",
+		suggestion: "Minimize unsafe code; document safety invariants and consider safe alternatives",
+	},
+	{
+		pattern:    regexp.MustCompile(`\*\w+\s*\.`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-raw-pointer",
+		severity:   SeverityWarning,
+		message:    "Possible raw pointer dereference",
+		suggestion: "Ensure raw pointer access is within a well-documented unsafe block with verified invariants",
+	},
+	{
+		pattern:    regexp.MustCompile(`std::process::Command::new\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-command-injection",
+		severity:   SeverityWarning,
+		message:    "Process command execution — verify input is not user-controlled",
+		suggestion: "Validate and sanitize all inputs to Command::new and .arg() to prevent command injection",
+	},
+	{
+		pattern:    regexp.MustCompile(`(?i)(?:let|const)\s+(?:mut\s+)?(?:secret|api_key|password|token)\s*(?::\s*&?str)?\s*=\s*"[^"]{8,}"`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)(CHANGEME|xxx|placeholder|example|dummy|test|mock)`),
+			regexp.MustCompile(`std::env::var\(`),
+		},
+		id:         "security/rust-hardcoded-secret",
+		severity:   SeverityError,
+		message:    "Possible hardcoded secret in Rust code",
+		suggestion: "Use environment variables (std::env::var) or a config file instead of hardcoding secrets",
+	},
+}
+
+func checkRustSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isRustFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range rustSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
 			}
 		}
 	}

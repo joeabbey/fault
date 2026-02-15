@@ -267,6 +267,8 @@ func detectLanguage(path string) string {
 		return "python"
 	case ".java":
 		return "java"
+	case ".rs":
+		return "rust"
 	default:
 		return ""
 	}

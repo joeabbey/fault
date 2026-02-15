@@ -18,6 +18,7 @@ var extensionToLanguage = map[string]string{
 	".cjs":  "typescript",
 	".py":   "python",
 	".java": "java",
+	".rs":   "rust",
 }
 
 // Registry manages parsers for different languages.
