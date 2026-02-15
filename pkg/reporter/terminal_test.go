@@ -7,11 +7,12 @@ import (
 	"time"
 
 	"github.com/joeabbey/fault/pkg/analyzer"
+	"github.com/joeabbey/fault/pkg/git"
 )
 
 func TestTerminalReporterNoIssues(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 3,
@@ -35,7 +36,7 @@ func TestTerminalReporterNoIssues(t *testing.T) {
 
 func TestTerminalReporterWithErrors(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 2,
@@ -74,7 +75,7 @@ func TestTerminalReporterWithErrors(t *testing.T) {
 
 func TestTerminalReporterWarningsOnlyBlockOnWarning(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 1,
@@ -100,7 +101,7 @@ func TestTerminalReporterWarningsOnlyBlockOnWarning(t *testing.T) {
 
 func TestTerminalReporterWithSuggestion(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 1,
@@ -127,7 +128,7 @@ func TestTerminalReporterWithSuggestion(t *testing.T) {
 
 func TestTerminalReporterWithRelatedFiles(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 2,
@@ -154,7 +155,7 @@ func TestTerminalReporterWithRelatedFiles(t *testing.T) {
 
 func TestTerminalReporterSummaryLine(t *testing.T) {
 	var buf bytes.Buffer
-	r := NewTerminalReporterWithWriter(&buf, true)
+	r := NewTerminalReporterWithWriter(&buf, true, true)
 
 	result := &analyzer.AnalysisResult{
 		FilesChanged: 5,
@@ -170,8 +171,8 @@ func TestTerminalReporterSummaryLine(t *testing.T) {
 	r.Report(result, "error")
 	output := buf.String()
 
-	if !strings.Contains(output, "Found 4 issues") {
-		t.Errorf("expected 'Found 4 issues' in output, got:\n%s", output)
+	if !strings.Contains(output, "4 issues") {
+		t.Errorf("expected '4 issues' in output, got:\n%s", output)
 	}
 	if !strings.Contains(output, "2 errors") {
 		t.Errorf("expected '2 errors' in output, got:\n%s", output)
@@ -250,7 +251,7 @@ func TestExitCodeLogic(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			var buf bytes.Buffer
-			r := NewTerminalReporterWithWriter(&buf, true)
+			r := NewTerminalReporterWithWriter(&buf, true, true)
 			result := &analyzer.AnalysisResult{
 				Issues:       tt.issues,
 				FilesChanged: 1,
@@ -261,5 +262,212 @@ func TestExitCodeLogic(t *testing.T) {
 				t.Errorf("exit code = %d, want %d", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestVerboseOutput(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminalReporterWithWriter(&buf, true, false) // verbose (compact=false)
+
+	diff := &git.Diff{
+		Files: []git.FileDiff{
+			{
+				Path:   "pkg/api/server.go",
+				Status: "modified",
+				Hunks: []git.Hunk{
+					{
+						NewStart: 40,
+						NewCount: 5,
+						Lines: []git.Line{
+							{Type: "context", Content: "import (", NewNum: 40, OldNum: 40},
+							{Type: "context", Content: `    "fmt"`, NewNum: 41, OldNum: 41},
+							{Type: "added", Content: `    "github.com/foo/bar"`, NewNum: 42},
+							{Type: "context", Content: `    "net/http"`, NewNum: 43, OldNum: 42},
+							{Type: "context", Content: ")", NewNum: 44, OldNum: 43},
+						},
+					},
+				},
+			},
+		},
+	}
+	r.SetDiff(diff)
+
+	result := &analyzer.AnalysisResult{
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				Severity:     analyzer.SeverityError,
+				Category:     "import",
+				File:         "pkg/api/server.go",
+				Line:         42,
+				Message:      `Import "github.com/foo/bar" could not be resolved`,
+				Suggestion:   "Check the import path and ensure the target file exists",
+				RelatedFiles: []string{"pkg/api/client.go"},
+			},
+		},
+		Duration: 142 * time.Millisecond,
+	}
+
+	r.Report(result, "error")
+	output := buf.String()
+
+	// Check severity + category + location header
+	if !strings.Contains(output, "error") {
+		t.Errorf("expected 'error' severity in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "[import]") {
+		t.Errorf("expected '[import]' category in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "pkg/api/server.go:42") {
+		t.Errorf("expected file:line in output, got:\n%s", output)
+	}
+
+	// Check message on its own line
+	if !strings.Contains(output, `Import "github.com/foo/bar" could not be resolved`) {
+		t.Errorf("expected message in output, got:\n%s", output)
+	}
+
+	// Check code context
+	if !strings.Contains(output, "import (") {
+		t.Errorf("expected code context in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, `"github.com/foo/bar"`) {
+		t.Errorf("expected issue line content in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "<-- here") {
+		t.Errorf("expected '<-- here' marker in output, got:\n%s", output)
+	}
+
+	// Check fix suggestion
+	if !strings.Contains(output, "fix:") {
+		t.Errorf("expected 'fix:' prefix in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "Check the import path") {
+		t.Errorf("expected suggestion text in output, got:\n%s", output)
+	}
+
+	// Check related files
+	if !strings.Contains(output, "related:") {
+		t.Errorf("expected 'related:' prefix in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "pkg/api/client.go") {
+		t.Errorf("expected related file in output, got:\n%s", output)
+	}
+
+	// Check em-dash summary format
+	if !strings.Contains(output, "\u2014") {
+		t.Errorf("expected em-dash in summary, got:\n%s", output)
+	}
+}
+
+func TestCompactOutput(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminalReporterWithWriter(&buf, true, true) // compact
+
+	result := &analyzer.AnalysisResult{
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				Severity: analyzer.SeverityError,
+				Category: "imports",
+				File:     "main.go",
+				Line:     10,
+				Message:  "unused import 'fmt'",
+			},
+		},
+		Duration: 50 * time.Millisecond,
+	}
+
+	r.Report(result, "error")
+	output := buf.String()
+
+	// Compact format: "main.go:10 error [imports] unused import 'fmt'"
+	if !strings.Contains(output, "main.go:10 error [imports] unused import 'fmt'") {
+		t.Errorf("expected compact single-line format, got:\n%s", output)
+	}
+
+	// Should NOT contain verbose markers
+	if strings.Contains(output, "<-- here") {
+		t.Error("compact mode should not contain '<-- here' marker")
+	}
+	if strings.Contains(output, "fix:") {
+		t.Error("compact mode should not contain 'fix:' prefix")
+	}
+}
+
+func TestVerboseNoContext(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminalReporterWithWriter(&buf, true, false) // verbose, no diff set
+
+	result := &analyzer.AnalysisResult{
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				Severity:   analyzer.SeverityWarning,
+				Category:   "test",
+				File:       "main.go",
+				Line:       5,
+				Message:    "test message",
+				Suggestion: "try this fix",
+			},
+		},
+		Duration: 10 * time.Millisecond,
+	}
+
+	r.Report(result, "error")
+	output := buf.String()
+
+	// Should still show severity, message, and suggestion
+	if !strings.Contains(output, "warning") {
+		t.Errorf("expected 'warning' in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "test message") {
+		t.Errorf("expected message in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "fix:") {
+		t.Errorf("expected 'fix:' in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "try this fix") {
+		t.Errorf("expected suggestion in output, got:\n%s", output)
+	}
+
+	// Should NOT have code context (no diff)
+	if strings.Contains(output, "<-- here") {
+		t.Error("should not have code context when diff is nil")
+	}
+}
+
+func TestVerboseNoSuggestion(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewTerminalReporterWithWriter(&buf, true, false) // verbose
+
+	result := &analyzer.AnalysisResult{
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				Severity: analyzer.SeverityError,
+				Category: "imports",
+				File:     "main.go",
+				Line:     10,
+				Message:  "unused import",
+			},
+		},
+		Duration: 10 * time.Millisecond,
+	}
+
+	r.Report(result, "error")
+	output := buf.String()
+
+	// Should have severity and message
+	if !strings.Contains(output, "error") {
+		t.Errorf("expected 'error' in output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "unused import") {
+		t.Errorf("expected message in output, got:\n%s", output)
+	}
+
+	// Should NOT have fix: line
+	if strings.Contains(output, "fix:") {
+		t.Error("should not have 'fix:' when suggestion is empty")
 	}
 }
