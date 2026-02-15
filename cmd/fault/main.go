@@ -705,6 +705,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	fixRegistry.Register(fixer.NewImportFixer())
 	fixRegistry.Register(fixer.NewSecurityFixer())
 	fixRegistry.Register(fixer.NewPatternFixer())
+	fixRegistry.Register(fixer.NewTypeScriptFixer())
 
 	// 9. Generate fixes for fixable issues
 	var fixes []*fixer.Fix

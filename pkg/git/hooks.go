@@ -125,3 +125,61 @@ func hookFilePath(repoPath string) (string, error) {
 func isOurHook(content string) bool {
 	return strings.Contains(content, hookMarker)
 }
+
+// HookStatusInfo reports on the state of git hooks and related tooling.
+type HookStatusInfo struct {
+	FaultHookInstalled bool
+	HuskyDetected      bool
+	LintStagedDetected bool
+	Recommendations    []string
+}
+
+// DetectHusky checks if the .husky/ directory exists in the repo.
+func DetectHusky(repoPath string) bool {
+	huskyDir := filepath.Join(repoPath, ".husky")
+	info, err := os.Stat(huskyDir)
+	return err == nil && info.IsDir()
+}
+
+// DetectLintStaged checks if lint-staged is configured in package.json.
+func DetectLintStaged(repoPath string) bool {
+	pkgJSON := filepath.Join(repoPath, "package.json")
+	data, err := os.ReadFile(pkgJSON)
+	if err != nil {
+		return false
+	}
+	content := string(data)
+	return strings.Contains(content, "lint-staged")
+}
+
+// HookStatus returns a summary of hook integrations for the given repo.
+func HookStatus(repoPath string) *HookStatusInfo {
+	info := &HookStatusInfo{
+		FaultHookInstalled: IsHookInstalled(repoPath),
+		HuskyDetected:      DetectHusky(repoPath),
+		LintStagedDetected: DetectLintStaged(repoPath),
+		Recommendations:    make([]string, 0),
+	}
+
+	if !info.FaultHookInstalled {
+		if info.HuskyDetected {
+			info.Recommendations = append(info.Recommendations,
+				"Husky detected: add `fault check --staged` to your .husky/pre-commit script")
+		} else {
+			info.Recommendations = append(info.Recommendations,
+				"Run `fault hook install` to add a pre-commit hook")
+		}
+	}
+
+	if info.LintStagedDetected && info.FaultHookInstalled {
+		info.Recommendations = append(info.Recommendations,
+			"lint-staged detected: fault hook runs before lint-staged; consider integrating fault into your lint-staged config instead")
+	}
+
+	if info.HuskyDetected && info.FaultHookInstalled {
+		info.Recommendations = append(info.Recommendations,
+			"Husky detected: the standalone fault hook may conflict with Husky; consider adding fault to your .husky/pre-commit instead")
+	}
+
+	return info
+}

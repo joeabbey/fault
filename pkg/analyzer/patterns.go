@@ -55,6 +55,7 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkConsoleDebug(fileDiff)...)
 		issues = append(issues, checkCommentedOutCode(fileDiff)...)
 		issues = append(issues, checkUnreachableCode(fileDiff)...)
+		issues = append(issues, checkTypeScriptPatterns(fileDiff)...)
 	}
 
 	return issues, nil
@@ -529,4 +530,136 @@ func isAnalyzableFile(path string) bool {
 
 func isPythonFile(path string) bool {
 	return strings.HasSuffix(path, ".py")
+}
+
+func isTypeScriptFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".ts" || ext == ".tsx" || ext == ".js" || ext == ".jsx" || ext == ".mjs"
+}
+
+// --- TypeScript-specific pattern detection ---
+
+// anyTypePatterns detect usage of the `any` type in TypeScript.
+var anyTypePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`:\s*any\b`),         // param: any, let x: any
+	regexp.MustCompile(`\bas\s+any\b`),       // value as any
+	regexp.MustCompile(`<any>`),              // <any> cast
+	regexp.MustCompile(`:\s*any\s*[,)]`),     // function(x: any, y: any)
+	regexp.MustCompile(`:\s*any\s*;`),        // property: any;
+	regexp.MustCompile(`:\s*any\[\]`),        // array: any[]
+}
+
+// nonNullAssertionPattern detects !. or similar non-null assertion abuse.
+var nonNullAssertionPattern = regexp.MustCompile(`\w+!\.[a-zA-Z]`)
+
+// emptyInterfacePattern detects interface Foo {} (should be Record<string, never>).
+var emptyInterfacePattern = regexp.MustCompile(`interface\s+\w+\s*\{\s*\}`)
+
+// tsIgnorePatterns detect @ts-ignore and @ts-nocheck directives.
+var tsIgnorePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`@ts-ignore`),
+	regexp.MustCompile(`@ts-nocheck`),
+}
+
+// tripleSlashPattern detects triple-slash directives that should be imports.
+var tripleSlashDirectivePattern = regexp.MustCompile(`^///\s*<reference\s+`)
+
+func checkTypeScriptPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isTypeScriptFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments (except for @ts-ignore detection).
+			isComment := strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*")
+
+			// Check @ts-ignore / @ts-nocheck in comments.
+			if isComment {
+				for _, pat := range tsIgnorePatterns {
+					if pat.MatchString(content) {
+						issues = append(issues, Issue{
+							ID:         "patterns/ts-ignore",
+							FixID:      "ts-remove-ignore",
+							Severity:   SeverityWarning,
+							Category:   "patterns",
+							File:       fileDiff.Path,
+							Line:       line.NewNum,
+							Message:    "TypeScript suppression directive: " + strings.TrimSpace(content),
+							Suggestion: "Fix the underlying type error instead of suppressing it",
+						})
+						break
+					}
+				}
+
+				// Triple-slash directives.
+				if tripleSlashDirectivePattern.MatchString(trimmed) {
+					issues = append(issues, Issue{
+						ID:         "patterns/ts-triple-slash",
+						Severity:   SeverityInfo,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    "Triple-slash directive should be an import: " + strings.TrimSpace(content),
+						Suggestion: "Use ES module imports instead of triple-slash reference directives",
+					})
+				}
+				continue
+			}
+
+			// Check `any` type usage.
+			for _, pat := range anyTypePatterns {
+				if pat.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         "patterns/ts-any-type",
+						FixID:      "ts-any-to-unknown",
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    "Usage of `any` type reduces type safety: " + strings.TrimSpace(content),
+						Suggestion: "Use `unknown` for type-safe alternatives, or define a specific type",
+					})
+					break
+				}
+			}
+
+			// Check non-null assertion abuse.
+			if nonNullAssertionPattern.MatchString(content) {
+				issues = append(issues, Issue{
+					ID:         "patterns/ts-non-null-assertion",
+					Severity:   SeverityWarning,
+					Category:   "patterns",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    "Non-null assertion operator (!) may hide null safety issues: " + strings.TrimSpace(content),
+					Suggestion: "Use optional chaining (?.) or add a proper null check",
+				})
+			}
+
+			// Check empty interfaces.
+			if emptyInterfacePattern.MatchString(content) {
+				issues = append(issues, Issue{
+					ID:         "patterns/ts-empty-interface",
+					Severity:   SeverityInfo,
+					Category:   "patterns",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    "Empty interface: " + strings.TrimSpace(content),
+					Suggestion: "Use `type Foo = Record<string, never>` or `type Foo = object` instead of an empty interface",
+				})
+			}
+		}
+	}
+
+	return issues
 }
