@@ -28,5 +28,22 @@ jobs:
           echo "$SSH_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           ssh-keyscan -H 95.217.226.61 >> ~/.ssh/known_hosts 2>/dev/null
-          docker save fault:latest | ssh -J jabbey@95.217.226.61 jabbey@10.10.10.104 \
+
+          cat > ~/.ssh/config << EOF
+          Host core-001
+            HostName 95.217.226.61
+            User jabbey
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking accept-new
+
+          Host fault-vm
+            HostName 10.10.10.104
+            User jabbey
+            IdentityFile ~/.ssh/id_ed25519
+            ProxyJump core-001
+            StrictHostKeyChecking accept-new
+          EOF
+          chmod 600 ~/.ssh/config
+
+          docker save fault:latest | ssh fault-vm \
             'sudo k3s ctr images import - && kubectl rollout restart deployment/fault -n fault'
