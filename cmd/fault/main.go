@@ -35,6 +35,7 @@ func main() {
 	rootCmd.AddCommand(checkCmd())
 	rootCmd.AddCommand(initCmd())
 	rootCmd.AddCommand(hookCmd())
+	rootCmd.AddCommand(baselineCmd())
 	rootCmd.AddCommand(versionCmd())
 	rootCmd.AddCommand(signupCmd())
 	rootCmd.AddCommand(loginCmd())
@@ -46,18 +47,19 @@ func main() {
 
 func checkCmd() *cobra.Command {
 	var (
-		staged   bool
-		unstaged bool
-		branch   string
-		noColor  bool
-		format   string
+		staged      bool
+		unstaged    bool
+		branch      string
+		noColor     bool
+		format      string
+		useBaseline bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCheck(staged, unstaged, branch, noColor, format)
+			return runCheck(staged, unstaged, branch, noColor, format, useBaseline)
 		},
 	}
 
@@ -66,11 +68,12 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
 	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
 	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif")
+	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
 
 	return cmd
 }
 
-func runCheck(staged, unstaged bool, branch string, noColor bool, format string) error {
+func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool) error {
 	// 1. Load config
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -140,6 +143,14 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 	// 8. LLM-assisted analysis (optional)
 	if cfg.LLM.Enabled {
 		runLLMAnalysis(cfg, diff, parsedFiles, result, repoRoot)
+	}
+
+	// 8b. Filter baseline issues if requested
+	if useBaseline {
+		baseline, err := analyzer.LoadBaseline(filepath.Join(repoRoot, ".fault-baseline.json"))
+		if err == nil {
+			result.Issues = analyzer.FilterBaseline(result.Issues, baseline)
+		}
 	}
 
 	// 9. Report results
@@ -503,6 +514,90 @@ Then enable in .fault.yaml:
 `, result.Email, result.APIKey, result.APIKey)
 
 	return nil
+}
+
+func baselineCmd() *cobra.Command {
+	var (
+		staged   bool
+		unstaged bool
+		branch   string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "baseline",
+		Short: "Capture current issues as known baseline",
+		Long:  "Runs analysis and saves all current issues to .fault-baseline.json. Future runs with --baseline will only report NEW issues not in the baseline.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			cfg, err := config.Load(cwd)
+			if err != nil {
+				return fmt.Errorf("loading config: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			diff, err := getDiff(repo, staged, unstaged, branch)
+			if err != nil {
+				return fmt.Errorf("getting diff: %w", err)
+			}
+
+			if len(diff.Files) == 0 {
+				fmt.Println("No changes detected")
+				return nil
+			}
+
+			reg := parser.NewRegistry()
+			reg.Register(parser.NewGoParser())
+			reg.Register(parser.NewTypeScriptParser())
+			reg.Register(parser.NewPythonParser())
+
+			parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
+
+			repoRoot, _ := repo.RepoRoot()
+			var repoIndex *index.Index
+			idx := index.NewIndex(repoRoot, cfg)
+			if err := idx.BuildOrLoad(reg); err != nil {
+				log.Printf("warning: could not build repo index: %v", err)
+			} else {
+				repoIndex = idx
+			}
+
+			analyzers := []analyzer.Analyzer{
+				analyzer.NewImportAnalyzer(),
+				analyzer.NewConsistencyAnalyzer(),
+				analyzer.NewReferenceAnalyzer(),
+				analyzer.NewTestImpactAnalyzer(),
+				analyzer.NewAntiPatternAnalyzer(),
+				analyzer.NewSecurityAnalyzer(),
+				analyzer.NewHallucinationAnalyzer(),
+			}
+			runner := analyzer.NewRunner(cfg, analyzers)
+
+			result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
+
+			baselinePath := filepath.Join(repoRoot, ".fault-baseline.json")
+			if err := analyzer.SaveBaseline(baselinePath, result); err != nil {
+				return fmt.Errorf("saving baseline: %w", err)
+			}
+
+			fmt.Printf("Baseline saved: %d issues suppressed\n", len(result.Issues))
+			fmt.Printf("File: %s\n", baselinePath)
+			return nil
+		},
+	}
+
+	cmd.Flags().BoolVar(&staged, "staged", false, "Check staged changes only")
+	cmd.Flags().BoolVar(&unstaged, "unstaged", false, "Check unstaged changes only")
+	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
+
+	return cmd
 }
 
 func versionCmd() *cobra.Command {
