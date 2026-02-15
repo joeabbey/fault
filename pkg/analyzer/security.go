@@ -394,6 +394,7 @@ func checkSecuritySecrets(fileDiff git.FileDiff) []Issue {
 
 				issues = append(issues, Issue{
 					ID:         "security/hardcoded-secret",
+					FixID:      "sec-hardcoded-secret",
 					Severity:   SeverityError,
 					Category:   "security",
 					File:       fileDiff.Path,
@@ -515,6 +516,7 @@ func checkInsecureCrypto(fileDiff git.FileDiff) []Issue {
 
 				issues = append(issues, Issue{
 					ID:         "security/insecure-crypto",
+					FixID:      "sec-insecure-random",
 					Severity:   SeverityWarning,
 					Category:   "security",
 					File:       fileDiff.Path,

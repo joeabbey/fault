@@ -15,6 +15,7 @@ import (
 
 	"github.com/joeabbey/fault/pkg/analyzer"
 	"github.com/joeabbey/fault/pkg/config"
+	"github.com/joeabbey/fault/pkg/fixer"
 	"github.com/joeabbey/fault/pkg/git"
 	"github.com/joeabbey/fault/pkg/index"
 	"github.com/joeabbey/fault/pkg/llm"
@@ -39,6 +40,7 @@ func main() {
 	rootCmd.AddCommand(versionCmd())
 	rootCmd.AddCommand(signupCmd())
 	rootCmd.AddCommand(loginCmd())
+	rootCmd.AddCommand(fixCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -598,6 +600,171 @@ func baselineCmd() *cobra.Command {
 	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
 
 	return cmd
+}
+
+
+func fixCmd() *cobra.Command {
+	var (
+		dryRun   bool
+		staged   bool
+		unstaged bool
+		branch   string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "fix",
+		Short: "Auto-fix issues in changed files",
+		Long:  "Runs analysis, then automatically generates and applies fixes for issues that have known fix strategies. Use --dry-run to preview changes without modifying files.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runFix(dryRun, staged, unstaged, branch)
+		},
+	}
+
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Preview fixes without applying them")
+	cmd.Flags().BoolVar(&staged, "staged", false, "Fix staged changes only")
+	cmd.Flags().BoolVar(&unstaged, "unstaged", false, "Fix unstaged changes only")
+	cmd.Flags().StringVar(&branch, "branch", "", "Fix changes since branch (e.g., main)")
+
+	return cmd
+}
+
+func runFix(dryRun, staged, unstaged bool, branch string) error {
+	// 1. Load config
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// 2. Open git repo
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	// 3. Get diff based on mode
+	diff, err := getDiff(repo, staged, unstaged, branch)
+	if err != nil {
+		return fmt.Errorf("getting diff: %w", err)
+	}
+
+	if len(diff.Files) == 0 {
+		fmt.Println("No changes detected")
+		return nil
+	}
+
+	// 4. Set up parser registry
+	reg := parser.NewRegistry()
+	reg.Register(parser.NewGoParser())
+	reg.Register(parser.NewTypeScriptParser())
+	reg.Register(parser.NewPythonParser())
+
+	// 5. Parse changed files
+	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
+
+	// 6. Build or load repo index
+	repoRoot, _ := repo.RepoRoot()
+	var repoIndex *index.Index
+	idx := index.NewIndex(repoRoot, cfg)
+	if err := idx.BuildOrLoad(reg); err != nil {
+		log.Printf("warning: could not build repo index: %v", err)
+	} else {
+		repoIndex = idx
+	}
+
+	// 7. Run analyzers
+	analyzers := []analyzer.Analyzer{
+		analyzer.NewImportAnalyzer(),
+		analyzer.NewConsistencyAnalyzer(),
+		analyzer.NewReferenceAnalyzer(),
+		analyzer.NewTestImpactAnalyzer(),
+		analyzer.NewAntiPatternAnalyzer(),
+		analyzer.NewSecurityAnalyzer(),
+		analyzer.NewHallucinationAnalyzer(),
+	}
+	runner := analyzer.NewRunner(cfg, analyzers)
+	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
+
+	// 8. Build fixer registry
+	fixRegistry := fixer.NewRegistry()
+	fixRegistry.Register(fixer.NewImportFixer())
+	fixRegistry.Register(fixer.NewSecurityFixer())
+	fixRegistry.Register(fixer.NewPatternFixer())
+
+	// 9. Generate fixes for fixable issues
+	var fixes []*fixer.Fix
+	fixableCount := 0
+	for _, issue := range result.Issues {
+		if issue.FixID == "" {
+			continue
+		}
+		fixableCount++
+		fix := fixRegistry.GenerateFix(issue, repoRoot)
+		if fix != nil {
+			fixes = append(fixes, fix)
+		}
+	}
+
+	if len(fixes) == 0 {
+		if fixableCount == 0 {
+			fmt.Printf("Found %d issues, none are auto-fixable\n", len(result.Issues))
+		} else {
+			fmt.Printf("Found %d issues (%d fixable), but could not generate fixes\n", len(result.Issues), fixableCount)
+		}
+		return nil
+	}
+
+	// 10. Apply or preview fixes
+	if dryRun {
+		fmt.Printf("Found %d issues, %d fixes available (dry run):\n\n", len(result.Issues), len(fixes))
+		for _, fix := range fixes {
+			fmt.Println(fixer.DryRun(fix))
+		}
+		return nil
+	}
+
+	fmt.Printf("Found %d issues, applying %d fixes...\n\n", len(result.Issues), len(fixes))
+	applied := 0
+	for _, fix := range fixes {
+		if err := fixer.Apply(fix, repoRoot); err != nil {
+			fmt.Printf("  FAIL %s:%d - %s (%v)\n", fix.File, fix.Edits[0].Line, fix.Description, err)
+		} else {
+			fmt.Printf("  OK   %s - %s\n", fix.File, fix.Description)
+			applied++
+		}
+	}
+
+	fmt.Printf("\nApplied %d/%d fixes\n", applied, len(fixes))
+
+	// 11. Re-run analysis to show remaining issues
+	if applied > 0 {
+		diff2, err := getDiff(repo, staged, unstaged, branch)
+		if err != nil {
+			return nil // best effort
+		}
+		if len(diff2.Files) == 0 {
+			fmt.Println("\nAll issues resolved!")
+			return nil
+		}
+
+		parsedFiles2 := parseChangedFiles(repo, diff2, reg, cfg)
+		result2 := runner.Run(repoRoot, diff2, parsedFiles2, repoIndex)
+
+		remaining := len(result2.Issues)
+		if remaining == 0 {
+			fmt.Println("\nAll issues resolved!")
+		} else {
+			fmt.Printf("\n%d issues remaining:\n", remaining)
+			rep := reporter.NewTerminalReporter(false)
+			rep.Report(result2, "")
+		}
+	}
+
+	return nil
 }
 
 func versionCmd() *cobra.Command {

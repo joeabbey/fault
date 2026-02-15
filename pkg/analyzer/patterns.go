@@ -190,10 +190,15 @@ func checkHardcodedCredentials(fileDiff git.FileDiff, testFile bool) []Issue {
 
 // --- Console/debug artifact detection ---
 
-var consolePatterns = []*regexp.Regexp{
-	regexp.MustCompile(`\bconsole\.log\(`),
-	regexp.MustCompile(`\bfmt\.Println\(`),
-	regexp.MustCompile(`\bprint\(`),
+type consoleRule struct {
+	pattern *regexp.Regexp
+	fixID   string
+}
+
+var consolePatterns = []consoleRule{
+	{regexp.MustCompile(`\bconsole\.log\(`), "anti-console-log"},
+	{regexp.MustCompile(`\bfmt\.Println\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bprint\(`), "anti-debug-print"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -236,10 +241,11 @@ func checkConsoleDebug(fileDiff git.FileDiff) []Issue {
 				continue
 			}
 
-			for _, pat := range consolePatterns {
-				if pat.MatchString(content) {
+			for _, rule := range consolePatterns {
+				if rule.pattern.MatchString(content) {
 					issues = append(issues, Issue{
 						ID:         "patterns/console-debug",
+						FixID:      rule.fixID,
 						Severity:   SeverityInfo,
 						Category:   "patterns",
 						File:       fileDiff.Path,
