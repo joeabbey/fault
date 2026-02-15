@@ -16,6 +16,19 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Configure private Go modules
+        env:
+          MAGMA_DEPLOY_KEY: ${{ secrets.MAGMA_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$MAGMA_DEPLOY_KEY" > ~/.ssh/magma_deploy_key
+          chmod 600 ~/.ssh/magma_deploy_key
+          ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null
+          git config --global url."git@github.com:".insteadOf "https://github.com/"
+          echo -e "Host github.com\n  IdentityFile ~/.ssh/magma_deploy_key" >> ~/.ssh/config
+          go env -w GOPRIVATE=github.com/joeabbey/magma
+          go env -w GONOSUMCHECK=github.com/joeabbey/magma
+
       - name: Test
         run: go test ./... -race -coverprofile=coverage.out
 
