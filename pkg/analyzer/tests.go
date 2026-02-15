@@ -49,6 +49,11 @@ func (a *TestImpactAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 			continue
 		}
 
+		// Skip files that don't conventionally need tests.
+		if isTestExempt(path) {
+			continue
+		}
+
 		// Determine if this is a test file or a source file.
 		if isTestFile(path) {
 			// Test-only change: test file modified but corresponding source wasn't.
@@ -147,6 +152,29 @@ func (a *TestImpactAnalyzer) checkTestOnlyChange(testPath string, changedFiles m
 func isSourceFile(path string) bool {
 	lang := parser.DetectLanguage(path)
 	return lang != ""
+}
+
+// isTestExempt returns true for files that conventionally don't need test files.
+// This includes CLI entry points, migration files, and scripts.
+func isTestExempt(path string) bool {
+	base := filepath.Base(path)
+
+	// Go main.go files in cmd/ directories are entry points.
+	if base == "main.go" && strings.Contains(filepath.ToSlash(path), "cmd/") {
+		return true
+	}
+
+	// Migration files.
+	if strings.Contains(filepath.ToSlash(path), "migration") {
+		return true
+	}
+
+	// Script files in scripts/ directory.
+	if strings.HasPrefix(filepath.ToSlash(path), "scripts/") {
+		return true
+	}
+
+	return false
 }
 
 // isTestFile returns true if the path looks like a test file.

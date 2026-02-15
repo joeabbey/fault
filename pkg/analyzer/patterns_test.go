@@ -344,9 +344,9 @@ func TestAntiPatternCommentedConsoleLogIgnored(t *testing.T) {
 func TestAntiPatternCommentedOutCode(t *testing.T) {
 	a := NewAntiPatternAnalyzer()
 	ctx := makePatternContext([]addedLine{
-		{file: "main.go", line: 10, content: "// oldFunc()"},
-		{file: "main.go", line: 11, content: "// oldFunc2()"},
-		{file: "main.go", line: 12, content: "// oldFunc3()"},
+		{file: "main.go", line: 10, content: "// x := oldFunc()"},
+		{file: "main.go", line: 11, content: "// if err != nil {"},
+		{file: "main.go", line: 12, content: "// return err"},
 	})
 
 	issues, err := a.Analyze(ctx)
@@ -363,6 +363,25 @@ func TestAntiPatternCommentedOutCode(t *testing.T) {
 	}
 	if found.Line != 10 {
 		t.Errorf("expected issue at line 10, got %d", found.Line)
+	}
+}
+
+func TestAntiPatternDocCommentNotFlagged(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "handler.go", line: 10, content: "// InstallHook writes a pre-commit hook to the repository's"},
+		{file: "handler.go", line: 11, content: "// .git/hooks directory. If a pre-commit hook already exists"},
+		{file: "handler.go", line: 12, content: "// and was not installed by fault, it returns an error."},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "patterns/commented-code")
+	if found != nil {
+		t.Errorf("did not expect commented-code issue for doc comment block")
 	}
 }
 
@@ -497,6 +516,154 @@ func TestAntiPatternRemovedLinesIgnored(t *testing.T) {
 	}
 	if len(issues) != 0 {
 		t.Errorf("expected 0 issues for removed lines, got %d", len(issues))
+	}
+}
+
+// --- Non-source file exclusion tests ---
+
+func TestAntiPatternMarkdownSkipped(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := &AnalysisContext{
+		RepoPath: "/nonexistent",
+		Diff: &git.Diff{Files: []git.FileDiff{
+			{
+				Path:   "docs/README.md",
+				Status: "modified",
+				Hunks: []git.Hunk{{
+					Lines: []git.Line{
+						{Type: "added", Content: "# Heading", NewNum: 1},
+						{Type: "added", Content: "# Another heading", NewNum: 2},
+						{Type: "added", Content: "# Third heading", NewNum: 3},
+						{Type: "added", Content: "// TODO: add more docs", NewNum: 4},
+					},
+				}},
+			},
+		}},
+		ParsedFiles: make(map[string]*parser.ParsedFile),
+		Config:      config.DefaultConfig(),
+	}
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(issues) != 0 {
+		t.Errorf("expected 0 issues for .md file, got %d: %v", len(issues), issues)
+	}
+}
+
+func TestAntiPatternYAMLSkipped(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := &AnalysisContext{
+		RepoPath: "/nonexistent",
+		Diff: &git.Diff{Files: []git.FileDiff{
+			{
+				Path:   "config.yaml",
+				Status: "modified",
+				Hunks: []git.Hunk{{
+					Lines: []git.Line{
+						{Type: "added", Content: "# comment line 1", NewNum: 1},
+						{Type: "added", Content: "# comment line 2", NewNum: 2},
+						{Type: "added", Content: "# comment line 3", NewNum: 3},
+					},
+				}},
+			},
+		}},
+		ParsedFiles: make(map[string]*parser.ParsedFile),
+		Config:      config.DefaultConfig(),
+	}
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(issues) != 0 {
+		t.Errorf("expected 0 issues for .yaml file, got %d", len(issues))
+	}
+}
+
+// --- Test file exclusion tests ---
+
+func TestAntiPatternTestFileSkipsTODO(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "handler_test.go", line: 10, content: `	// TODO: add edge case tests`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	found := findIssueByID(issues, "patterns/todo-placeholder")
+	if found != nil {
+		t.Errorf("did not expect TODO issue in test file")
+	}
+}
+
+func TestAntiPatternTestFileSkipsCredentials(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "auth_test.go", line: 10, content: `	password = "supersecret123"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	found := findIssueByID(issues, "patterns/hardcoded-credential")
+	if found != nil {
+		t.Errorf("did not expect credential issue in test file")
+	}
+}
+
+func TestAntiPatternTestFileSkipsConsoleDebug(t *testing.T) {
+	a := NewAntiPatternAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "util_test.go", line: 5, content: `	fmt.Println("test output")`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	found := findIssueByID(issues, "patterns/console-debug")
+	if found != nil {
+		t.Errorf("did not expect console-debug issue in test file")
+	}
+}
+
+// --- Scope-aware unreachable code tests ---
+
+func TestAntiPatternReturnInIfBlockNotUnreachable(t *testing.T) {
+	// Simulates: if err != nil { return err } next statement
+	// The return is inside an if block, so code after the block is reachable.
+	a := NewAntiPatternAnalyzer()
+	ctx := &AnalysisContext{
+		RepoPath: "/nonexistent",
+		Diff: &git.Diff{Files: []git.FileDiff{
+			{
+				Path:   "handler.go",
+				Status: "modified",
+				Hunks: []git.Hunk{{
+					Lines: []git.Line{
+						{Type: "added", Content: "\t\treturn err", NewNum: 25},
+						{Type: "added", Content: "\t}", NewNum: 26},
+						{Type: "added", Content: "\tnext.ServeHTTP(w, r)", NewNum: 28},
+					},
+				}},
+			},
+		}},
+		ParsedFiles: make(map[string]*parser.ParsedFile),
+		Config:      config.DefaultConfig(),
+	}
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	found := findIssueByID(issues, "patterns/unreachable-code")
+	if found != nil {
+		t.Errorf("did not expect unreachable-code after return inside if block (next line is at lower indent)")
 	}
 }
 
