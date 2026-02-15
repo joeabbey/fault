@@ -1,11 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -31,6 +35,8 @@ func main() {
 	rootCmd.AddCommand(initCmd())
 	rootCmd.AddCommand(hookCmd())
 	rootCmd.AddCommand(versionCmd())
+	rootCmd.AddCommand(signupCmd())
+	rootCmd.AddCommand(loginCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -409,6 +415,80 @@ func hookStatusCmd() *cobra.Command {
 	}
 
 	return cmd
+}
+
+func signupCmd() *cobra.Command {
+	var (
+		email  string
+		apiURL string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "signup",
+		Short: "Sign up for Fault Pro and get an API key",
+		Long:  "Creates a Fault account and returns an API key for LLM-powered analysis features.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSignup(email, apiURL)
+		},
+	}
+
+	cmd.Flags().StringVar(&email, "email", "", "Email address for your account (required)")
+	cmd.MarkFlagRequired("email")
+	cmd.Flags().StringVar(&apiURL, "api-url", "https://fault.jabbey.io", "Fault cloud API URL")
+
+	return cmd
+}
+
+func loginCmd() *cobra.Command {
+	cmd := signupCmd()
+	cmd.Use = "login"
+	cmd.Short = "Log in to Fault and get a new API key"
+	cmd.Long = "Generates a new API key for your Fault account. Creates an account if one doesn't exist."
+	return cmd
+}
+
+func runSignup(email, apiURL string) error {
+	reqBody, err := json.Marshal(map[string]string{"email": email})
+	if err != nil {
+		return fmt.Errorf("encoding request: %w", err)
+	}
+
+	url := strings.TrimRight(apiURL, "/") + "/api/v1/signup"
+	resp, err := http.Post(url, "application/json", bytes.NewReader(reqBody))
+	if err != nil {
+		return fmt.Errorf("connecting to Fault API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		APIKey string `json:"api_key"`
+		Email  string `json:"email"`
+		Error  string `json:"error"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return fmt.Errorf("parsing API response: %w", err)
+	}
+
+	if result.Error != "" {
+		return fmt.Errorf("signup failed: %s", result.Error)
+	}
+
+	fmt.Printf(`Account created for %s
+
+Your API key:
+  %s
+
+Save this key — it won't be shown again.
+
+To use LLM-powered analysis, add to your shell profile:
+  export FAULT_API_KEY=%s
+
+Then enable in .fault.yaml:
+  llm:
+    enabled: true
+`, result.Email, result.APIKey, result.APIKey)
+
+	return nil
 }
 
 func versionCmd() *cobra.Command {
