@@ -12,21 +12,22 @@ const ConfigFileName = ".fault.yaml"
 
 // Config represents the fault configuration file.
 type Config struct {
-	Version   int              `yaml:"version" json:"version"`
-	Languages []string         `yaml:"languages" json:"languages"`
-	BlockOn   string           `yaml:"block_on" json:"block_on"`
-	Analyzers AnalyzersConfig  `yaml:"analyzers" json:"analyzers"`
-	LLM       LLMConfig        `yaml:"llm" json:"llm"`
-	Ignore    []string         `yaml:"ignore" json:"ignore"`
+	Version   int             `yaml:"version" json:"version"`
+	Languages []string        `yaml:"languages" json:"languages"`
+	BlockOn   string          `yaml:"block_on" json:"block_on"`
+	Analyzers AnalyzersConfig `yaml:"analyzers" json:"analyzers"`
+	LLM       LLMConfig       `yaml:"llm" json:"llm"`
+	Ignore    []string        `yaml:"ignore" json:"ignore"`
 }
 
 // AnalyzersConfig controls which analyzers are enabled.
 type AnalyzersConfig struct {
-	Imports     bool `yaml:"imports" json:"imports"`
-	Consistency bool `yaml:"consistency" json:"consistency"`
-	References  bool `yaml:"references" json:"references"`
-	Tests       bool `yaml:"tests" json:"tests"`
-	Patterns    bool `yaml:"patterns" json:"patterns"`
+	Imports       bool `yaml:"imports" json:"imports"`
+	Consistency   bool `yaml:"consistency" json:"consistency"`
+	References    bool `yaml:"references" json:"references"`
+	Tests         bool `yaml:"tests" json:"tests"`
+	Patterns      bool `yaml:"patterns" json:"patterns"`
+	Hallucination bool `yaml:"hallucination" json:"hallucination"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -43,11 +44,12 @@ func DefaultConfig() *Config {
 		Languages: []string{"typescript", "python", "go"},
 		BlockOn:   "error",
 		Analyzers: AnalyzersConfig{
-			Imports:     true,
-			Consistency: true,
-			References:  true,
-			Tests:       true,
-			Patterns:    true,
+			Imports:       true,
+			Consistency:   true,
+			References:    true,
+			Tests:         true,
+			Patterns:      true,
+			Hallucination: true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

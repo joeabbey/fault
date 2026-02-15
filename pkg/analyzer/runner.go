@@ -111,6 +111,8 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.Tests
 	case "patterns":
 		return r.config.Analyzers.Patterns
+	case "hallucination":
+		return r.config.Analyzers.Hallucination
 	default:
 		// Unknown analyzers are enabled by default
 		return true

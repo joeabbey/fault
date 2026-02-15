@@ -114,6 +114,7 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string)
 		analyzer.NewReferenceAnalyzer(),
 		analyzer.NewTestImpactAnalyzer(),
 		analyzer.NewAntiPatternAnalyzer(),
+		analyzer.NewHallucinationAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -281,6 +282,7 @@ analyzers:
   references: true
   tests: true
   patterns: true
+  hallucination: true
 llm:
   enabled: false
   spec_file: ""
