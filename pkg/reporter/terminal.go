@@ -81,6 +81,17 @@ func (r *TerminalReporter) printSuccess(result *analyzer.AnalysisResult) {
 		result.FilesChanged,
 		formatDuration(result.Duration),
 	)
+
+	if result.Confidence != nil && !r.compact {
+		dim := color.New(color.FgHiBlack)
+		fmt.Fprintf(r.out, "  %s %.2f\n", dim.Sprint("confidence:"), result.Confidence.Score)
+		if len(result.Confidence.Factors) > 0 {
+			reason := strings.TrimSpace(result.Confidence.Factors[0])
+			if reason != "" {
+				fmt.Fprintf(r.out, "  %s %s\n", dim.Sprint("reason:"), reason)
+			}
+		}
+	}
 }
 
 // printIssues prints each issue with color-coded severity.
@@ -253,6 +264,17 @@ func (r *TerminalReporter) printSummary(result *analyzer.AnalysisResult) {
 	summary += fmt.Sprintf(" \u2014 %s", formatDuration(result.Duration))
 
 	fmt.Fprintln(r.out, summary)
+
+	if result.Confidence != nil {
+		dim := color.New(color.FgHiBlack)
+		fmt.Fprintf(r.out, "  %s %.2f\n", dim.Sprint("confidence:"), result.Confidence.Score)
+		if !r.compact && len(result.Confidence.Factors) > 0 {
+			reason := strings.TrimSpace(result.Confidence.Factors[0])
+			if reason != "" {
+				fmt.Fprintf(r.out, "  %s %s\n", dim.Sprint("reason:"), reason)
+			}
+		}
+	}
 }
 
 // formatDuration formats a duration for display.

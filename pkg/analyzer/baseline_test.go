@@ -13,7 +13,7 @@ func TestSaveBaselineCreatesValidJSON(t *testing.T) {
 
 	result := &AnalysisResult{
 		Issues: []Issue{
-			{ID: "broken-import-1", Category: "import", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
+			{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
 			{ID: "unused-var-1", Category: "consistency", File: "src/lib.ts", Line: 10, Message: "unused variable 'x'"},
 		},
 	}
@@ -46,7 +46,7 @@ func TestLoadBaselineReadsBack(t *testing.T) {
 
 	original := &AnalysisResult{
 		Issues: []Issue{
-			{ID: "broken-import-1", Category: "import", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
+			{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
 		},
 	}
 
@@ -67,8 +67,8 @@ func TestLoadBaselineReadsBack(t *testing.T) {
 	if entry.ID != "broken-import-1" {
 		t.Errorf("expected ID %q, got %q", "broken-import-1", entry.ID)
 	}
-	if entry.Category != "import" {
-		t.Errorf("expected category %q, got %q", "import", entry.Category)
+	if entry.Category != "imports" {
+		t.Errorf("expected category %q, got %q", "imports", entry.Category)
 	}
 	if entry.File != "src/app.ts" {
 		t.Errorf("expected file %q, got %q", "src/app.ts", entry.File)
@@ -87,7 +87,7 @@ func TestFilterBaselineRemovesMatching(t *testing.T) {
 	}
 
 	issues := []Issue{
-		{ID: "broken-import-1", Category: "import", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
+		{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Line: 5, Message: "import './utils' not found"},
 		{ID: "unused-var-1", Category: "consistency", File: "src/lib.ts", Line: 10, Message: "unused variable 'x'"},
 	}
 
@@ -104,12 +104,12 @@ func TestFilterBaselineKeepsNewIssues(t *testing.T) {
 	baseline := &Baseline{
 		Version: 1,
 		Issues: []BaselineEntry{
-			{ID: "broken-import-1", Category: "import", File: "src/app.ts", Message: "import './utils' not found"},
+			{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Message: "import './utils' not found"},
 		},
 	}
 
 	issues := []Issue{
-		{ID: "new-import-1", Category: "import", File: "src/new.ts", Line: 3, Message: "import './missing' not found"},
+		{ID: "new-import-1", Category: "imports", File: "src/new.ts", Line: 3, Message: "import './missing' not found"},
 	}
 
 	filtered := FilterBaseline(issues, baseline)
@@ -122,13 +122,13 @@ func TestFilterBaselineHandlesLineNumberChanges(t *testing.T) {
 	baseline := &Baseline{
 		Version: 1,
 		Issues: []BaselineEntry{
-			{ID: "broken-import-1", Category: "import", File: "src/app.ts", Message: "import './utils' not found"},
+			{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Message: "import './utils' not found"},
 		},
 	}
 
-	// Same issue but line moved from 5 to 15 (baseline doesn't store line, issue has different line)
+	// Same issue but ID and line moved (baseline doesn't store line; IDs shouldn't need to match).
 	issues := []Issue{
-		{ID: "broken-import-1", Category: "import", File: "src/app.ts", Line: 15, Message: "import './utils' not found"},
+		{ID: "broken-import-2", Category: "imports", File: "src/app.ts", Line: 15, Message: "import './utils' not found"},
 	}
 
 	filtered := FilterBaseline(issues, baseline)
@@ -141,13 +141,13 @@ func TestFilterBaselineFuzzyMessageMatch(t *testing.T) {
 	baseline := &Baseline{
 		Version: 1,
 		Issues: []BaselineEntry{
-			{ID: "broken-import-1", Category: "import", File: "src/app.ts", Message: "import './utils' not found"},
+			{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Message: "import './utils' not found"},
 		},
 	}
 
 	// Message is a superset (contains the baseline message)
 	issues := []Issue{
-		{ID: "broken-import-1", Category: "import", File: "src/app.ts", Line: 5, Message: "import './utils' not found in project"},
+		{ID: "broken-import-1", Category: "imports", File: "src/app.ts", Line: 5, Message: "import './utils' not found in project"},
 	}
 
 	filtered := FilterBaseline(issues, baseline)
@@ -158,7 +158,7 @@ func TestFilterBaselineFuzzyMessageMatch(t *testing.T) {
 
 func TestFilterBaselineNilBaseline(t *testing.T) {
 	issues := []Issue{
-		{ID: "test-1", Category: "import", File: "a.ts", Line: 1, Message: "broken"},
+		{ID: "test-1", Category: "imports", File: "a.ts", Line: 1, Message: "broken"},
 	}
 
 	filtered := FilterBaseline(issues, nil)
@@ -171,7 +171,7 @@ func TestFilterBaselineEmptyBaseline(t *testing.T) {
 	baseline := &Baseline{Version: 1, Issues: []BaselineEntry{}}
 
 	issues := []Issue{
-		{ID: "test-1", Category: "import", File: "a.ts", Line: 1, Message: "broken"},
+		{ID: "test-1", Category: "imports", File: "a.ts", Line: 1, Message: "broken"},
 	}
 
 	filtered := FilterBaseline(issues, baseline)

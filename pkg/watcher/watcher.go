@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/joeabbey/fault/pkg/analyzer"
@@ -229,6 +230,9 @@ func (w *Watcher) runAnalysis(trigger string) {
 		result.Branch = branch
 	}
 
+	// Filter inline suppressions (best-effort)
+	result.Issues = analyzer.FilterSuppressed(result.Issues, w.loadFileLines(result.Issues))
+
 	duration := time.Since(start)
 
 	if w.onChange != nil {
@@ -239,6 +243,33 @@ func (w *Watcher) runAnalysis(trigger string) {
 			Trigger:   trigger,
 		})
 	}
+}
+
+func (w *Watcher) loadFileLines(issues []analyzer.Issue) map[string][]string {
+	files := make(map[string]struct{})
+	for _, issue := range issues {
+		if issue.File == "" || issue.Line <= 0 {
+			continue
+		}
+		files[issue.File] = struct{}{}
+	}
+	if len(files) == 0 {
+		return nil
+	}
+
+	fileLines := make(map[string][]string, len(files))
+	for file := range files {
+		absPath := filepath.Join(w.repoRoot, file)
+		data, err := os.ReadFile(absPath)
+		if err != nil {
+			continue
+		}
+
+		content := strings.ReplaceAll(string(data), "\r\n", "\n")
+		fileLines[file] = strings.Split(content, "\n")
+	}
+
+	return fileLines
 }
 
 // parseChangedFiles parses files from the diff (mirrors main.go logic).

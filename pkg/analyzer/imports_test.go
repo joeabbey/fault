@@ -86,7 +86,7 @@ func TestImportAnalyzerBrokenTSImport(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Severity == SeverityError && issue.Category == "import" {
+		if issue.Severity == SeverityError && issue.Category == "imports" {
 			found = true
 			break
 		}
@@ -137,7 +137,7 @@ func TestImportAnalyzerValidTSImport(t *testing.T) {
 	}
 
 	// Filter out only import-category issues for the app.ts file
-	importIssues := filterIssues(issues, "import", "src/app.ts")
+	importIssues := filterIssues(issues, "imports", "src/app.ts")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 import issues for valid import, got %d: %v", len(importIssues), importIssues)
 	}
@@ -183,7 +183,7 @@ func TestImportAnalyzerNameNotExported(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "import" && issue.Severity == SeverityError &&
+		if issue.Category == "imports" && issue.Severity == SeverityError &&
 			issue.File == "src/app.ts" {
 			found = true
 			break
@@ -226,7 +226,7 @@ func TestImportAnalyzerDeletedFileImport(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "import" && issue.Severity == SeverityError &&
+		if issue.Category == "imports" && issue.Severity == SeverityError &&
 			issue.File == "src/app.ts" {
 			found = true
 			break
@@ -268,7 +268,7 @@ func TestImportAnalyzerExternalImportSkipped(t *testing.T) {
 	}
 
 	// External imports should not generate issues
-	importIssues := filterIssues(issues, "import", "src/app.ts")
+	importIssues := filterIssues(issues, "imports", "src/app.ts")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 issues for external imports, got %d", len(importIssues))
 	}
@@ -331,7 +331,7 @@ func TestImportAnalyzerRemovedExportStillImported(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "import" && issue.File == "src/app.ts" {
+		if issue.Category == "imports" && issue.File == "src/app.ts" {
 			found = true
 			break
 		}
@@ -381,7 +381,7 @@ func TestImportAnalyzerPythonRelativeImport(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	importIssues := filterIssues(issues, "import", "pkg/main.py")
+	importIssues := filterIssues(issues, "imports", "pkg/main.py")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 import issues for valid Python import, got %d: %v", len(importIssues), importIssues)
 	}
@@ -419,7 +419,7 @@ func TestImportAnalyzerPythonBrokenRelativeImport(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "import" && issue.File == "pkg/main.py" && issue.Severity == SeverityError {
+		if issue.Category == "imports" && issue.File == "pkg/main.py" && issue.Severity == SeverityError {
 			found = true
 			break
 		}
@@ -460,7 +460,7 @@ func TestImportAnalyzerGoStdlibSkipped(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	importIssues := filterIssues(issues, "import", "main.go")
+	importIssues := filterIssues(issues, "imports", "main.go")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 issues for Go stdlib imports, got %d", len(importIssues))
 	}
@@ -504,7 +504,7 @@ func TestImportAnalyzerTSIndexFile(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	importIssues := filterIssues(issues, "import", "src/app.ts")
+	importIssues := filterIssues(issues, "imports", "src/app.ts")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 issues for index file import, got %d: %v", len(importIssues), importIssues)
 	}
@@ -548,7 +548,7 @@ func TestImportAnalyzerWildcardReExport(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	importIssues := filterIssues(issues, "import", "src/app.ts")
+	importIssues := filterIssues(issues, "imports", "src/app.ts")
 	if len(importIssues) != 0 {
 		t.Errorf("expected 0 issues when barrel file has wildcard re-export, got %d", len(importIssues))
 	}

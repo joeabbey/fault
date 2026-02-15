@@ -26,7 +26,18 @@ func NewRepo(path string) (*Repo, error) {
 		return nil, fmt.Errorf("%s is not a git repository", absPath)
 	}
 
-	return &Repo{Path: absPath}, nil
+	// Use the repo root as the canonical base path. This keeps file reads and
+	// git commands consistent even when fault is run from a subdirectory.
+	rootOut, err := exec.Command("git", "-C", absPath, "rev-parse", "--show-toplevel").Output()
+	if err != nil {
+		return nil, fmt.Errorf("resolving repo root: %w", err)
+	}
+	repoRoot := strings.TrimSpace(string(rootOut))
+	if repoRoot == "" {
+		repoRoot = absPath
+	}
+
+	return &Repo{Path: repoRoot}, nil
 }
 
 // StagedDiff returns the diff of staged changes.

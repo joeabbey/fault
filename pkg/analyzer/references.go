@@ -76,7 +76,7 @@ func (a *ReferenceAnalyzer) checkDeletedFileReferences(ctx *AnalysisContext) []I
 					issues = append(issues, Issue{
 						ID:       fmt.Sprintf("ref-deleted-%s-%d-%s", filePath, imp.Line, deletedPath),
 						Severity: SeverityError,
-						Category: "reference",
+						Category: "references",
 						File:     filePath,
 						Line:     imp.Line,
 						Message: fmt.Sprintf(
@@ -131,7 +131,7 @@ func (a *ReferenceAnalyzer) checkDeletedFileReferencesViaIndex(ctx *AnalysisCont
 					issues = append(issues, Issue{
 						ID:       fmt.Sprintf("ref-deleted-%s-index-%s", entry.Path, deletedPath),
 						Severity: SeverityError,
-						Category: "reference",
+						Category: "references",
 						File:     entry.Path,
 						Message: fmt.Sprintf(
 							"Import references deleted file %q (found via repo index)",
@@ -179,7 +179,7 @@ func (a *ReferenceAnalyzer) checkRenamedFileReferences(ctx *AnalysisContext) []I
 					issues = append(issues, Issue{
 						ID:       fmt.Sprintf("ref-renamed-%s-%d-%s", filePath, imp.Line, oldPath),
 						Severity: SeverityWarning,
-						Category: "reference",
+						Category: "references",
 						File:     filePath,
 						Line:     imp.Line,
 						Message: fmt.Sprintf(
@@ -283,7 +283,7 @@ func (a *ReferenceAnalyzer) checkDeletedSymbolReferences(ctx *AnalysisContext) [
 									fd.Path, otherPath, removed,
 								),
 								Severity: SeverityWarning,
-								Category: "reference",
+								Category: "references",
 								File:     otherPath,
 								Line:     imp.Line,
 								Message: fmt.Sprintf(
@@ -328,7 +328,7 @@ func (a *ReferenceAnalyzer) checkDeletedSymbolReferences(ctx *AnalysisContext) [
 								fd.Path, otherPath, removed,
 							),
 							Severity: SeverityWarning,
-							Category: "reference",
+							Category: "references",
 							File:     otherPath,
 							Line:     line,
 							Message: fmt.Sprintf(

@@ -66,8 +66,8 @@ func LoadBaseline(path string) (*Baseline, error) {
 }
 
 // FilterBaseline removes issues that match baseline entries, returning only new issues.
-// Matching is by ID, category, and file. Line numbers are ignored because they shift
-// as code changes. Message matching uses a contains check for fuzzy matching.
+// Matching is by category + file + fuzzy message match (baseline IDs are treated as best-effort,
+// because many issue IDs embed line numbers which shift as code changes).
 func FilterBaseline(issues []Issue, baseline *Baseline) []Issue {
 	if baseline == nil || len(baseline.Issues) == 0 {
 		return issues
@@ -85,8 +85,7 @@ func FilterBaseline(issues []Issue, baseline *Baseline) []Issue {
 // matchesBaseline checks if an issue matches any entry in the baseline.
 func matchesBaseline(issue Issue, baseline *Baseline) bool {
 	for _, entry := range baseline.Issues {
-		if entry.ID == issue.ID &&
-			entry.Category == issue.Category &&
+		if normalizeCategory(entry.Category) == normalizeCategory(issue.Category) &&
 			entry.File == issue.File &&
 			(strings.Contains(issue.Message, entry.Message) || strings.Contains(entry.Message, issue.Message)) {
 			return true
@@ -182,10 +181,25 @@ func isSuppressed(issue Issue, lines []string) bool {
 
 // matchesSuppression checks if a category matches a list of suppressed categories.
 func matchesSuppression(category string, suppressed []string) bool {
+	category = normalizeCategory(category)
 	for _, s := range suppressed {
-		if s == "*" || s == category {
+		if s == "*" || normalizeCategory(s) == category {
 			return true
 		}
 	}
 	return false
+}
+
+func normalizeCategory(category string) string {
+	category = strings.ToLower(strings.TrimSpace(category))
+	switch category {
+	case "import":
+		return "imports"
+	case "reference":
+		return "references"
+	case "test":
+		return "tests"
+	default:
+		return category
+	}
 }

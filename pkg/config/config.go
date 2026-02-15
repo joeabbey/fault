@@ -36,6 +36,7 @@ type AnalyzersConfig struct {
 // LLMConfig controls LLM-assisted analysis.
 type LLMConfig struct {
 	Enabled  bool   `yaml:"enabled" json:"enabled"`
+	APIURL   string `yaml:"api_url" json:"api_url"`
 	SpecFile string `yaml:"spec_file" json:"spec_file"`
 	APIKey   string `yaml:"-" json:"-"` // loaded from env, never serialized
 }
@@ -63,6 +64,7 @@ func DefaultConfig() *Config {
 		},
 		LLM: LLMConfig{
 			Enabled:  false,
+			APIURL:   "https://fault.jabbey.io",
 			SpecFile: "",
 		},
 		Watch: WatchConfig{
@@ -142,6 +144,9 @@ func (c *Config) Validate() error {
 	if c.LLM.Enabled && c.LLM.APIKey == "" {
 		return fmt.Errorf("LLM enabled but FAULT_API_KEY not set")
 	}
+	if c.LLM.Enabled && c.LLM.APIURL == "" {
+		return fmt.Errorf("LLM enabled but llm.api_url is empty (or FAULT_API_URL not set)")
+	}
 
 	if c.Watch.PollInterval != "" {
 		if _, err := time.ParseDuration(c.Watch.PollInterval); err != nil {
@@ -183,6 +188,9 @@ func findConfig(startDir string) (string, error) {
 func applyEnvOverrides(cfg *Config) {
 	if apiKey := os.Getenv("FAULT_API_KEY"); apiKey != "" {
 		cfg.LLM.APIKey = apiKey
+	}
+	if apiURL := os.Getenv("FAULT_API_URL"); apiURL != "" {
+		cfg.LLM.APIURL = apiURL
 	}
 }
 

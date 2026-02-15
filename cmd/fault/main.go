@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/joeabbey/fault/pkg/analyzer"
+	"github.com/joeabbey/fault/pkg/cloudapi"
 	"github.com/joeabbey/fault/pkg/config"
 	"github.com/joeabbey/fault/pkg/fixer"
 	"github.com/joeabbey/fault/pkg/git"
@@ -75,7 +76,7 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&unstaged, "unstaged", false, "Check unstaged changes only")
 	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
 	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
-	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif")
+	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif, github")
 	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
 	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
 
@@ -156,6 +157,10 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		runLLMAnalysis(cfg, diff, parsedFiles, result, repoRoot)
 	}
 
+	// 8a. Filter inline suppressed issues
+	fileLines := loadFileLines(repoRoot, result.Issues)
+	result.Issues = analyzer.FilterSuppressed(result.Issues, fileLines)
+
 	// 8b. Filter baseline issues if requested
 	if useBaseline {
 		baseline, err := analyzer.LoadBaseline(filepath.Join(repoRoot, ".fault-baseline.json"))
@@ -181,10 +186,11 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 // runLLMAnalysis performs LLM-assisted confidence scoring and spec comparison.
 func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*parser.ParsedFile, result *analyzer.AnalysisResult, repoRoot string) {
 	ctx := context.Background()
-	client := llm.NewClient(cfg.LLM.APIKey)
+	client := cloudapi.New(cfg.LLM.APIURL, cfg.LLM.APIKey)
+	diffSummary := llm.BuildDiffSummary(diff)
 
 	// Confidence scoring
-	confidenceResult, err := llm.ScoreConfidence(ctx, client, diff, parsedFiles)
+	confidenceResult, err := client.AnalyzeConfidence(ctx, diffSummary)
 	if err != nil {
 		log.Printf("warning: LLM confidence scoring failed: %v", err)
 	} else {
@@ -207,7 +213,7 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 			return
 		}
 
-		specResult, err := llm.CompareSpec(ctx, client, string(specContent), diff)
+		specResult, err := client.AnalyzeSpec(ctx, string(specContent), diffSummary)
 		if err != nil {
 			log.Printf("warning: LLM spec comparison failed: %v", err)
 			return
@@ -306,6 +312,34 @@ func languageEnabled(cfg *config.Config, lang string) bool {
 	return false
 }
 
+func loadFileLines(repoRoot string, issues []analyzer.Issue) map[string][]string {
+	files := make(map[string]struct{})
+	for _, issue := range issues {
+		if issue.File == "" || issue.Line <= 0 {
+			continue
+		}
+		files[issue.File] = struct{}{}
+	}
+	if len(files) == 0 {
+		return nil
+	}
+
+	fileLines := make(map[string][]string, len(files))
+	for file := range files {
+		absPath := filepath.Join(repoRoot, file)
+		data, err := os.ReadFile(absPath)
+		if err != nil {
+			continue
+		}
+
+		// Normalize CRLF to LF for stable line indexing.
+		content := strings.ReplaceAll(string(data), "\r\n", "\n")
+		fileLines[file] = strings.Split(content, "\n")
+	}
+
+	return fileLines
+}
+
 func initCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
@@ -324,6 +358,7 @@ analyzers:
   hallucination: true
 llm:
   enabled: false
+  api_url: "https://fault.jabbey.io"
   spec_file: ""
 ignore:
   - "vendor/"
@@ -337,6 +372,16 @@ ignore:
 			if err := os.WriteFile(".fault.yaml", []byte(defaultConfig), 0644); err != nil {
 				return fmt.Errorf("failed to write .fault.yaml: %w", err)
 			}
+
+			// Best-effort: ensure cache dir isn't accidentally committed.
+			if repo, err := git.NewRepo("."); err == nil {
+				if repoRoot, err := repo.RepoRoot(); err == nil {
+					if err := index.EnsureGitignore(repoRoot); err != nil {
+						log.Printf("warning: could not update .gitignore: %v", err)
+					}
+				}
+			}
+
 			fmt.Println("Created .fault.yaml")
 			return nil
 		},
@@ -381,6 +426,11 @@ func hookInstallCmd() *cobra.Command {
 
 			if err := git.InstallHook(repoRoot, force); err != nil {
 				return err
+			}
+
+			// Best-effort: ensure cache dir isn't accidentally committed.
+			if err := index.EnsureGitignore(repoRoot); err != nil {
+				log.Printf("warning: could not update .gitignore: %v", err)
 			}
 
 			fmt.Println("Installed pre-commit hook")
@@ -524,6 +574,9 @@ Save this key — it won't be shown again.
 To use LLM-powered analysis, add to your shell profile:
   export FAULT_API_KEY=%s
 
+If you're using a self-hosted Fault Cloud, also set:
+  export FAULT_API_URL=http://localhost:8082
+
 Then enable in .fault.yaml:
   llm:
     enabled: true
@@ -598,6 +651,8 @@ func baselineCmd() *cobra.Command {
 			runner := analyzer.NewRunner(cfg, analyzers)
 
 			result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
+			fileLines := loadFileLines(repoRoot, result.Issues)
+			result.Issues = analyzer.FilterSuppressed(result.Issues, fileLines)
 
 			baselinePath := filepath.Join(repoRoot, ".fault-baseline.json")
 			if err := analyzer.SaveBaseline(baselinePath, result); err != nil {
@@ -704,6 +759,8 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
+	fileLines := loadFileLines(repoRoot, result.Issues)
+	result.Issues = analyzer.FilterSuppressed(result.Issues, fileLines)
 
 	// 8. Build fixer registry
 	fixRegistry := fixer.NewRegistry()
@@ -772,6 +829,8 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 
 		parsedFiles2 := parseChangedFiles(repo, diff2, reg, cfg)
 		result2 := runner.Run(repoRoot, diff2, parsedFiles2, repoIndex)
+		fileLines2 := loadFileLines(repoRoot, result2.Issues)
+		result2.Issues = analyzer.FilterSuppressed(result2.Issues, fileLines2)
 
 		remaining := len(result2.Issues)
 		if remaining == 0 {

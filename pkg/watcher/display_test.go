@@ -41,7 +41,7 @@ func TestDisplayRenderResultWithIssues(t *testing.T) {
 	issues := []analyzer.Issue{
 		{
 			Severity: analyzer.SeverityError,
-			Category: "import",
+			Category: "imports",
 			File:     "pkg/api/server.go",
 			Line:     42,
 			Message:  "Import could not be resolved",

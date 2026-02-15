@@ -83,7 +83,7 @@ func TestReferenceAnalyzerDeletedFileStillImported(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.Severity == SeverityError &&
+		if issue.Category == "references" && issue.Severity == SeverityError &&
 			issue.File == "src/app.ts" {
 			found = true
 			break
@@ -126,7 +126,7 @@ func TestReferenceAnalyzerDeletedPythonModule(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.Severity == SeverityError &&
+		if issue.Category == "references" && issue.Severity == SeverityError &&
 			issue.File == "pkg/main.py" {
 			found = true
 			break
@@ -178,7 +178,7 @@ func TestReferenceAnalyzerRenamedFileStaleReference(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.Severity == SeverityWarning &&
+		if issue.Category == "references" && issue.Severity == SeverityWarning &&
 			issue.File == "src/app.ts" {
 			found = true
 			break
@@ -248,7 +248,7 @@ func TestReferenceAnalyzerDeletedSymbolStillReferenced(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.File == "src/consumer.ts" {
+		if issue.Category == "references" && issue.File == "src/consumer.ts" {
 			found = true
 			break
 		}
@@ -299,7 +299,7 @@ func TestReferenceAnalyzerNoIssueForValidReferences(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	refIssues := filterIssues(issues, "reference", "src/app.ts")
+	refIssues := filterIssues(issues, "references", "src/app.ts")
 	if len(refIssues) != 0 {
 		t.Errorf("expected 0 reference issues for valid references, got %d: %v", len(refIssues), refIssues)
 	}
@@ -368,7 +368,7 @@ func TestReferenceAnalyzerDeletedGoSymbol(t *testing.T) {
 	// handler.go references GetOldData in its signature, which was removed from store.go
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.File == "pkg/api/handler.go" {
+		if issue.Category == "references" && issue.File == "pkg/api/handler.go" {
 			found = true
 			break
 		}
@@ -410,7 +410,7 @@ func TestReferenceAnalyzerExternalImportsIgnored(t *testing.T) {
 	}
 
 	// External imports should not be flagged
-	refIssues := filterIssues(issues, "reference", "src/app.ts")
+	refIssues := filterIssues(issues, "references", "src/app.ts")
 	if len(refIssues) != 0 {
 		t.Errorf("expected 0 reference issues for external imports, got %d", len(refIssues))
 	}
@@ -456,7 +456,7 @@ func TestReferenceAnalyzerRenameWithSuggestion(t *testing.T) {
 
 	found := false
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.File == "src/consumer.ts" {
+		if issue.Category == "references" && issue.File == "src/consumer.ts" {
 			found = true
 			if issue.Suggestion == "" {
 				t.Error("expected suggestion for renamed file reference")
@@ -528,7 +528,7 @@ func TestReferenceAnalyzerSymbolRenamedNotFlagged(t *testing.T) {
 
 	// helper still exists in exports, so no "deleted symbol" reference issue should appear
 	for _, issue := range issues {
-		if issue.Category == "reference" && issue.File == "src/app.ts" {
+		if issue.Category == "references" && issue.File == "src/app.ts" {
 			t.Errorf("should not flag reference when symbol still exists: %v", issue)
 		}
 	}

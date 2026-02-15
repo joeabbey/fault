@@ -297,7 +297,7 @@ func TestVerboseOutput(t *testing.T) {
 		Issues: []analyzer.Issue{
 			{
 				Severity:     analyzer.SeverityError,
-				Category:     "import",
+				Category:     "imports",
 				File:         "pkg/api/server.go",
 				Line:         42,
 				Message:      `Import "github.com/foo/bar" could not be resolved`,
@@ -315,8 +315,8 @@ func TestVerboseOutput(t *testing.T) {
 	if !strings.Contains(output, "error") {
 		t.Errorf("expected 'error' severity in output, got:\n%s", output)
 	}
-	if !strings.Contains(output, "[import]") {
-		t.Errorf("expected '[import]' category in output, got:\n%s", output)
+	if !strings.Contains(output, "[imports]") {
+		t.Errorf("expected '[imports]' category in output, got:\n%s", output)
 	}
 	if !strings.Contains(output, "pkg/api/server.go:42") {
 		t.Errorf("expected file:line in output, got:\n%s", output)

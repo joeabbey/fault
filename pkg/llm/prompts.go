@@ -3,17 +3,32 @@ package llm
 import (
 	"embed"
 	"strings"
+	"sync"
 )
 
 //go:embed prompts/*.md
 var promptFS embed.FS
 
 // promptCache stores loaded prompts to avoid repeated FS reads.
-var promptCache = make(map[string]string)
+var (
+	promptCache = make(map[string]string)
+	promptMu    sync.RWMutex
+)
 
 // LoadPrompt loads an embedded prompt template by name.
 // The name should not include the directory or extension (e.g., "confidence" not "prompts/confidence.md").
 func LoadPrompt(name string) string {
+	promptMu.RLock()
+	if cached, ok := promptCache[name]; ok {
+		promptMu.RUnlock()
+		return cached
+	}
+	promptMu.RUnlock()
+
+	promptMu.Lock()
+	defer promptMu.Unlock()
+
+	// Re-check after acquiring the write lock.
 	if cached, ok := promptCache[name]; ok {
 		return cached
 	}

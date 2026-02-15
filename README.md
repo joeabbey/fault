@@ -65,6 +65,7 @@ analyzers:
 
 llm:
   enabled: false       # Set true for AI-powered confidence scoring
+  api_url: "https://fault.jabbey.io"  # Fault Cloud API base URL (optional if using default)
   spec_file: ""        # Path to spec file for comparison
 
 ignore:
@@ -76,7 +77,9 @@ ignore:
 
 ## LLM features (Pro)
 
-Set `FAULT_API_KEY` to enable AI-powered analysis:
+Set `FAULT_API_KEY` to enable AI-powered analysis.
+
+If you're using a self-hosted Fault Cloud, also set `FAULT_API_URL` (for example `http://localhost:8082`).
 
 - **Confidence scoring** — per-file confidence scores with reasoning
 - **Spec comparison** — compare changes against a requirements spec
