@@ -27,13 +27,19 @@ jobs:
           git config --global url."git@github.com:".insteadOf "https://github.com/"
           echo -e "Host github.com\n  IdentityFile ~/.ssh/magma_deploy_key" >> ~/.ssh/config
           go env -w GOPRIVATE=github.com/joeabbey/magma
-          go env -w GONOSUMCHECK=github.com/joeabbey/magma
+          go env -w GONOSUMDB=github.com/joeabbey/magma
 
       - name: Test
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
         run: go test ./... -race -coverprofile=coverage.out
 
       - name: Build CLI
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
         run: go build -o fault ./cmd/fault
 
       - name: Build Cloud
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
         run: go build -o fault-cloud ./cmd/fault-cloud

@@ -25,9 +25,11 @@ jobs:
           git config --global url."git@github.com:".insteadOf "https://github.com/"
           echo -e "Host github.com\n  IdentityFile ~/.ssh/magma_deploy_key" >> ~/.ssh/config
           go env -w GOPRIVATE=github.com/joeabbey/magma
-          go env -w GONOSUMCHECK=github.com/joeabbey/magma
+          go env -w GONOSUMDB=github.com/joeabbey/magma
 
       - name: Test
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
         run: go test ./... -race
 
       - name: Build Docker image
