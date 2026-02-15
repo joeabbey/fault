@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,7 @@ type Config struct {
 	BlockOn   string           `yaml:"block_on" json:"block_on"`
 	Analyzers AnalyzersConfig  `yaml:"analyzers" json:"analyzers"`
 	LLM       LLMConfig        `yaml:"llm" json:"llm"`
+	Watch     WatchConfig      `yaml:"watch" json:"watch"`
 	Ignore    []string         `yaml:"ignore" json:"ignore"`
 }
 
@@ -38,6 +40,12 @@ type LLMConfig struct {
 	APIKey   string `yaml:"-" json:"-"` // loaded from env, never serialized
 }
 
+// WatchConfig controls watch mode behavior.
+type WatchConfig struct {
+	PollInterval string `yaml:"poll_interval" json:"poll_interval"`
+	Debounce     string `yaml:"debounce" json:"debounce"`
+}
+
 // DefaultConfig returns a Config with sensible defaults.
 func DefaultConfig() *Config {
 	return &Config{
@@ -56,6 +64,10 @@ func DefaultConfig() *Config {
 		LLM: LLMConfig{
 			Enabled:  false,
 			SpecFile: "",
+		},
+		Watch: WatchConfig{
+			PollInterval: "500ms",
+			Debounce:     "200ms",
 		},
 		Ignore: []string{
 			"vendor/",
@@ -127,6 +139,17 @@ func (c *Config) Validate() error {
 
 	if c.LLM.Enabled && c.LLM.APIKey == "" {
 		return fmt.Errorf("LLM enabled but FAULT_API_KEY not set")
+	}
+
+	if c.Watch.PollInterval != "" {
+		if _, err := time.ParseDuration(c.Watch.PollInterval); err != nil {
+			return fmt.Errorf("invalid watch.poll_interval: %w", err)
+		}
+	}
+	if c.Watch.Debounce != "" {
+		if _, err := time.ParseDuration(c.Watch.Debounce); err != nil {
+			return fmt.Errorf("invalid watch.debounce: %w", err)
+		}
 	}
 
 	return nil
