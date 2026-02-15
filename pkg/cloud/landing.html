@@ -476,7 +476,7 @@ footer a:hover { color: #94a3b8; }
     <div class="feature-grid">
       <div class="feature-card">
         <h3>Static analysis that works offline</h3>
-        <p>Five analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.</p>
+        <p>Seven analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.</p>
       </div>
       <div class="feature-card">
         <h3>Multi-language support</h3>
@@ -485,6 +485,22 @@ footer a:hover { color: #94a3b8; }
       <div class="feature-card">
         <h3>Git native</h3>
         <p>Installs as a pre-commit hook with <code style="color:#22d3ee">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Auto-fix engine</h3>
+        <p>Run <code style="color:#22d3ee">fault fix</code> to automatically repair broken imports, replace hardcoded secrets with env vars, and remove debug statements. Preview changes with <code style="color:#22d3ee">--dry-run</code>.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Watch mode</h3>
+        <p>Run <code style="color:#22d3ee">fault watch</code> for continuous validation as you edit. Detects file changes in real-time and re-runs analysis within milliseconds &mdash; the tightest feedback loop for AI coding.</p>
+      </div>
+      <div class="feature-card">
+        <h3>GitHub PR review</h3>
+        <p>Post inline review comments directly on pull requests via GitHub Actions. Findings appear right in the diff where developers already review code.</p>
+      </div>
+      <div class="feature-card">
+        <h3>Security &amp; hallucination detection</h3>
+        <p>Catches hardcoded secrets, insecure crypto, references to non-existent APIs, phantom packages, and invented function signatures that AI agents hallucinate.</p>
       </div>
       <div class="feature-card">
         <div class="badge">Pro</div>
@@ -512,15 +528,15 @@ footer a:hover { color: #94a3b8; }
         <div class="step-num">2</div>
         <div class="step-content">
           <h3>Fault validates the diff</h3>
-          <p>When you commit, <code style="color:#22d3ee">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs five analyzers in parallel.</p>
+          <p>When you commit, <code style="color:#22d3ee">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs seven analyzers in parallel.</p>
         </div>
       </div>
       <div class="step-connector"></div>
       <div class="step">
         <div class="step-num">3</div>
         <div class="step-content">
-          <h3>Fix issues or commit with confidence</h3>
-          <p>If Fault finds errors, the commit is blocked and you see exactly what to fix. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
+          <h3>Auto-fix or commit with confidence</h3>
+          <p>If Fault finds errors, the commit is blocked. Run <code style="color:#22d3ee">fault fix</code> to auto-repair what it can, or fix manually. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
         </div>
       </div>
     </div>
@@ -570,6 +586,16 @@ footer a:hover { color: #94a3b8; }
           <tr>
             <td>Agent artifacts (TODOs, debug logs)</td>
             <td><span class="partial">Partial</span></td>
+            <td><span class="check">Yes + auto-fix</span></td>
+          </tr>
+          <tr>
+            <td>Hardcoded secrets &amp; insecure crypto</td>
+            <td><span class="partial">Partial</span></td>
+            <td><span class="check">Yes + auto-fix</span></td>
+          </tr>
+          <tr>
+            <td>Hallucinated APIs &amp; phantom packages</td>
+            <td><span class="no">No</span></td>
             <td><span class="check">Yes</span></td>
           </tr>
         </tbody>
@@ -602,10 +628,12 @@ footer a:hover { color: #94a3b8; }
         <div class="price">$0</div>
         <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
         <ul>
-          <li>5 analyzers (imports, consistency, references, tests, patterns)</li>
+          <li>7 analyzers (imports, consistency, references, tests, patterns, security, hallucination)</li>
           <li>Go, TypeScript, Python</li>
           <li>Terminal, JSON, SARIF output</li>
-          <li>Pre-commit hook</li>
+          <li>Auto-fix engine (<code style="color:#22d3ee;font-size:13px">fault fix</code>)</li>
+          <li>Watch mode (<code style="color:#22d3ee;font-size:13px">fault watch</code>)</li>
+          <li>Pre-commit hook &amp; GitHub PR comments</li>
           <li>Works offline</li>
         </ul>
       </div>
@@ -650,6 +678,10 @@ footer a:hover { color: #94a3b8; }
       <div><span class="cmd">fault hook install</span></div>
       <br>
       <div><span class="comment"># That's it. Next time you commit, Fault validates your changes.</span></div>
+      <br>
+      <div><span class="comment"># Or use interactively:</span></div>
+      <div><span class="cmd">fault watch</span>       <span class="comment"># continuous validation as you edit</span></div>
+      <div><span class="cmd">fault fix</span>         <span class="comment"># auto-fix broken imports, secrets, debug logs</span></div>
     </div>
     <div class="links">
       <a href="https://github.com/joeabbey/fault/blob/master/README.md">Read the docs</a>
@@ -660,7 +692,7 @@ footer a:hover { color: #94a3b8; }
 
 <footer>
   <div class="container">
-    <p>Built by <a href="https://github.com/joeabbey">Joe Abbey</a> &middot; <a href="https://github.com/joeabbey/fault">GitHub</a> &middot; &copy; 2025</p>
+    <p>Built by <a href="https://github.com/joeabbey">Joe Abbey</a> &middot; <a href="https://github.com/joeabbey/fault">GitHub</a> &middot; &copy; 2026</p>
   </div>
 </footer>
 
