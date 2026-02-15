@@ -9,14 +9,15 @@ import (
 
 // extensionToLanguage maps file extensions to language names.
 var extensionToLanguage = map[string]string{
-	".go":  "go",
-	".ts":  "typescript",
-	".tsx": "typescript",
-	".js":  "typescript",
-	".jsx": "typescript",
-	".mjs": "typescript",
-	".cjs": "typescript",
-	".py":  "python",
+	".go":   "go",
+	".ts":   "typescript",
+	".tsx":  "typescript",
+	".js":   "typescript",
+	".jsx":  "typescript",
+	".mjs":  "typescript",
+	".cjs":  "typescript",
+	".py":   "python",
+	".java": "java",
 }
 
 // Registry manages parsers for different languages.

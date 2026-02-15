@@ -58,6 +58,12 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkXSS(fileDiff)...)
 		issues = append(issues, checkPathTraversal(fileDiff)...)
 		issues = append(issues, checkInsecureCrypto(fileDiff)...)
+
+		// Java-specific security checks
+		ext := strings.ToLower(filepath.Ext(fileDiff.Path))
+		if ext == ".java" {
+			issues = append(issues, checkJavaSecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -126,6 +132,18 @@ var sqlInjectionRules = []sqlInjectionRule{
 			regexp.MustCompile(`\$\d`), // parameterized
 			regexp.MustCompile(`\?`),   // parameterized
 		},
+	},
+	// Java: Statement.execute/executeQuery with string concatenation
+	{
+		pattern: regexp.MustCompile(`\.(execute|executeQuery|executeUpdate)\s*\(\s*"[^"]*"\s*\+`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`\?`), // parameterized
+		},
+	},
+	// Java: String.format with SQL keywords
+	{
+		pattern: regexp.MustCompile(`String\.format\(\s*"(?i)(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b[^"]*%s`),
+		exclusions: []*regexp.Regexp{},
 	},
 }
 
@@ -525,6 +543,106 @@ func checkInsecureCrypto(fileDiff git.FileDiff) []Issue {
 					Suggestion: "Use SHA-256+ for hashing, crypto.getRandomValues() or crypto/rand for random values",
 				})
 				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Java-specific security detection ---
+
+type javaSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	message    string
+	suggestion string
+}
+
+var javaSecurityRules = []javaSecurityRule{
+	// XXE: DocumentBuilderFactory without disabling external entities
+	{
+		pattern:    regexp.MustCompile(`DocumentBuilderFactory\.newInstance\(\)`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`setFeature`)},
+		id:         "security/xxe",
+		message:    "Potential XXE vulnerability: DocumentBuilderFactory without disabling external entities",
+		suggestion: "Call factory.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true) to prevent XXE attacks",
+	},
+	// Insecure deserialization
+	{
+		pattern:    regexp.MustCompile(`ObjectInputStream\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/deserialization",
+		message:    "Potential insecure deserialization: ObjectInputStream on untrusted data",
+		suggestion: "Avoid deserializing untrusted data. Use allowlists (ObjectInputFilter) or safer formats like JSON",
+	},
+	// JNDI injection with variable argument
+	{
+		pattern:    regexp.MustCompile(`\.lookup\s*\(\s*[a-zA-Z]`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`\.lookup\s*\(\s*"[^"]*"\s*\)`)},
+		id:         "security/jndi-injection",
+		message:    "Potential JNDI injection: lookup() with variable argument",
+		suggestion: "Validate and sanitize JNDI lookup names; restrict allowed protocols and hosts",
+	},
+	// Hardcoded passwords/secrets in Java
+	{
+		pattern: regexp.MustCompile(`(?i)(password|passwd|secret|apiKey|api_key)\s*=\s*"[^"]{8,}"`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)=\s*""\s*;`),
+			regexp.MustCompile(`(?i)System\.getenv\(`),
+			regexp.MustCompile(`(?i)System\.getProperty\(`),
+			regexp.MustCompile(`(?i)(test|example|dummy|fake|mock|sample|placeholder|changeme)`),
+		},
+		id:         "security/hardcoded-secret",
+		message:    "Hardcoded credential detected in Java code",
+		suggestion: "Use environment variables or a secrets manager instead of hardcoding credentials",
+	},
+}
+
+func checkJavaSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments.
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range javaSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   SeverityError,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break // one issue per line
 			}
 		}
 	}

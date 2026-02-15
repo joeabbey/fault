@@ -130,6 +130,7 @@ func (c *Config) Validate() error {
 		"go":         true,
 		"typescript": true,
 		"python":     true,
+		"java":       true,
 	}
 	for _, lang := range c.Languages {
 		if !validLangs[lang] {

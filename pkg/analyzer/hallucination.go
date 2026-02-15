@@ -177,6 +177,8 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkJSImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".py":
 		issues = append(issues, h.checkPythonImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".java":
+		issues = append(issues, h.checkJavaImports(fileDiff.Path, pf)...)
 	}
 
 	return issues
@@ -576,6 +578,96 @@ func extractPyprojectDeps(line string, deps map[string]bool) {
 	}
 }
 
+// --- Java phantom import detection ---
+
+// javaStdlibPrefixes are top-level Java standard library package prefixes.
+var javaStdlibPrefixes = []string{
+	"java.", "javax.", "jakarta.",
+	"org.w3c.", "org.xml.", "org.ietf.",
+}
+
+// commonJavaLibPrefixes are well-known third-party library prefixes that
+// we consider "known" and don't flag as phantom.
+var commonJavaLibPrefixes = []string{
+	"org.springframework.", "org.apache.", "org.hibernate.",
+	"com.google.", "com.fasterxml.", "com.amazonaws.",
+	"org.junit.", "org.mockito.", "org.assertj.",
+	"org.slf4j.", "ch.qos.logback.",
+	"io.netty.", "io.grpc.", "io.micrometer.",
+	"lombok.", "org.projectlombok.",
+	"com.squareup.", "io.reactivex.",
+	"org.jetbrains.", "kotlin.",
+}
+
+// phantomJavaPackages are AI-hallucinated package patterns that don't exist.
+var phantomJavaPackages = []string{
+	"java.utils.",       // Common hallucination — correct is java.util
+	"java.collections.", // Doesn't exist — correct is java.util
+	"java.strings.",     // Doesn't exist — correct is java.lang.String
+	"javax.json.bind.",  // Often confused with jakarta.json.bind
+	"java.concurrent.",  // Correct is java.util.concurrent
+	"java.http.",        // Correct is java.net.http
+	"java.logging.",     // Correct is java.util.logging
+	"org.spring.",       // Correct is org.springframework
+}
+
+func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, imp := range pf.Imports {
+		importPath := imp.Path
+
+		// Remove trailing .* for wildcard imports
+		checkPath := strings.TrimSuffix(importPath, ".*")
+
+		// Check known phantom patterns first
+		for _, phantom := range phantomJavaPackages {
+			if strings.HasPrefix(checkPath, phantom) || strings.HasPrefix(checkPath+".", phantom) {
+				issues = append(issues, Issue{
+					ID:         "hallucination/phantom-import",
+					FixID:      "import-broken-java",
+					Severity:   SeverityError,
+					Category:   "hallucination",
+					File:       filePath,
+					Line:       imp.Line,
+					Message:    "Import references likely hallucinated package: " + importPath,
+					Suggestion: "This package does not exist in the Java standard library. Check the correct package name",
+				})
+				break
+			}
+		}
+
+		// Standard library imports are assumed valid (we can't fully verify without the JDK)
+		isStdlib := false
+		for _, prefix := range javaStdlibPrefixes {
+			if strings.HasPrefix(checkPath, prefix) {
+				isStdlib = true
+				break
+			}
+		}
+		if isStdlib {
+			continue
+		}
+
+		// Known third-party libraries — skip
+		isKnown := false
+		for _, prefix := range commonJavaLibPrefixes {
+			if strings.HasPrefix(checkPath, prefix) {
+				isKnown = true
+				break
+			}
+		}
+		if isKnown {
+			continue
+		}
+
+		// For unknown packages, we can't easily verify without a build system (Maven/Gradle).
+		// We only flag the known-bad patterns above.
+	}
+
+	return issues
+}
+
 // --- Stub function detection ---
 
 // Go function declaration.
@@ -591,14 +683,19 @@ var tsFuncPatterns = []*regexp.Regexp{
 // Python function declaration.
 var pyFuncPattern = regexp.MustCompile(`^def\s+\w+\(`)
 
+// Java method declaration (for stub detection).
+var javaFuncPattern = regexp.MustCompile(`^\s*(?:public|protected|private)?\s*(?:static\s+)?(?:final\s+)?(?:\w[\w<>\[\],\s?]*?\s+)(\w+)\s*\(`)
+
+
 // Stub body patterns.
 var stubPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`^\s*return\s+(nil|""|0|false|\[\]|\{\}|None)\s*;?\s*$`),
+	regexp.MustCompile(`^\s*return\s+(nil|""|0|false|\[\]|\{\}|None|null)\s*;?\s*$`),
 	regexp.MustCompile(`^\s*return;?\s*$`),
 	regexp.MustCompile(`^\s*return\s+\[\]\s*;?\s*$`),
 	regexp.MustCompile(`^\s*return\s+\{\}\s*;?\s*$`),
 	regexp.MustCompile(`^\s*pass\s*$`),
 	regexp.MustCompile(`(?i)^\s*throw\s+new\s+Error\(\s*["'](not implemented|TODO)`),
+	regexp.MustCompile(`(?i)^\s*throw\s+new\s+UnsupportedOperationException\s*\(`),
 	regexp.MustCompile(`(?i)^\s*panic\(\s*"(not implemented|TODO)`),
 	regexp.MustCompile(`(?i)^\s*//\s*TODO\b`),
 	regexp.MustCompile(`(?i)^\s*#\s*TODO\b`),
@@ -634,6 +731,8 @@ func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issu
 				}
 			case ext == ".py":
 				isFuncDecl = pyFuncPattern.MatchString(content)
+			case ext == ".java":
+				isFuncDecl = javaFuncPattern.MatchString(content)
 			}
 
 			if !isFuncDecl {

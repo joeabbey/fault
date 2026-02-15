@@ -55,6 +55,12 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkConsoleDebug(fileDiff)...)
 		issues = append(issues, checkCommentedOutCode(fileDiff)...)
 		issues = append(issues, checkUnreachableCode(fileDiff)...)
+
+		// Java-specific patterns
+		if isJavaFile(fileDiff.Path) {
+			issues = append(issues, checkJavaEmptyCatch(fileDiff)...)
+			issues = append(issues, checkJavaStringEquals(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -199,6 +205,9 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bconsole\.log\(`), "anti-console-log"},
 	{regexp.MustCompile(`\bfmt\.Println\(`), "anti-debug-print"},
 	{regexp.MustCompile(`\bprint\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bSystem\.out\.println\(`), "anti-sysout"},
+	{regexp.MustCompile(`\bSystem\.err\.println\(`), "anti-sysout"},
+	{regexp.MustCompile(`\.printStackTrace\(\)`), "anti-printstacktrace"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -529,4 +538,107 @@ func isAnalyzableFile(path string) bool {
 
 func isPythonFile(path string) bool {
 	return strings.HasSuffix(path, ".py")
+}
+
+func isJavaFile(path string) bool {
+	return strings.HasSuffix(path, ".java")
+}
+
+// --- Java-specific pattern detection ---
+
+// emptyCatchPattern matches catch blocks that are empty or contain only a comment.
+var emptyCatchPattern = regexp.MustCompile(`\bcatch\s*\([^)]*\)\s*\{\s*\}`)
+
+func checkJavaEmptyCatch(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for i, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+
+			// Check for empty catch on a single line: catch (Exception e) {}
+			if emptyCatchPattern.MatchString(content) {
+				issues = append(issues, Issue{
+					ID:         "patterns/empty-catch",
+					Severity:   SeverityWarning,
+					Category:   "patterns",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    "Empty catch block silently swallows exception",
+					Suggestion: "At minimum, log the exception. Empty catch blocks hide errors and make debugging difficult",
+				})
+				continue
+			}
+
+			// Check for catch followed by empty block across lines
+			trimmed := strings.TrimSpace(content)
+			if strings.Contains(trimmed, "catch") && strings.Contains(trimmed, "{") && !strings.Contains(trimmed, "}") {
+				// Look ahead for immediate closing brace
+				if i+1 < len(hunk.Lines) {
+					next := hunk.Lines[i+1]
+					nextTrimmed := strings.TrimSpace(next.Content)
+					if nextTrimmed == "}" && next.Type == "added" {
+						issues = append(issues, Issue{
+							ID:         "patterns/empty-catch",
+							Severity:   SeverityWarning,
+							Category:   "patterns",
+							File:       fileDiff.Path,
+							Line:       line.NewNum,
+							Message:    "Empty catch block silently swallows exception",
+							Suggestion: "At minimum, log the exception. Empty catch blocks hide errors and make debugging difficult",
+						})
+					}
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// javaStringEqualsPattern matches == or != comparisons with String variables
+// that should use .equals() instead.
+var javaStringEqualsPattern = regexp.MustCompile(`\b(\w+)\s*[!=]=\s*"[^"]*"`)
+
+func checkJavaStringEquals(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			if javaStringEqualsPattern.MatchString(content) {
+				// Exclude null comparisons and common non-string patterns
+				if strings.Contains(content, "== null") || strings.Contains(content, "!= null") {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         "patterns/string-equals",
+					Severity:   SeverityWarning,
+					Category:   "patterns",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    "String comparison using == instead of .equals(): " + strings.TrimSpace(content),
+					Suggestion: "Use .equals() for String comparison in Java; == compares references, not values",
+				})
+			}
+		}
+	}
+
+	return issues
 }
