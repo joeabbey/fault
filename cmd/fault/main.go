@@ -8,8 +8,11 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -21,6 +24,7 @@ import (
 	"github.com/joeabbey/fault/pkg/llm"
 	"github.com/joeabbey/fault/pkg/parser"
 	"github.com/joeabbey/fault/pkg/reporter"
+	"github.com/joeabbey/fault/pkg/watcher"
 )
 
 // Version is set at build time via -ldflags
@@ -41,6 +45,7 @@ func main() {
 	rootCmd.AddCommand(signupCmd())
 	rootCmd.AddCommand(loginCmd())
 	rootCmd.AddCommand(fixCmd())
+	rootCmd.AddCommand(watchCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -782,4 +787,123 @@ func versionCmd() *cobra.Command {
 		},
 	}
 	return cmd
+}
+
+func watchCmd() *cobra.Command {
+	var noColor bool
+
+	cmd := &cobra.Command{
+		Use:   "watch",
+		Short: "Watch for file changes and run analysis continuously",
+		Long:  "Monitors the working tree for file changes and automatically runs Fault analysis. Provides near-instant feedback as you edit.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runWatch(noColor)
+		},
+	}
+
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	return cmd
+}
+
+func runWatch(noColor bool) error {
+	// 1. Load config
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// 2. Open git repo
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	// 3. Set up parser registry
+	reg := parser.NewRegistry()
+	reg.Register(parser.NewGoParser())
+	reg.Register(parser.NewTypeScriptParser())
+	reg.Register(parser.NewPythonParser())
+
+	// 4. Build or load the index
+	repoRoot, _ := repo.RepoRoot()
+	idx := index.NewIndex(repoRoot, cfg)
+	if err := idx.BuildOrLoad(reg); err != nil {
+		log.Printf("warning: could not build repo index: %v", err)
+	}
+
+	// 5. Create analyzers
+	analyzers := []analyzer.Analyzer{
+		analyzer.NewImportAnalyzer(),
+		analyzer.NewConsistencyAnalyzer(),
+		analyzer.NewReferenceAnalyzer(),
+		analyzer.NewTestImpactAnalyzer(),
+		analyzer.NewAntiPatternAnalyzer(),
+		analyzer.NewSecurityAnalyzer(),
+		analyzer.NewHallucinationAnalyzer(),
+	}
+
+	// 6. Parse watch config
+	pollInterval := 500 * time.Millisecond
+	debounce := 200 * time.Millisecond
+
+	if cfg.Watch.PollInterval != "" {
+		if d, err := time.ParseDuration(cfg.Watch.PollInterval); err == nil {
+			pollInterval = d
+		}
+	}
+	if cfg.Watch.Debounce != "" {
+		if d, err := time.ParseDuration(cfg.Watch.Debounce); err == nil {
+			debounce = d
+		}
+	}
+
+	// 7. Create display
+	display := watcher.NewDisplay(os.Stdout, noColor)
+
+	// 8. Track stats
+	totalRuns := 0
+	totalIssues := 0
+	watchStart := time.Now()
+
+	// 9. Create watcher
+	onChange := func(r watcher.RunResult) {
+		totalRuns++
+		totalIssues += len(r.Result.Issues)
+		display.Clear()
+		display.RenderHeader(repoRoot, Version)
+		display.RenderResult(r)
+		display.RenderWaiting()
+	}
+
+	onError := func(err error) {
+		log.Printf("watch error: %v", err)
+	}
+
+	opts := watcher.Options{
+		PollInterval: pollInterval,
+		Debounce:     debounce,
+	}
+
+	w := watcher.New(repoRoot, repo, cfg, reg, analyzers, idx, opts, onChange, onError)
+
+	// 10. Signal handling
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+
+	// 11. Show initial state
+	display.RenderHeader(repoRoot, Version)
+	display.RenderWaiting()
+
+	// 12. Run watcher (blocks until ctx cancelled)
+	err = w.Watch(ctx)
+
+	// 13. Show exit summary
+	display.RenderExit(totalRuns, totalIssues, time.Since(watchStart))
+
+	return err
 }
