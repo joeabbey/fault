@@ -104,6 +104,7 @@ func isPublicPath(path string) bool {
 	publicPaths := []string{
 		"/api/health",
 		"/api/v1/signup",
+		"/install.sh",
 	}
 	for _, p := range publicPaths {
 		if path == p {
