@@ -34,6 +34,7 @@ type AnalysisResult struct {
 // Issue represents a single problem found by an analyzer.
 type Issue struct {
 	ID           string   `json:"id"`
+	FixID        string   `json:"fix_id,omitempty"` // stable category ID for auto-fix matching
 	Severity     Severity `json:"severity"`
 	Category     string   `json:"category"`
 	File         string   `json:"file"`

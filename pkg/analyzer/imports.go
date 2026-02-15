@@ -121,6 +121,7 @@ func (a *ImportAnalyzer) validateTSImport(
 			deletedFiles[resolvedPath+".jsx"] {
 			issues = append(issues, Issue{
 				ID:       fmt.Sprintf("import-deleted-%s-%d", pf.Path, imp.Line),
+				FixID:    "import-broken",
 				Severity: SeverityError,
 				Category: "import",
 				File:     pf.Path,
@@ -132,6 +133,7 @@ func (a *ImportAnalyzer) validateTSImport(
 		} else {
 			issues = append(issues, Issue{
 				ID:       fmt.Sprintf("import-broken-%s-%d", pf.Path, imp.Line),
+				FixID:    "import-broken",
 				Severity: SeverityError,
 				Category: "import",
 				File:     pf.Path,
@@ -156,6 +158,7 @@ func (a *ImportAnalyzer) validateTSImport(
 			}
 			issues = append(issues, Issue{
 				ID:       fmt.Sprintf("import-name-%s-%d-%s", pf.Path, imp.Line, name),
+				FixID:    "import-missing-export",
 				Severity: SeverityError,
 				Category: "import",
 				File:     pf.Path,
@@ -195,6 +198,7 @@ func (a *ImportAnalyzer) validatePythonImport(
 		if deletedFiles[resolvedPath] || deletedFiles[resolvedPath+".py"] {
 			issues = append(issues, Issue{
 				ID:       fmt.Sprintf("import-deleted-%s-%d", pf.Path, imp.Line),
+				FixID:    "import-broken",
 				Severity: SeverityError,
 				Category: "import",
 				File:     pf.Path,
@@ -218,6 +222,7 @@ func (a *ImportAnalyzer) validatePythonImport(
 		if exports != nil && !exports[name] {
 			issues = append(issues, Issue{
 				ID:       fmt.Sprintf("import-name-%s-%d-%s", pf.Path, imp.Line, name),
+				FixID:    "import-missing-export",
 				Severity: SeverityWarning,
 				Category: "import",
 				File:     pf.Path,
@@ -308,6 +313,7 @@ func (a *ImportAnalyzer) checkRemovedExports(
 					if removedExports[name] {
 						issues = append(issues, Issue{
 							ID:       fmt.Sprintf("export-removed-%s-%s-%s", fd.Path, pf.Path, name),
+							FixID:    "import-missing-export",
 							Severity: SeverityWarning,
 							Category: "import",
 							File:     pf.Path,
@@ -375,6 +381,7 @@ func (a *ImportAnalyzer) checkRemovedExportsViaIndex(
 				if removedExports[name] {
 					issues = append(issues, Issue{
 						ID:       fmt.Sprintf("export-removed-%s-%s-%s", fd.Path, entry.Path, name),
+							FixID:    "import-missing-export",
 						Severity: SeverityWarning,
 						Category: "import",
 						File:     entry.Path,
