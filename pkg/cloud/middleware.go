@@ -103,6 +103,7 @@ func APIKeyAuth(store Store, logger *slog.Logger) func(http.Handler) http.Handle
 func isPublicPath(path string) bool {
 	publicPaths := []string{
 		"/api/health",
+		"/api/v1/signup",
 	}
 	for _, p := range publicPaths {
 		if path == p {

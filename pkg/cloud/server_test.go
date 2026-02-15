@@ -32,6 +32,15 @@ func (m *mockStore) GetUserByAPIKeyHash(_ context.Context, hash string) (*User, 
 	return u, nil
 }
 
+func (m *mockStore) GetUserByEmail(_ context.Context, email string) (*User, error) {
+	for _, u := range m.users {
+		if u.Email == email {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
 func (m *mockStore) CreateUser(_ context.Context, email string) (*User, error) {
 	u := &User{
 		ID:           "test-user-id",
@@ -387,5 +396,140 @@ func TestAuthMiddleware_NotFKPrefix(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for non-fk_ key, got %d", w.Code)
+	}
+}
+
+func TestSignup_NewUser(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	body := `{"email":"newuser@example.com"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/signup", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp SignupResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	if resp.Email != "newuser@example.com" {
+		t.Errorf("expected email newuser@example.com, got %q", resp.Email)
+	}
+
+	if !strings.HasPrefix(resp.APIKey, "fk_") {
+		t.Errorf("expected API key with fk_ prefix, got %q", resp.APIKey)
+	}
+}
+
+func TestSignup_ExistingUser(t *testing.T) {
+	store := newMockStore()
+	store.addTestUser("existing@example.com")
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	body := `{"email":"existing@example.com"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/signup", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp SignupResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	if resp.Email != "existing@example.com" {
+		t.Errorf("expected email existing@example.com, got %q", resp.Email)
+	}
+
+	if !strings.HasPrefix(resp.APIKey, "fk_") {
+		t.Errorf("expected API key with fk_ prefix, got %q", resp.APIKey)
+	}
+}
+
+func TestSignup_NoEmail(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	body := `{"email":""}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/signup", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSignup_SkipsAuth(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	// No Authorization header — signup should still work
+	body := `{"email":"noauth@example.com"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/signup", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("signup should be accessible without auth, got %d: %s", w.Code, w.Body.String())
+	}
+}
+
+func TestRotateKey(t *testing.T) {
+	store := newMockStore()
+	apiKey := store.addTestUser("rotate@example.com")
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/api-keys/rotate", nil)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp RotateKeyResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	if resp.Email != "rotate@example.com" {
+		t.Errorf("expected email rotate@example.com, got %q", resp.Email)
+	}
+
+	if !strings.HasPrefix(resp.APIKey, "fk_") {
+		t.Errorf("expected API key with fk_ prefix, got %q", resp.APIKey)
+	}
+}
+
+func TestRotateKey_NoAuth(t *testing.T) {
+	store := newMockStore()
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/api-keys/rotate", nil)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401, got %d", w.Code)
 	}
 }

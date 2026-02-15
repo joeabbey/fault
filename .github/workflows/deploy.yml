@@ -18,7 +18,7 @@ jobs:
         run: go test ./... -race
 
       - name: Build Docker image
-        run: docker build -t fault:latest .
+        run: docker build --build-arg VERSION=$(git describe --tags --always) -t fault:latest .
 
       - name: Deploy to server
         env:

@@ -34,6 +34,10 @@ func main() {
 	}
 	defer store.Close()
 
+	if err := store.Migrate(ctx); err != nil {
+		log.Fatalf("running migrations: %v", err)
+	}
+
 	srv := cloud.NewServer(cfg, store)
 	if err := srv.Start(); err != nil {
 		log.Fatalf("server error: %v", err)

@@ -95,6 +95,97 @@ func NewHandlers(store Store, logger *slog.Logger) *Handlers {
 	return &Handlers{store: store, logger: logger}
 }
 
+// SignupRequest is the payload for the signup endpoint.
+type SignupRequest struct {
+	Email string `json:"email"`
+}
+
+// SignupResponse is returned by the signup endpoint.
+type SignupResponse struct {
+	APIKey string `json:"api_key"`
+	Email  string `json:"email"`
+}
+
+// RotateKeyResponse is returned by the key rotation endpoint.
+type RotateKeyResponse struct {
+	APIKey string `json:"api_key"`
+	Email  string `json:"email"`
+}
+
+// HandleSignup creates a new user and returns their API key.
+// If the user already exists, a new key is generated (old key is invalidated).
+func (h *Handlers) HandleSignup(w http.ResponseWriter, r *http.Request) {
+	var req SignupRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.Email == "" {
+		http.Error(w, `{"error":"email is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Check for existing user
+	existing, err := h.store.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		h.logger.Error("failed to look up user", "error", err)
+		http.Error(w, `{"error":"internal error"}`, http.StatusInternalServerError)
+		return
+	}
+
+	var user *User
+	if existing != nil {
+		user = existing
+	} else {
+		user, err = h.store.CreateUser(r.Context(), req.Email)
+		if err != nil {
+			h.logger.Error("failed to create user", "error", err)
+			http.Error(w, `{"error":"failed to create user"}`, http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Generate API key (replaces any existing key)
+	rawKey, err := h.store.GenerateAPIKey(r.Context(), user.ID)
+	if err != nil {
+		h.logger.Error("failed to generate API key", "error", err)
+		http.Error(w, `{"error":"failed to generate API key"}`, http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("user signed up", "email", req.Email, "new_user", existing == nil)
+
+	writeJSON(w, http.StatusOK, SignupResponse{
+		APIKey: rawKey,
+		Email:  user.Email,
+	})
+}
+
+// HandleRotateKey generates a new API key for the authenticated user,
+// invalidating the old one. The new key is only shown once.
+func (h *Handlers) HandleRotateKey(w http.ResponseWriter, r *http.Request) {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	rawKey, err := h.store.GenerateAPIKey(r.Context(), user.ID)
+	if err != nil {
+		h.logger.Error("failed to rotate API key", "error", err, "user_id", user.ID)
+		http.Error(w, `{"error":"failed to rotate API key"}`, http.StatusInternalServerError)
+		return
+	}
+
+	h.logger.Info("API key rotated", "user_id", user.ID, "email", user.Email)
+
+	writeJSON(w, http.StatusOK, RotateKeyResponse{
+		APIKey: rawKey,
+		Email:  user.Email,
+	})
+}
+
 // HandleHealth returns the health check response.
 func (h *Handlers) HandleHealth(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, HealthResponse{

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	_ "embed"
 	"encoding/hex"
 	"fmt"
 	"time"
@@ -11,6 +12,9 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+//go:embed migrations/000001_init.up.sql
+var initSQL string
 
 // User represents an authenticated API user.
 type User struct {
@@ -41,6 +45,7 @@ type Usage struct {
 // Store defines the interface for cloud data access.
 type Store interface {
 	GetUserByAPIKeyHash(ctx context.Context, hash string) (*User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	CreateUser(ctx context.Context, email string) (*User, error)
 	GenerateAPIKey(ctx context.Context, userID string) (string, error)
 	IncrementUsage(ctx context.Context, userID string, tokens Usage) error
@@ -83,6 +88,16 @@ func NewPostgresStore(ctx context.Context, databaseURL string) (*PostgresStore, 
 	return &PostgresStore{pool: pool}, nil
 }
 
+// Migrate runs database migrations. Safe to call on every startup since
+// the DDL uses IF NOT EXISTS.
+func (s *PostgresStore) Migrate(ctx context.Context) error {
+	_, err := s.pool.Exec(ctx, initSQL)
+	if err != nil {
+		return fmt.Errorf("running migrations: %w", err)
+	}
+	return nil
+}
+
 // Close releases the database connection pool.
 func (s *PostgresStore) Close() {
 	s.pool.Close()
@@ -103,6 +118,19 @@ func (s *PostgresStore) GetUserByAPIKeyHash(ctx context.Context, hash string) (*
 	_, _ = s.pool.Exec(ctx,
 		`UPDATE users SET last_active_at = NOW() WHERE id = $1`, u.ID)
 
+	return &u, nil
+}
+
+// GetUserByEmail looks up a user by email address. Returns nil, nil if not found.
+func (s *PostgresStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
+	var u User
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, email, plan, COALESCE(api_key_hash, ''), created_at, COALESCE(last_active_at, created_at)
+		 FROM users WHERE email = $1`, email,
+	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.CreatedAt, &u.LastActiveAt)
+	if err != nil {
+		return nil, nil // not found
+	}
 	return &u, nil
 }
 
