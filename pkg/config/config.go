@@ -27,6 +27,7 @@ type AnalyzersConfig struct {
 	References  bool `yaml:"references" json:"references"`
 	Tests       bool `yaml:"tests" json:"tests"`
 	Patterns    bool `yaml:"patterns" json:"patterns"`
+	Security    bool `yaml:"security" json:"security"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -48,6 +49,7 @@ func DefaultConfig() *Config {
 			References:  true,
 			Tests:       true,
 			Patterns:    true,
+			Security:    true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,
