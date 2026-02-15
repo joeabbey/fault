@@ -16,14 +16,32 @@ import (
 //go:embed migrations/000001_init.up.sql
 var initSQL string
 
+//go:embed migrations/000002_billing.up.sql
+var billingSQL string
+
 // User represents an authenticated API user.
 type User struct {
-	ID           string    `json:"id"`
-	Email        string    `json:"email"`
-	Plan         string    `json:"plan"` // free, pro, team
-	APIKeyHash   string    `json:"-"`
-	CreatedAt    time.Time `json:"created_at"`
-	LastActiveAt time.Time `json:"last_active_at"`
+	ID               string    `json:"id"`
+	Email            string    `json:"email"`
+	Plan             string    `json:"plan"` // free, pro, team
+	APIKeyHash       string    `json:"-"`
+	StripeCustomerID string    `json:"stripe_customer_id,omitempty"`
+	CreatedAt        time.Time `json:"created_at"`
+	LastActiveAt     time.Time `json:"last_active_at"`
+}
+
+// Subscription tracks a Stripe subscription's state locally.
+type Subscription struct {
+	ID                   string     `json:"id"`
+	UserID               string     `json:"user_id"`
+	StripeSubscriptionID string     `json:"stripe_subscription_id,omitempty"`
+	StripeCustomerID     string     `json:"stripe_customer_id,omitempty"`
+	Plan                 string     `json:"plan"`
+	Status               string     `json:"status"`
+	CurrentPeriodStart   *time.Time `json:"current_period_start,omitempty"`
+	CurrentPeriodEnd     *time.Time `json:"current_period_end,omitempty"`
+	CreatedAt            time.Time  `json:"created_at"`
+	UpdatedAt            time.Time  `json:"updated_at"`
 }
 
 // MonthlyUsage tracks per-user LLM usage for a given month.
@@ -46,10 +64,16 @@ type Usage struct {
 type Store interface {
 	GetUserByAPIKeyHash(ctx context.Context, hash string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	GetUserByID(ctx context.Context, userID string) (*User, error)
+	GetUserByStripeCustomerID(ctx context.Context, customerID string) (*User, error)
 	CreateUser(ctx context.Context, email string) (*User, error)
 	GenerateAPIKey(ctx context.Context, userID string) (string, error)
+	UpdateUserPlan(ctx context.Context, userID string, plan string) error
+	SetStripeCustomerID(ctx context.Context, userID string, customerID string) error
 	IncrementUsage(ctx context.Context, userID string, tokens Usage) error
 	GetUsage(ctx context.Context, userID string, month string) (*MonthlyUsage, error)
+	UpsertSubscription(ctx context.Context, sub *Subscription) error
+	GetSubscriptionByUserID(ctx context.Context, userID string) (*Subscription, error)
 	Close()
 }
 
@@ -93,7 +117,11 @@ func NewPostgresStore(ctx context.Context, databaseURL string) (*PostgresStore, 
 func (s *PostgresStore) Migrate(ctx context.Context) error {
 	_, err := s.pool.Exec(ctx, initSQL)
 	if err != nil {
-		return fmt.Errorf("running migrations: %w", err)
+		return fmt.Errorf("running init migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, billingSQL)
+	if err != nil {
+		return fmt.Errorf("running billing migration: %w", err)
 	}
 	return nil
 }
@@ -107,9 +135,9 @@ func (s *PostgresStore) Close() {
 func (s *PostgresStore) GetUserByAPIKeyHash(ctx context.Context, hash string) (*User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, email, plan, api_key_hash, created_at, COALESCE(last_active_at, created_at)
+		`SELECT id, email, plan, api_key_hash, COALESCE(stripe_customer_id, ''), created_at, COALESCE(last_active_at, created_at)
 		 FROM users WHERE api_key_hash = $1`, hash,
-	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.CreatedAt, &u.LastActiveAt)
+	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID, &u.CreatedAt, &u.LastActiveAt)
 	if err != nil {
 		return nil, fmt.Errorf("looking up user by API key: %w", err)
 	}
@@ -125,9 +153,9 @@ func (s *PostgresStore) GetUserByAPIKeyHash(ctx context.Context, hash string) (*
 func (s *PostgresStore) GetUserByEmail(ctx context.Context, email string) (*User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, email, plan, COALESCE(api_key_hash, ''), created_at, COALESCE(last_active_at, created_at)
+		`SELECT id, email, plan, COALESCE(api_key_hash, ''), COALESCE(stripe_customer_id, ''), created_at, COALESCE(last_active_at, created_at)
 		 FROM users WHERE email = $1`, email,
-	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.CreatedAt, &u.LastActiveAt)
+	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID, &u.CreatedAt, &u.LastActiveAt)
 	if err != nil {
 		return nil, nil // not found
 	}

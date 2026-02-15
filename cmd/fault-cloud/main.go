@@ -27,6 +27,10 @@ func main() {
 		fmt.Fprintln(os.Stderr, "warning: ANTHROPIC_API_KEY not set, LLM endpoints will fail")
 	}
 
+	if cfg.StripeSecretKey == "" {
+		fmt.Fprintln(os.Stderr, "info: STRIPE_SECRET_KEY not set, billing endpoints disabled")
+	}
+
 	ctx := context.Background()
 	store, err := cloud.NewPostgresStore(ctx, cfg.DatabaseURL)
 	if err != nil {

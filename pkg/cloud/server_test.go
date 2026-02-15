@@ -94,6 +94,41 @@ func (m *mockStore) GetUsage(_ context.Context, userID string, month string) (*M
 
 func (m *mockStore) Close() {}
 
+func (m *mockStore) GetUserByID(_ context.Context, userID string) (*User, error) {
+	return m.findUserByID(userID), nil
+}
+
+func (m *mockStore) GetUserByStripeCustomerID(_ context.Context, customerID string) (*User, error) {
+	for _, u := range m.users {
+		if u.StripeCustomerID == customerID {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockStore) UpdateUserPlan(_ context.Context, userID string, plan string) error {
+	if u := m.findUserByID(userID); u != nil {
+		u.Plan = plan
+	}
+	return nil
+}
+
+func (m *mockStore) SetStripeCustomerID(_ context.Context, userID string, customerID string) error {
+	if u := m.findUserByID(userID); u != nil {
+		u.StripeCustomerID = customerID
+	}
+	return nil
+}
+
+func (m *mockStore) UpsertSubscription(_ context.Context, sub *Subscription) error {
+	return nil
+}
+
+func (m *mockStore) GetSubscriptionByUserID(_ context.Context, userID string) (*Subscription, error) {
+	return nil, nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {
@@ -569,5 +604,105 @@ func TestRotateKey_NoAuth(t *testing.T) {
 
 	if w.Code != http.StatusUnauthorized {
 		t.Fatalf("expected 401, got %d", w.Code)
+	}
+}
+
+func TestUsageResponse_IncludesLimits(t *testing.T) {
+	store := newMockStore()
+	apiKey := store.addTestUser("limits@example.com")
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/usage", nil)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d: %s", w.Code, w.Body.String())
+	}
+
+	var resp UsageResponse
+	if err := json.NewDecoder(w.Body).Decode(&resp); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+
+	// Free plan should have 50 LLM call limit
+	if resp.LLMLimit != 50 {
+		t.Errorf("expected LLM limit of 50 for free plan, got %d", resp.LLMLimit)
+	}
+
+	if resp.LLMRemaining != 50 {
+		t.Errorf("expected 50 remaining for unused user, got %d", resp.LLMRemaining)
+	}
+}
+
+func TestUsageLimits_FreeUserExceeded(t *testing.T) {
+	store := newMockStore()
+	apiKey := store.addTestUser("limited@example.com")
+
+	// Pre-populate usage at the limit
+	month := time.Now().Format("2006-01")
+	store.usage["test-user-1:"+month] = &MonthlyUsage{
+		UserID:   "test-user-1",
+		Month:    month,
+		LLMCalls: 50, // at free limit
+	}
+
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/analyze/confidence",
+		strings.NewReader(`{"diff":"some diff"}`))
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	if w.Code != http.StatusTooManyRequests {
+		t.Fatalf("expected 429 for exceeded free user, got %d: %s", w.Code, w.Body.String())
+	}
+
+	if w.Header().Get("X-RateLimit-Limit") != "50" {
+		t.Errorf("expected X-RateLimit-Limit header of 50, got %q", w.Header().Get("X-RateLimit-Limit"))
+	}
+}
+
+func TestUsageLimits_ProUserAllowed(t *testing.T) {
+	store := newMockStore()
+	apiKey := store.addTestUser("pro@example.com")
+
+	// Make this user a pro user
+	for _, u := range store.users {
+		if u.Email == "pro@example.com" {
+			u.Plan = "pro"
+		}
+	}
+
+	// Give them 50 calls (would block free, but pro has 1000 limit)
+	month := time.Now().Format("2006-01")
+	store.usage["test-user-1:"+month] = &MonthlyUsage{
+		UserID:   "test-user-1",
+		Month:    month,
+		LLMCalls: 50,
+	}
+
+	srv := NewServer(Config{Port: "8082", LogLevel: "error"}, store)
+
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/analyze/confidence",
+		strings.NewReader(`{"diff":"some diff"}`))
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Content-Type", "application/json")
+	w := httptest.NewRecorder()
+
+	srv.Handler().ServeHTTP(w, req)
+
+	// Should NOT be 429 — pro user has 1000 limit
+	if w.Code == http.StatusTooManyRequests {
+		t.Fatalf("pro user should not be rate limited at 50 calls")
+	}
+
+	if w.Header().Get("X-RateLimit-Limit") != "1000" {
+		t.Errorf("expected X-RateLimit-Limit of 1000 for pro, got %q", w.Header().Get("X-RateLimit-Limit"))
 	}
 }

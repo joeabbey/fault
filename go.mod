@@ -6,7 +6,9 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.4.3
+	github.com/joeabbey/magma v0.0.0-20260201193941-2175b7272343
 	github.com/spf13/cobra v1.10.2
+	github.com/stripe/stripe-go/v76 v76.25.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

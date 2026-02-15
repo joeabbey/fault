@@ -10,6 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/joeabbey/magma/pkg/limits"
+	magmastripe "github.com/joeabbey/magma/pkg/stripe"
 )
 
 //go:embed install.sh
@@ -23,6 +26,13 @@ type Config struct {
 	Port        string
 	DatabaseURL string
 	LogLevel    string
+
+	// Stripe billing (optional — billing disabled if StripeSecretKey is empty)
+	StripeSecretKey     string
+	StripeWebhookSecret string
+	StripePriceIDPro    string
+	StripePriceIDTeam   string
+	AppURL              string
 }
 
 // ConfigFromEnv loads server configuration from environment variables.
@@ -37,20 +47,32 @@ func ConfigFromEnv() Config {
 		logLevel = "info"
 	}
 
+	appURL := os.Getenv("APP_URL")
+	if appURL == "" {
+		appURL = "https://fault.jabbey.io"
+	}
+
 	return Config{
-		Port:        port,
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		LogLevel:    logLevel,
+		Port:                port,
+		DatabaseURL:         os.Getenv("DATABASE_URL"),
+		LogLevel:            logLevel,
+		StripeSecretKey:     os.Getenv("STRIPE_SECRET_KEY"),
+		StripeWebhookSecret: os.Getenv("STRIPE_WEBHOOK_SECRET"),
+		StripePriceIDPro:    os.Getenv("STRIPE_PRICE_ID_PRO"),
+		StripePriceIDTeam:   os.Getenv("STRIPE_PRICE_ID_TEAM"),
+		AppURL:              appURL,
 	}
 }
 
 // Server is the cloud API HTTP server.
 type Server struct {
-	cfg      Config
-	store    Store
-	logger   *slog.Logger
-	handlers *Handlers
-	mux      *http.ServeMux
+	cfg             Config
+	store           Store
+	logger          *slog.Logger
+	handlers        *Handlers
+	limitsEngine    *limits.Engine
+	billingHandlers *BillingHandlers
+	mux             *http.ServeMux
 }
 
 // NewServer creates a new Server with the given config and store.
@@ -69,12 +91,44 @@ func NewServer(cfg Config, store Store) *Server {
 		Level: level,
 	}))
 
+	// Always create the limits engine (works without Stripe)
+	storageAdapter := NewLimitsStorageAdapter(store)
+	planProvider := NewFaultPlanProvider(store)
+	limitsEngine := limits.NewEngine(storageAdapter, planProvider)
+
 	s := &Server{
-		cfg:      cfg,
-		store:    store,
-		logger:   logger,
-		handlers: NewHandlers(store, logger),
-		mux:      http.NewServeMux(),
+		cfg:          cfg,
+		store:        store,
+		logger:       logger,
+		handlers:     NewHandlers(store, limitsEngine, logger),
+		limitsEngine: limitsEngine,
+		mux:          http.NewServeMux(),
+	}
+
+	// Set up Stripe billing if configured
+	if cfg.StripeSecretKey != "" {
+		prices := map[string]string{
+			"pro":  cfg.StripePriceIDPro,
+			"team": cfg.StripePriceIDTeam,
+		}
+
+		stripeClient := magmastripe.NewClient(magmastripe.Config{
+			SecretKey:     cfg.StripeSecretKey,
+			WebhookSecret: cfg.StripeWebhookSecret,
+			Prices:        prices,
+		})
+
+		callbacks := NewFaultWebhookCallbacks(store, prices, logger)
+		webhookHandler := magmastripe.NewWebhookHandler(stripeClient, callbacks)
+
+		s.billingHandlers = NewBillingHandlers(
+			store, stripeClient, limitsEngine, webhookHandler,
+			prices, cfg.AppURL, logger,
+		)
+
+		logger.Info("stripe billing enabled")
+	} else {
+		logger.Info("stripe billing disabled (STRIPE_SECRET_KEY not set)")
 	}
 
 	s.registerRoutes()
@@ -89,6 +143,14 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
 	s.mux.HandleFunc("POST /api/v1/api-keys/rotate", s.handlers.HandleRotateKey)
+
+	// Billing routes (only if Stripe is configured)
+	if s.billingHandlers != nil {
+		s.mux.HandleFunc("POST /api/v1/billing/checkout", s.billingHandlers.HandleCheckout)
+		s.mux.HandleFunc("POST /api/v1/billing/portal", s.billingHandlers.HandlePortal)
+		s.mux.HandleFunc("GET /api/v1/billing/subscription", s.billingHandlers.HandleSubscription)
+		s.mux.HandleFunc("POST /api/v1/billing/webhook", s.billingHandlers.HandleWebhook)
+	}
 
 	// Public: landing page
 	s.mux.HandleFunc("GET /{$}", handleLandingPage)
@@ -113,6 +175,7 @@ func (s *Server) Handler() http.Handler {
 	var handler http.Handler = s.mux
 
 	// Apply middleware in reverse order (outermost first)
+	handler = UsageLimitsMiddleware(s.limitsEngine, s.logger)(handler)
 	handler = APIKeyAuth(s.store, s.logger)(handler)
 	handler = CORSMiddleware(handler)
 	handler = RequestLogger(s.logger)(handler)

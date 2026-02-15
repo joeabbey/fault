@@ -2,10 +2,13 @@ package cloud
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/joeabbey/magma/pkg/limits"
 )
 
 type contextKey string
@@ -99,12 +102,50 @@ func APIKeyAuth(store Store, logger *slog.Logger) func(http.Handler) http.Handle
 	}
 }
 
+// UsageLimitsMiddleware checks the limits engine before allowing requests to
+// analysis endpoints. Returns 429 with rate limit headers when usage is exceeded.
+func UsageLimitsMiddleware(engine *limits.Engine, logger *slog.Logger) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Only gate analysis endpoints
+			if !strings.HasPrefix(r.URL.Path, "/api/v1/analyze/") {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			user := UserFromContext(r.Context())
+			if user == nil {
+				// Auth middleware should have caught this; pass through
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			check := engine.Check(r.Context(), user.ID, "llm_calls")
+
+			// Set rate limit headers on all responses
+			w.Header().Set("X-RateLimit-Limit", fmt.Sprintf("%d", check.Limit))
+			w.Header().Set("X-RateLimit-Remaining", fmt.Sprintf("%d", check.Remaining))
+
+			if !check.Allowed {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusTooManyRequests)
+				fmt.Fprintf(w, `{"error":"usage limit exceeded","plan":%q,"limit":%d,"used":%d,"upgrade":"POST /api/v1/billing/checkout"}`,
+					user.Plan, check.Limit, check.Limit-check.Remaining)
+				return
+			}
+
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // isPublicPath returns true for endpoints that do not require authentication.
 func isPublicPath(path string) bool {
 	publicPaths := []string{
 		"/",
 		"/api/health",
 		"/api/v1/signup",
+		"/api/v1/billing/webhook",
 		"/install.sh",
 	}
 	for _, p := range publicPaths {

@@ -1,19 +1,23 @@
 package cloud
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
+
+	"github.com/joeabbey/fault/pkg/llm"
+	"github.com/joeabbey/magma/pkg/limits"
 )
 
 // Version is set at build time via ldflags.
 var Version = "0.1.0-dev"
+
+const defaultAnthropicModel = "claude-sonnet-4-20250514"
 
 // HealthResponse is returned by the health check endpoint.
 type HealthResponse struct {
@@ -51,48 +55,20 @@ type UsageResponse struct {
 	TokensInput  int64  `json:"tokens_input"`
 	TokensOutput int64  `json:"tokens_output"`
 	Analyses     int    `json:"analyses"`
-}
-
-// AnthropicMessage represents a message in the Anthropic API format.
-type AnthropicMessage struct {
-	Role    string `json:"role"`
-	Content string `json:"content"`
-}
-
-// AnthropicRequest is the request body for the Anthropic Claude API.
-type AnthropicRequest struct {
-	Model     string             `json:"model"`
-	MaxTokens int                `json:"max_tokens"`
-	Messages  []AnthropicMessage `json:"messages"`
-}
-
-// AnthropicUsage represents token usage from the Anthropic API response.
-type AnthropicUsage struct {
-	InputTokens  int64 `json:"input_tokens"`
-	OutputTokens int64 `json:"output_tokens"`
-}
-
-// AnthropicContentBlock represents a content block in the Anthropic response.
-type AnthropicContentBlock struct {
-	Type string `json:"type"`
-	Text string `json:"text"`
-}
-
-// AnthropicResponse is the response from the Anthropic Claude API.
-type AnthropicResponse struct {
-	Content []AnthropicContentBlock `json:"content"`
-	Usage   AnthropicUsage          `json:"usage"`
+	LLMLimit     int    `json:"llm_limit"`
+	LLMRemaining int    `json:"llm_remaining"`
 }
 
 // Handlers holds dependencies for HTTP route handlers.
 type Handlers struct {
-	store  Store
-	logger *slog.Logger
+	store        Store
+	limitsEngine *limits.Engine
+	logger       *slog.Logger
 }
 
-// NewHandlers creates a new Handlers with the given store and logger.
-func NewHandlers(store Store, logger *slog.Logger) *Handlers {
-	return &Handlers{store: store, logger: logger}
+// NewHandlers creates a new Handlers with the given store, limits engine, and logger.
+func NewHandlers(store Store, limitsEngine *limits.Engine, logger *slog.Logger) *Handlers {
+	return &Handlers{store: store, limitsEngine: limitsEngine, logger: logger}
 }
 
 // SignupRequest is the payload for the signup endpoint.
@@ -213,8 +189,19 @@ func (h *Handlers) HandleAnalyzeConfidence(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	prompt := buildConfidencePrompt(req.Diff, req.Language)
-	result, usage, err := callAnthropic(r.Context(), prompt)
+	systemPrompt := llm.LoadPrompt("confidence")
+	if systemPrompt == "" {
+		h.logger.Error("missing confidence prompt template")
+		http.Error(w, `{"error":"server misconfigured"}`, http.StatusInternalServerError)
+		return
+	}
+
+	userPrompt := req.Diff
+	if req.Language != "" {
+		userPrompt = fmt.Sprintf("Language: %s\n\n%s", req.Language, req.Diff)
+	}
+
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
 	if err != nil {
 		h.logger.Error("anthropic API call failed", "error", err)
 		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
@@ -222,17 +209,14 @@ func (h *Handlers) HandleAnalyzeConfidence(w http.ResponseWriter, r *http.Reques
 	}
 
 	// Track usage
-	if err := h.store.IncrementUsage(r.Context(), user.ID, Usage{
-		TokensInput:  usage.InputTokens,
-		TokensOutput: usage.OutputTokens,
-	}); err != nil {
+	if err := h.store.IncrementUsage(r.Context(), user.ID, usage); err != nil {
 		h.logger.Error("failed to track usage", "error", err, "user_id", user.ID)
 	}
 
 	writeJSON(w, http.StatusOK, AnalyzeResponse{
 		Result:      result,
-		TokensInput: usage.InputTokens,
-		TokensOut:   usage.OutputTokens,
+		TokensInput: usage.TokensInput,
+		TokensOut:   usage.TokensOutput,
 	})
 }
 
@@ -255,8 +239,15 @@ func (h *Handlers) HandleAnalyzeSpec(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prompt := buildSpecPrompt(req.Diff, req.Spec, req.Language)
-	result, usage, err := callAnthropic(r.Context(), prompt)
+	systemPrompt := llm.LoadPrompt("spec_compare")
+	if systemPrompt == "" {
+		h.logger.Error("missing spec_compare prompt template")
+		http.Error(w, `{"error":"server misconfigured"}`, http.StatusInternalServerError)
+		return
+	}
+
+	userPrompt := buildSpecUserPrompt(req.Spec, req.Diff, req.Language)
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
 	if err != nil {
 		h.logger.Error("anthropic API call failed", "error", err)
 		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
@@ -264,17 +255,14 @@ func (h *Handlers) HandleAnalyzeSpec(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Track usage
-	if err := h.store.IncrementUsage(r.Context(), user.ID, Usage{
-		TokensInput:  usage.InputTokens,
-		TokensOutput: usage.OutputTokens,
-	}); err != nil {
+	if err := h.store.IncrementUsage(r.Context(), user.ID, usage); err != nil {
 		h.logger.Error("failed to track usage", "error", err, "user_id", user.ID)
 	}
 
 	writeJSON(w, http.StatusOK, AnalyzeResponse{
 		Result:      result,
-		TokensInput: usage.InputTokens,
-		TokensOut:   usage.OutputTokens,
+		TokensInput: usage.TokensInput,
+		TokensOut:   usage.TokensOutput,
 	})
 }
 
@@ -294,6 +282,8 @@ func (h *Handlers) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	check := h.limitsEngine.Check(r.Context(), user.ID, "llm_calls")
+
 	writeJSON(w, http.StatusOK, UsageResponse{
 		UserID:       user.ID,
 		Email:        user.Email,
@@ -303,124 +293,97 @@ func (h *Handlers) HandleUsage(w http.ResponseWriter, r *http.Request) {
 		TokensInput:  usage.TokensInput,
 		TokensOutput: usage.TokensOutput,
 		Analyses:     usage.Analyses,
+		LLMLimit:     check.Limit,
+		LLMRemaining: check.Remaining,
 	})
 }
 
-// buildConfidencePrompt constructs the prompt for confidence scoring.
-func buildConfidencePrompt(diff string, language string) string {
-	langHint := ""
+func buildSpecUserPrompt(spec string, diff string, language string) string {
+	var b strings.Builder
 	if language != "" {
-		langHint = fmt.Sprintf(" The code is written in %s.", language)
+		b.WriteString(fmt.Sprintf("Language: %s\n\n", language))
 	}
-
-	return fmt.Sprintf(`You are an expert code reviewer analyzing a git diff for potential issues.%s
-
-Analyze the following diff and return a JSON object with:
-- "confidence": a score from 0.0 to 1.0 indicating confidence the changes are correct
-- "issues": an array of objects with "severity" (error/warning/info), "message", and "line" (if applicable)
-- "summary": a brief summary of the analysis
-
-Return ONLY valid JSON, no markdown formatting.
-
-Diff:
-%s`, langHint, diff)
+	b.WriteString("## Specification\n\n")
+	b.WriteString(spec)
+	b.WriteString("\n\n## Code Changes (Diff)\n\n")
+	b.WriteString(diff)
+	return b.String()
 }
 
-// buildSpecPrompt constructs the prompt for spec comparison.
-func buildSpecPrompt(diff string, spec string, language string) string {
-	langHint := ""
-	if language != "" {
-		langHint = fmt.Sprintf(" The code is written in %s.", language)
-	}
-
-	return fmt.Sprintf(`You are an expert code reviewer comparing a git diff against a specification.%s
-
-Analyze whether the diff correctly implements the specification. Return a JSON object with:
-- "conformance": a score from 0.0 to 1.0 indicating how well the diff matches the spec
-- "missing": an array of spec requirements not addressed in the diff
-- "deviations": an array of ways the diff deviates from the spec
-- "summary": a brief summary of the comparison
-
-Return ONLY valid JSON, no markdown formatting.
-
-Specification:
-%s
-
-Diff:
-%s`, langHint, spec, diff)
-}
-
-// callAnthropic sends a prompt to the Anthropic Claude API and returns the raw
-// JSON result along with token usage.
-func callAnthropic(ctx context.Context, prompt string) (json.RawMessage, AnthropicUsage, error) {
-	apiKey := os.Getenv("ANTHROPIC_API_KEY")
+// callAnthropic sends a prompt to the Anthropic Claude API and returns the raw JSON result
+// along with token usage. The prompt is split into an LLM system prompt and a user prompt.
+func callAnthropic(ctx context.Context, systemPrompt string, userPrompt string) (json.RawMessage, Usage, error) {
+	apiKey := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	if apiKey == "" {
-		return nil, AnthropicUsage{}, fmt.Errorf("ANTHROPIC_API_KEY not set")
+		return nil, Usage{}, fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
 
-	reqBody := AnthropicRequest{
-		Model:     "claude-sonnet-4-20250514",
-		MaxTokens: 4096,
-		Messages: []AnthropicMessage{
-			{Role: "user", Content: prompt},
-		},
+	model := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL"))
+	if model == "" {
+		model = defaultAnthropicModel
 	}
+	opts := []llm.Option{llm.WithModel(model)}
+	client := llm.NewClient(apiKey, opts...)
 
-	body, err := json.Marshal(reqBody)
+	resp, err := client.SendMessage(ctx, systemPrompt, []llm.Message{
+		{Role: "user", Content: userPrompt},
+	})
 	if err != nil {
-		return nil, AnthropicUsage{}, fmt.Errorf("marshaling request: %w", err)
+		return nil, Usage{}, fmt.Errorf("calling Anthropic API: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost,
-		"https://api.anthropic.com/v1/messages", bytes.NewReader(body))
-	if err != nil {
-		return nil, AnthropicUsage{}, fmt.Errorf("creating request: %w", err)
+	text := strings.TrimSpace(resp.TextContent())
+	if text == "" {
+		return nil, Usage{}, fmt.Errorf("empty response from Anthropic API")
 	}
 
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("x-api-key", apiKey)
-	httpReq.Header.Set("anthropic-version", "2023-06-01")
-
-	resp, err := http.DefaultClient.Do(httpReq)
-	if err != nil {
-		return nil, AnthropicUsage{}, fmt.Errorf("calling Anthropic API: %w", err)
-	}
-	defer resp.Body.Close()
-
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, AnthropicUsage{}, fmt.Errorf("reading response: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, AnthropicUsage{}, fmt.Errorf("Anthropic API returned %d: %s",
-			resp.StatusCode, string(respBody))
-	}
-
-	var anthropicResp AnthropicResponse
-	if err := json.Unmarshal(respBody, &anthropicResp); err != nil {
-		return nil, AnthropicUsage{}, fmt.Errorf("parsing response: %w", err)
-	}
-
-	// Extract text content
-	var resultText string
-	for _, block := range anthropicResp.Content {
-		if block.Type == "text" {
-			resultText = block.Text
-			break
+	if !json.Valid([]byte(text)) {
+		if extracted := extractJSON(text); extracted != "" {
+			text = extracted
+		} else {
+			return nil, Usage{}, fmt.Errorf("invalid JSON response from Anthropic API: %s", truncate(text, 200))
 		}
 	}
 
-	// Try to parse as JSON; if it fails, wrap in a JSON string
-	var result json.RawMessage
-	if json.Valid([]byte(resultText)) {
-		result = json.RawMessage(resultText)
-	} else {
-		wrapped, _ := json.Marshal(resultText)
-		result = json.RawMessage(wrapped)
+	return json.RawMessage(text), Usage{
+		TokensInput:  int64(resp.Usage.InputTokens),
+		TokensOutput: int64(resp.Usage.OutputTokens),
+	}, nil
+}
+
+func extractJSON(s string) string {
+	s = strings.TrimSpace(s)
+	if strings.HasPrefix(s, "```") {
+		if idx := strings.Index(s, "\n"); idx != -1 {
+			s = s[idx+1:]
+		}
+		if end := strings.LastIndex(s, "```"); end != -1 {
+			s = s[:end]
+		}
+		s = strings.TrimSpace(s)
 	}
 
-	return result, anthropicResp.Usage, nil
+	start := strings.IndexAny(s, "{[")
+	if start == -1 {
+		return ""
+	}
+	end := strings.LastIndexAny(s, "}]")
+	if end == -1 || end <= start {
+		return ""
+	}
+
+	candidate := strings.TrimSpace(s[start : end+1])
+	if json.Valid([]byte(candidate)) {
+		return candidate
+	}
+	return ""
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "..."
 }
 
 // writeJSON encodes v as JSON and writes it to w with the given status code.
