@@ -8,17 +8,21 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/joeabbey/fault/pkg/analyzer"
+	"github.com/joeabbey/fault/pkg/git"
 )
 
 // TerminalReporter outputs analysis results to the terminal with colors.
 type TerminalReporter struct {
 	out     io.Writer
 	noColor bool
+	compact bool
+	diff    *git.Diff
 }
 
 // NewTerminalReporter creates a terminal reporter.
 // Set noColor to true to disable color output.
-func NewTerminalReporter(noColor bool) *TerminalReporter {
+// Set compact to true for single-line output (CI/hooks).
+func NewTerminalReporter(noColor bool, compact bool) *TerminalReporter {
 	// Also check NO_COLOR env var
 	if os.Getenv("NO_COLOR") != "" {
 		noColor = true
@@ -31,18 +35,25 @@ func NewTerminalReporter(noColor bool) *TerminalReporter {
 	return &TerminalReporter{
 		out:     os.Stdout,
 		noColor: noColor,
+		compact: compact,
 	}
 }
 
 // NewTerminalReporterWithWriter creates a terminal reporter with a custom writer.
-func NewTerminalReporterWithWriter(w io.Writer, noColor bool) *TerminalReporter {
+func NewTerminalReporterWithWriter(w io.Writer, noColor bool, compact bool) *TerminalReporter {
 	if noColor {
 		color.NoColor = true
 	}
 	return &TerminalReporter{
 		out:     w,
 		noColor: noColor,
+		compact: compact,
 	}
+}
+
+// SetDiff sets the git diff for code context extraction in verbose mode.
+func (r *TerminalReporter) SetDiff(diff *git.Diff) {
+	r.diff = diff
 }
 
 // Report outputs the analysis result to the terminal.
@@ -75,13 +86,17 @@ func (r *TerminalReporter) printSuccess(result *analyzer.AnalysisResult) {
 // printIssues prints each issue with color-coded severity.
 func (r *TerminalReporter) printIssues(result *analyzer.AnalysisResult) {
 	for _, issue := range result.Issues {
-		r.printIssue(issue)
+		if r.compact {
+			r.printIssueCompact(issue)
+		} else {
+			r.printIssueVerbose(issue)
+		}
 	}
 	fmt.Fprintln(r.out)
 }
 
-// printIssue prints a single issue.
-func (r *TerminalReporter) printIssue(issue analyzer.Issue) {
+// printIssueCompact prints a single issue in compact single-line format.
+func (r *TerminalReporter) printIssueCompact(issue analyzer.Issue) {
 	// File location
 	location := issue.File
 	if issue.Line > 0 {
@@ -111,6 +126,85 @@ func (r *TerminalReporter) printIssue(issue analyzer.Issue) {
 	}
 }
 
+// printIssueVerbose prints a single issue in verbose format with code context.
+func (r *TerminalReporter) printIssueVerbose(issue analyzer.Issue) {
+	// File location
+	location := issue.File
+	if issue.Line > 0 {
+		location = fmt.Sprintf("%s:%d", issue.File, issue.Line)
+	}
+
+	// Severity badge and category on first line
+	badge := r.severityBadge(issue.Severity)
+	category := fmt.Sprintf("[%s]", issue.Category)
+	fmt.Fprintf(r.out, "  %s  %s %s\n", badge, category, location)
+
+	// Message on its own line
+	fmt.Fprintf(r.out, "  %s\n", issue.Message)
+
+	// Code context block
+	if issue.Line > 0 {
+		ctx := ExtractContext(issue.File, issue.Line, r.diff, 3)
+		if ctx != nil {
+			fmt.Fprintln(r.out)
+			r.printCodeContext(ctx)
+		}
+	}
+
+	// Suggestion
+	if issue.Suggestion != "" {
+		fmt.Fprintln(r.out)
+		green := color.New(color.FgGreen)
+		fmt.Fprintf(r.out, "  %s %s\n", green.Sprint("fix:"), issue.Suggestion)
+	}
+
+	// Related files
+	if len(issue.RelatedFiles) > 0 {
+		dim := color.New(color.FgHiBlack)
+		fmt.Fprintf(r.out, "  %s %s\n", dim.Sprint("related:"), strings.Join(issue.RelatedFiles, ", "))
+	}
+
+	// Blank line between issues
+	fmt.Fprintln(r.out)
+}
+
+// printCodeContext renders the code context block with line numbers.
+func (r *TerminalReporter) printCodeContext(ctx *CodeContext) {
+	// Find max line number for width alignment
+	maxNum := 0
+	for _, l := range ctx.Lines {
+		if l.Number > maxNum {
+			maxNum = l.Number
+		}
+	}
+	width := len(fmt.Sprintf("%d", maxNum))
+
+	dim := color.New(color.FgHiBlack)
+	marker := color.New(color.FgCyan, color.Bold)
+
+	for _, l := range ctx.Lines {
+		numStr := fmt.Sprintf("%*d", width, l.Number)
+
+		addMark := " "
+		if l.IsAdded {
+			addMark = "+"
+		}
+
+		suffix := ""
+		if l.IsIssue {
+			suffix = marker.Sprint("   <-- here")
+		}
+
+		fmt.Fprintf(r.out, "    %s %s%s %s%s\n",
+			dim.Sprint(numStr),
+			dim.Sprint("|"),
+			addMark,
+			l.Content,
+			suffix,
+		)
+	}
+}
+
 // severityBadge returns a color-coded severity string.
 func (r *TerminalReporter) severityBadge(severity analyzer.Severity) string {
 	switch severity {
@@ -121,7 +215,7 @@ func (r *TerminalReporter) severityBadge(severity analyzer.Severity) string {
 		c := color.New(color.FgYellow, color.Bold)
 		return c.Sprint("warning")
 	case analyzer.SeverityInfo:
-		c := color.New(color.FgBlue)
+		c := color.New(color.FgCyan)
 		return c.Sprint("info")
 	default:
 		return string(severity)
@@ -146,15 +240,17 @@ func (r *TerminalReporter) printSummary(result *analyzer.AnalysisResult) {
 		parts = append(parts, c.Sprintf("%d warnings", warnings))
 	}
 	if infos > 0 {
-		c := color.New(color.FgBlue)
+		c := color.New(color.FgCyan)
 		parts = append(parts, c.Sprintf("%d info", infos))
 	}
 
-	summary := fmt.Sprintf("Found %d issues", total)
+	// Build summary: "  7 issues (3 errors, 2 warnings, 2 info) in 5 files — 142ms"
+	summary := fmt.Sprintf("  %d issues", total)
 	if len(parts) > 0 {
 		summary += " (" + strings.Join(parts, ", ") + ")"
 	}
-	summary += fmt.Sprintf(" in %d files (%s)", result.FilesChanged, formatDuration(result.Duration))
+	summary += fmt.Sprintf(" in %d files", result.FilesChanged)
+	summary += fmt.Sprintf(" \u2014 %s", formatDuration(result.Duration))
 
 	fmt.Fprintln(r.out, summary)
 }

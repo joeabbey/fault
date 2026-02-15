@@ -53,13 +53,14 @@ func checkCmd() *cobra.Command {
 		noColor     bool
 		format      string
 		useBaseline bool
+		compact     bool
 	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCheck(staged, unstaged, branch, noColor, format, useBaseline)
+			return runCheck(staged, unstaged, branch, noColor, format, useBaseline, compact)
 		},
 	}
 
@@ -69,11 +70,12 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
 	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif")
 	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
+	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
 
 	return cmd
 }
 
-func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool) error {
+func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool, compact bool) error {
 	// 1. Load config
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -154,7 +156,10 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 	}
 
 	// 9. Report results
-	rep := selectReporter(format, noColor)
+	rep := selectReporter(format, noColor, compact)
+	if tr, ok := rep.(*reporter.TerminalReporter); ok && diff != nil {
+		tr.SetDiff(diff)
+	}
 	exitCode := rep.Report(result, cfg.BlockOn)
 
 	if exitCode != 0 {
@@ -206,14 +211,14 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 }
 
 // selectReporter returns the appropriate reporter based on the format flag.
-func selectReporter(format string, noColor bool) reporter.Reporter {
+func selectReporter(format string, noColor bool, compact bool) reporter.Reporter {
 	switch format {
 	case "json":
 		return reporter.NewJSONReporter()
 	case "sarif":
 		return reporter.NewSARIFReporter()
 	default:
-		return reporter.NewTerminalReporter(noColor)
+		return reporter.NewTerminalReporter(noColor, compact)
 	}
 }
 
