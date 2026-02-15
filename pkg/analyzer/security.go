@@ -58,6 +58,7 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkXSS(fileDiff)...)
 		issues = append(issues, checkPathTraversal(fileDiff)...)
 		issues = append(issues, checkInsecureCrypto(fileDiff)...)
+		issues = append(issues, checkRustSecurity(fileDiff)...)
 	}
 
 	return issues, nil
@@ -525,6 +526,108 @@ func checkInsecureCrypto(fileDiff git.FileDiff) []Issue {
 					Suggestion: "Use SHA-256+ for hashing, crypto.getRandomValues() or crypto/rand for random values",
 				})
 				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Rust-specific security checks ---
+
+type rustSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var rustSecurityRules = []rustSecurityRule{
+	{
+		pattern:    regexp.MustCompile(`\bunsafe\s*\{`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-unsafe",
+		severity:   SeverityWarning,
+		message:    "Unsafe block detected — requires manual review",
+		suggestion: "Minimize unsafe code; document safety invariants and consider safe alternatives",
+	},
+	{
+		pattern:    regexp.MustCompile(`\*\w+\s*\.`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-raw-pointer",
+		severity:   SeverityWarning,
+		message:    "Possible raw pointer dereference",
+		suggestion: "Ensure raw pointer access is within a well-documented unsafe block with verified invariants",
+	},
+	{
+		pattern:    regexp.MustCompile(`std::process::Command::new\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/rust-command-injection",
+		severity:   SeverityWarning,
+		message:    "Process command execution — verify input is not user-controlled",
+		suggestion: "Validate and sanitize all inputs to Command::new and .arg() to prevent command injection",
+	},
+	{
+		pattern:    regexp.MustCompile(`(?i)(?:let|const)\s+(?:mut\s+)?(?:secret|api_key|password|token)\s*(?::\s*&?str)?\s*=\s*"[^"]{8,}"`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)(CHANGEME|xxx|placeholder|example|dummy|test|mock)`),
+			regexp.MustCompile(`std::env::var\(`),
+		},
+		id:         "security/rust-hardcoded-secret",
+		severity:   SeverityError,
+		message:    "Possible hardcoded secret in Rust code",
+		suggestion: "Use environment variables (std::env::var) or a config file instead of hardcoding secrets",
+	},
+}
+
+func checkRustSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isRustFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range rustSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break // one issue per line
 			}
 		}
 	}

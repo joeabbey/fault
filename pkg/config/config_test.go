@@ -39,8 +39,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.LLM.Enabled {
 		t.Error("expected LLM disabled by default")
 	}
-	if len(cfg.Languages) != 3 {
-		t.Errorf("expected 3 languages, got %d", len(cfg.Languages))
+	if len(cfg.Languages) != 4 {
+		t.Errorf("expected 4 languages, got %d", len(cfg.Languages))
 	}
 	if len(cfg.Ignore) != 4 {
 		t.Errorf("expected 4 ignore patterns, got %d", len(cfg.Ignore))
@@ -109,7 +109,7 @@ func TestLoadInvalidConfig(t *testing.T) {
 		},
 		{
 			name:    "unsupported language",
-			content: "version: 1\nblock_on: error\nlanguages: [rust]",
+			content: "version: 1\nblock_on: error\nlanguages: [cobol]",
 			wantErr: "unsupported language",
 		},
 		{

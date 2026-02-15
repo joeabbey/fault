@@ -116,6 +116,7 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 	reg.Register(parser.NewGoParser())
 	reg.Register(parser.NewTypeScriptParser())
 	reg.Register(parser.NewPythonParser())
+	reg.Register(parser.NewRustParser())
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -673,6 +674,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	reg.Register(parser.NewGoParser())
 	reg.Register(parser.NewTypeScriptParser())
 	reg.Register(parser.NewPythonParser())
+	reg.Register(parser.NewRustParser())
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -705,6 +707,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	fixRegistry.Register(fixer.NewImportFixer())
 	fixRegistry.Register(fixer.NewSecurityFixer())
 	fixRegistry.Register(fixer.NewPatternFixer())
+	fixRegistry.Register(fixer.NewRustFixer())
 
 	// 9. Generate fixes for fixable issues
 	var fixes []*fixer.Fix
@@ -828,6 +831,7 @@ func runWatch(noColor bool) error {
 	reg.Register(parser.NewGoParser())
 	reg.Register(parser.NewTypeScriptParser())
 	reg.Register(parser.NewPythonParser())
+	reg.Register(parser.NewRustParser())
 
 	// 4. Build or load the index
 	repoRoot, _ := repo.RepoRoot()

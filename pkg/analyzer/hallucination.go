@@ -177,6 +177,8 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkJSImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".py":
 		issues = append(issues, h.checkPythonImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".rs":
+		issues = append(issues, h.checkRustImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues
@@ -494,6 +496,95 @@ func (h *HallucinationAnalyzer) checkPythonImports(repoPath, filePath string, pf
 	return issues
 }
 
+// rustStdCrates is a set of well-known Rust standard library and core crates.
+var rustStdCrates = map[string]bool{
+	"std": true, "core": true, "alloc": true, "proc_macro": true,
+	"crate": true, "super": true, "self": true,
+}
+
+// checkRustImports validates Rust use statements against Cargo.toml.
+func (h *HallucinationAnalyzer) checkRustImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	deps, err := parseCargoToml(repoPath)
+	if err != nil {
+		// Can't read Cargo.toml — fail open.
+		return issues
+	}
+
+	for _, imp := range pf.Imports {
+		importPath := imp.Path
+
+		// Get the top-level crate name (first path segment before ::).
+		topCrate := importPath
+		if idx := strings.Index(importPath, "::"); idx != -1 {
+			topCrate = importPath[:idx]
+		}
+
+		// Standard/built-in crate paths.
+		if rustStdCrates[topCrate] {
+			continue
+		}
+
+		// Check if the crate matches any dependency in Cargo.toml.
+		// Cargo normalizes hyphens to underscores in crate names.
+		normalizedCrate := strings.ReplaceAll(topCrate, "-", "_")
+		if deps[topCrate] || deps[normalizedCrate] {
+			continue
+		}
+
+		issues = append(issues, Issue{
+			ID:         "hallucination/phantom-import",
+			Severity:   SeverityError,
+			Category:   "hallucination",
+			File:       filePath,
+			Line:       imp.Line,
+			Message:    "Import references unknown crate: " + importPath,
+			Suggestion: "Verify the crate exists and add it to Cargo.toml with 'cargo add " + topCrate + "'",
+		})
+	}
+
+	return issues
+}
+
+// parseCargoToml reads a Cargo.toml and returns a set of dependency crate names.
+func parseCargoToml(repoPath string) (map[string]bool, error) {
+	cargoPath := filepath.Join(repoPath, "Cargo.toml")
+	data, err := os.ReadFile(cargoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string]bool)
+	inDeps := false
+
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		// Detect [dependencies], [dev-dependencies], [build-dependencies] sections.
+		if strings.HasPrefix(trimmed, "[") {
+			inDeps = strings.Contains(trimmed, "dependencies")
+			continue
+		}
+
+		if !inDeps {
+			continue
+		}
+
+		// Lines like: serde = "1.0" or serde = { version = "1.0", features = [...] }
+		if idx := strings.Index(trimmed, "="); idx > 0 {
+			name := strings.TrimSpace(trimmed[:idx])
+			if name != "" && !strings.HasPrefix(name, "#") {
+				deps[name] = true
+				// Also add underscore-normalized form.
+				deps[strings.ReplaceAll(name, "-", "_")] = true
+			}
+		}
+	}
+
+	return deps, nil
+}
+
 // parsePythonDeps reads requirements.txt and/or pyproject.toml for dependency names.
 func parsePythonDeps(repoPath string) (map[string]bool, error) {
 	deps := make(map[string]bool)
@@ -591,6 +682,9 @@ var tsFuncPatterns = []*regexp.Regexp{
 // Python function declaration.
 var pyFuncPattern = regexp.MustCompile(`^def\s+\w+\(`)
 
+// Rust function declaration.
+var rustFuncPattern = regexp.MustCompile(`^(?:pub(?:\((?:crate|super)\))?\s+)?(?:async\s+)?fn\s+\w+`)
+
 // Stub body patterns.
 var stubPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^\s*return\s+(nil|""|0|false|\[\]|\{\}|None)\s*;?\s*$`),
@@ -602,6 +696,8 @@ var stubPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`(?i)^\s*panic\(\s*"(not implemented|TODO)`),
 	regexp.MustCompile(`(?i)^\s*//\s*TODO\b`),
 	regexp.MustCompile(`(?i)^\s*#\s*TODO\b`),
+	regexp.MustCompile(`^\s*todo!\(`),
+	regexp.MustCompile(`^\s*unimplemented!\(`),
 }
 
 func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issue {
@@ -634,6 +730,8 @@ func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issu
 				}
 			case ext == ".py":
 				isFuncDecl = pyFuncPattern.MatchString(content)
+			case ext == ".rs":
+				isFuncDecl = rustFuncPattern.MatchString(content)
 			}
 
 			if !isFuncDecl {

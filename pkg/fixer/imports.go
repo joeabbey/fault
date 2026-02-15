@@ -265,6 +265,8 @@ func detectLanguage(path string) string {
 		return "typescript"
 	case ".py":
 		return "python"
+	case ".rs":
+		return "rust"
 	default:
 		return ""
 	}
