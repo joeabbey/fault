@@ -219,6 +219,8 @@ func selectReporter(format string, noColor bool, compact bool) reporter.Reporter
 		return reporter.NewJSONReporter()
 	case "sarif":
 		return reporter.NewSARIFReporter()
+	case "github":
+		return reporter.NewGitHubReporter()
 	default:
 		return reporter.NewTerminalReporter(noColor, compact)
 	}
