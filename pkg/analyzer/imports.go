@@ -110,6 +110,12 @@ func (a *ImportAnalyzer) validateImport(
 		// Elixir use/alias/import validated by hallucination analyzer
 	case "lua":
 		// Lua require() validated by hallucination analyzer
+	// v4 languages — imports validated by hallucination analyzer
+	case "zig", "nim", "crystal", "vlang", "dlang":
+	case "haskell", "clojure", "erlang", "fsharp", "ocaml":
+	case "perl", "powershell", "groovy":
+	case "julia", "fortran", "solidity", "terraform", "protobuf":
+	case "visualbasic", "cobol", "ada", "pascal":
 	}
 
 	return issues

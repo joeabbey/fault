@@ -54,7 +54,15 @@ type WatchConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Version:   1,
-		Languages: []string{"typescript", "python", "go", "rust", "ruby", "kotlin", "csharp", "php", "swift", "c", "cpp", "objc", "bash", "sql", "dart", "scala", "r", "elixir", "lua"},
+		Languages: []string{
+			"typescript", "python", "go", "rust", "ruby", "kotlin", "csharp", "php", "swift",
+			"c", "cpp", "objc", "bash", "sql", "dart", "scala", "r", "elixir", "lua",
+			"zig", "nim", "crystal", "vlang", "dlang",
+			"haskell", "clojure", "erlang", "fsharp", "ocaml",
+			"perl", "powershell", "groovy",
+			"julia", "fortran", "solidity", "terraform", "protobuf",
+			"visualbasic", "cobol", "ada", "pascal",
+		},
 		BlockOn:   "error",
 		Analyzers: AnalyzersConfig{
 			Imports:       true,
@@ -135,26 +143,15 @@ func (c *Config) Validate() error {
 	}
 
 	validLangs := map[string]bool{
-		"go":         true,
-		"typescript": true,
-		"python":     true,
-		"java":       true,
-		"rust":       true,
-		"ruby":       true,
-		"kotlin":     true,
-		"csharp":     true,
-		"php":        true,
-		"swift":      true,
-		"c":          true,
-		"cpp":        true,
-		"objc":       true,
-		"bash":       true,
-		"sql":        true,
-		"dart":       true,
-		"scala":      true,
-		"r":          true,
-		"elixir":     true,
-		"lua":        true,
+		"go": true, "typescript": true, "python": true, "java": true, "rust": true,
+		"ruby": true, "kotlin": true, "csharp": true, "php": true, "swift": true,
+		"c": true, "cpp": true, "objc": true, "bash": true, "sql": true,
+		"dart": true, "scala": true, "r": true, "elixir": true, "lua": true,
+		"zig": true, "nim": true, "crystal": true, "vlang": true, "dlang": true,
+		"haskell": true, "clojure": true, "erlang": true, "fsharp": true, "ocaml": true,
+		"perl": true, "powershell": true, "groovy": true,
+		"julia": true, "fortran": true, "solidity": true, "terraform": true, "protobuf": true,
+		"visualbasic": true, "cobol": true, "ada": true, "pascal": true,
 	}
 	for _, lang := range c.Languages {
 		if !validLangs[lang] {

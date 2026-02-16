@@ -217,6 +217,48 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkPowershellImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".groovy" || ext == ".gvy":
 		issues = append(issues, h.checkGroovyImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	// Modern systems languages
+	case ext == ".zig":
+		issues = append(issues, h.checkZigImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".nim":
+		issues = append(issues, h.checkNimImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".cr":
+		issues = append(issues, h.checkCrystalImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".v":
+		issues = append(issues, h.checkVlangImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".d":
+		issues = append(issues, h.checkDlangImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	// Functional languages
+	case ext == ".hs" || ext == ".lhs":
+		issues = append(issues, h.checkHaskellImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".clj" || ext == ".cljs" || ext == ".cljc" || ext == ".edn":
+		issues = append(issues, h.checkClojureImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".erl" || ext == ".hrl":
+		issues = append(issues, h.checkErlangImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".fs" || ext == ".fsx" || ext == ".fsi":
+		issues = append(issues, h.checkFsharpImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".ml" || ext == ".mli":
+		issues = append(issues, h.checkOcamlImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	// Domain languages
+	case ext == ".jl":
+		issues = append(issues, h.checkJuliaImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".sol":
+		issues = append(issues, h.checkSolidityImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".tf":
+		issues = append(issues, h.checkTerraformImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".proto":
+		issues = append(issues, h.checkProtobufImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".f90" || ext == ".f95" || ext == ".f03" || ext == ".f08" || ext == ".f" || ext == ".for":
+		issues = append(issues, h.checkFortranImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	// Legacy languages
+	case ext == ".vb" || ext == ".vbs":
+		issues = append(issues, h.checkVisualBasicImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".cob" || ext == ".cbl" || ext == ".cpy":
+		issues = append(issues, h.checkCobolImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".adb" || ext == ".ads":
+		issues = append(issues, h.checkAdaImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".pas" || ext == ".pp" || ext == ".dpr" || ext == ".lpr":
+		issues = append(issues, h.checkPascalImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues

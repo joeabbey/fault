@@ -99,6 +99,71 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if isGroovyFile(fileDiff.Path) {
 			issues = append(issues, checkGroovyPatterns(fileDiff)...)
 		}
+
+		// Modern systems languages
+		if isZigFile(fileDiff.Path) {
+			issues = append(issues, checkZigAntiPatterns(fileDiff)...)
+		}
+		if isNimFile(fileDiff.Path) {
+			issues = append(issues, checkNimAntiPatterns(fileDiff)...)
+		}
+		if isCrystalFile(fileDiff.Path) {
+			issues = append(issues, checkCrystalAntiPatterns(fileDiff)...)
+		}
+		if isVlangFile(fileDiff.Path) {
+			issues = append(issues, checkVlangAntiPatterns(fileDiff)...)
+		}
+		if isDlangFile(fileDiff.Path) {
+			issues = append(issues, checkDlangAntiPatterns(fileDiff)...)
+		}
+
+		// Functional languages
+		if isHaskellFile(fileDiff.Path) {
+			issues = append(issues, checkHaskellPatterns(fileDiff)...)
+		}
+		if isClojureFile(fileDiff.Path) {
+			issues = append(issues, checkClojurePatterns(fileDiff)...)
+		}
+		if isErlangFile(fileDiff.Path) {
+			issues = append(issues, checkErlangPatterns(fileDiff)...)
+		}
+		if isFsharpFile(fileDiff.Path) {
+			issues = append(issues, checkFsharpPatterns(fileDiff)...)
+		}
+		if isOcamlFile(fileDiff.Path) {
+			issues = append(issues, checkOcamlPatterns(fileDiff)...)
+		}
+
+		// Domain languages
+		if isJuliaFile(fileDiff.Path) {
+			issues = append(issues, checkJuliaPatterns(fileDiff)...)
+		}
+		if isFortranFile(fileDiff.Path) {
+			issues = append(issues, checkFortranPatterns(fileDiff)...)
+		}
+		if isSolidityFile(fileDiff.Path) {
+			issues = append(issues, checkSolidityPatterns(fileDiff)...)
+		}
+		if isTerraformFile(fileDiff.Path) {
+			issues = append(issues, checkTerraformPatterns(fileDiff)...)
+		}
+		if isProtobufFile(fileDiff.Path) {
+			issues = append(issues, checkProtobufPatterns(fileDiff)...)
+		}
+
+		// Legacy languages
+		if isVisualBasicFile(fileDiff.Path) {
+			issues = append(issues, checkVisualBasicPatterns(fileDiff)...)
+		}
+		if isCobolFile(fileDiff.Path) {
+			issues = append(issues, checkCobolPatterns(fileDiff)...)
+		}
+		if isAdaFile(fileDiff.Path) {
+			issues = append(issues, checkAdaPatterns(fileDiff)...)
+		}
+		if isPascalFile(fileDiff.Path) {
+			issues = append(issues, checkPascalPatterns(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -1154,6 +1219,81 @@ func isPowershellFile(path string) bool {
 func isGroovyFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".groovy" || ext == ".gvy"
+}
+
+// Modern systems language helpers
+func isZigFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".zig"
+}
+func isNimFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".nim"
+}
+func isCrystalFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".cr"
+}
+func isVlangFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".v"
+}
+func isDlangFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".d"
+}
+
+// Functional language helpers
+func isHaskellFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".hs" || ext == ".lhs"
+}
+func isClojureFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".clj" || ext == ".cljs" || ext == ".cljc" || ext == ".edn"
+}
+func isErlangFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".erl" || ext == ".hrl"
+}
+func isFsharpFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".fs" || ext == ".fsx" || ext == ".fsi"
+}
+func isOcamlFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".ml" || ext == ".mli"
+}
+
+// Domain language helpers
+func isJuliaFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".jl"
+}
+func isFortranFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".f90" || ext == ".f95" || ext == ".f03" || ext == ".f08" || ext == ".f" || ext == ".for"
+}
+func isSolidityFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".sol"
+}
+func isTerraformFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".tf"
+}
+func isProtobufFile(path string) bool {
+	return strings.ToLower(filepath.Ext(path)) == ".proto"
+}
+
+// Legacy language helpers
+func isVisualBasicFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".vb" || ext == ".vbs"
+}
+func isCobolFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".cob" || ext == ".cbl" || ext == ".cpy"
+}
+func isAdaFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".adb" || ext == ".ads"
+}
+func isPascalFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".pas" || ext == ".pp" || ext == ".dpr" || ext == ".lpr"
 }
 
 // --- C/C++-specific anti-pattern detection ---

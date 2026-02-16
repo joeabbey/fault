@@ -160,6 +160,65 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".groovy" || ext == ".gvy" {
 			issues = append(issues, checkGroovySecurity(fileDiff)...)
 		}
+
+		// Modern systems languages
+		if ext == ".zig" {
+			issues = append(issues, checkZigSecurity(fileDiff)...)
+		}
+		if ext == ".nim" {
+			issues = append(issues, checkNimSecurity(fileDiff)...)
+		}
+		if ext == ".cr" {
+			issues = append(issues, checkCrystalSecurity(fileDiff)...)
+		}
+		if ext == ".v" {
+			issues = append(issues, checkVlangSecurity(fileDiff)...)
+		}
+		if ext == ".d" {
+			issues = append(issues, checkDlangSecurity(fileDiff)...)
+		}
+
+		// Functional languages
+		if ext == ".hs" || ext == ".lhs" {
+			issues = append(issues, checkHaskellSecurity(fileDiff)...)
+		}
+		if ext == ".clj" || ext == ".cljs" || ext == ".cljc" || ext == ".edn" {
+			issues = append(issues, checkClojureSecurity(fileDiff)...)
+		}
+		if ext == ".erl" || ext == ".hrl" {
+			issues = append(issues, checkErlangSecurity(fileDiff)...)
+		}
+		if ext == ".fs" || ext == ".fsx" || ext == ".fsi" {
+			issues = append(issues, checkFsharpSecurity(fileDiff)...)
+		}
+		if ext == ".ml" || ext == ".mli" {
+			issues = append(issues, checkOcamlSecurity(fileDiff)...)
+		}
+
+		// Domain languages
+		if ext == ".jl" {
+			issues = append(issues, checkJuliaSecurity(fileDiff)...)
+		}
+		if ext == ".sol" {
+			issues = append(issues, checkSoliditySecurity(fileDiff)...)
+		}
+		if ext == ".tf" {
+			issues = append(issues, checkTerraformSecurity(fileDiff)...)
+		}
+
+		// Legacy languages
+		if ext == ".vb" || ext == ".vbs" {
+			issues = append(issues, checkVisualBasicSecurity(fileDiff)...)
+		}
+		if ext == ".cob" || ext == ".cbl" || ext == ".cpy" {
+			issues = append(issues, checkCobolSecurity(fileDiff)...)
+		}
+		if ext == ".adb" || ext == ".ads" {
+			issues = append(issues, checkAdaSecurity(fileDiff)...)
+		}
+		if ext == ".pas" || ext == ".pp" || ext == ".dpr" || ext == ".lpr" {
+			issues = append(issues, checkPascalSecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil

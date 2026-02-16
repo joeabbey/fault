@@ -834,7 +834,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	return nil
 }
 
-// registerAllParsers registers all 20 language parsers in the registry.
+// registerAllParsers registers all 42 language parsers in the registry.
 func registerAllParsers(reg *parser.Registry) {
 	// Original 10
 	reg.Register(parser.NewGoParser())
@@ -861,6 +861,29 @@ func registerAllParsers(reg *parser.Registry) {
 	reg.Register(parser.NewPerlParser())
 	reg.Register(parser.NewPowershellParser())
 	reg.Register(parser.NewGroovyParser())
+	// v4 modern systems
+	reg.Register(parser.NewZigParser())
+	reg.Register(parser.NewNimParser())
+	reg.Register(parser.NewCrystalParser())
+	reg.Register(parser.NewVlangParser())
+	reg.Register(parser.NewDlangParser())
+	// v4 functional
+	reg.Register(parser.NewHaskellParser())
+	reg.Register(parser.NewClojureParser())
+	reg.Register(parser.NewErlangParser())
+	reg.Register(parser.NewFsharpParser())
+	reg.Register(parser.NewOcamlParser())
+	// v4 domain
+	reg.Register(parser.NewJuliaParser())
+	reg.Register(parser.NewFortranParser())
+	reg.Register(parser.NewSolidityParser())
+	reg.Register(parser.NewTerraformParser())
+	reg.Register(parser.NewProtobufParser())
+	// v4 legacy
+	reg.Register(parser.NewVisualBasicParser())
+	reg.Register(parser.NewCobolParser())
+	reg.Register(parser.NewAdaParser())
+	reg.Register(parser.NewPascalParser())
 }
 
 func versionCmd() *cobra.Command {

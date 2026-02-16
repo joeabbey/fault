@@ -64,6 +64,38 @@ var extensionToLanguage = map[string]string{
 	".psm1":    "powershell",
 	".groovy":  "groovy",
 	".gvy":     "groovy",
+	// v4 modern systems languages
+	".zig":     "zig",
+	".nim":     "nim",
+	".cr":      "crystal",
+	".v":       "vlang",
+	".d":       "dlang",
+	// v4 functional languages
+	".hs":      "haskell",
+	".lhs":     "haskell",
+	".clj":     "clojure",
+	".cljs":    "clojure",
+	".cljc":    "clojure",
+	".edn":     "clojure",
+	".erl":     "erlang",
+	".hrl":     "erlang",
+	".fs":      "fsharp",
+	".fsx":     "fsharp",
+	".fsi":     "fsharp",
+	".ml":      "ocaml",
+	".mli":     "ocaml",
+	// v4 legacy languages
+	".vb":      "visualbasic",
+	".vbs":     "visualbasic",
+	".cob":     "cobol",
+	".cbl":     "cobol",
+	".cpy":     "cobol",
+	".adb":     "ada",
+	".ads":     "ada",
+	".pas":     "pascal",
+	".pp":      "pascal",
+	".dpr":     "pascal",
+	".lpr":     "pascal",
 }
 
 // Registry manages parsers for different languages.

@@ -69,6 +69,48 @@ func (a *ErrorHandlingAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 			issues = append(issues, checkPowershellErrorHandling(fileDiff)...)
 		case ".groovy", ".gvy":
 			issues = append(issues, checkGroovyErrorHandling(fileDiff)...)
+		// Modern systems languages
+		case ".zig":
+			issues = append(issues, checkZigErrorHandling(fileDiff)...)
+		case ".nim":
+			issues = append(issues, checkNimErrorHandling(fileDiff)...)
+		case ".cr":
+			issues = append(issues, checkCrystalErrorHandling(fileDiff)...)
+		case ".v":
+			issues = append(issues, checkVlangErrorHandling(fileDiff)...)
+		case ".d":
+			issues = append(issues, checkDlangErrorHandling(fileDiff)...)
+		// Functional languages
+		case ".hs", ".lhs":
+			issues = append(issues, checkHaskellErrorHandling(fileDiff)...)
+		case ".clj", ".cljs", ".cljc", ".edn":
+			issues = append(issues, checkClojureErrorHandling(fileDiff)...)
+		case ".erl", ".hrl":
+			issues = append(issues, checkErlangErrorHandling(fileDiff)...)
+		case ".fs", ".fsx", ".fsi":
+			issues = append(issues, checkFsharpErrorHandling(fileDiff)...)
+		case ".ml", ".mli":
+			issues = append(issues, checkOcamlErrorHandling(fileDiff)...)
+		// Domain languages
+		case ".jl":
+			issues = append(issues, checkJuliaErrorHandling(fileDiff)...)
+		case ".sol":
+			issues = append(issues, checkSolidityErrorHandling(fileDiff)...)
+		case ".f90", ".f95", ".f03", ".f08", ".f", ".for":
+			issues = append(issues, checkFortranErrorHandling(fileDiff)...)
+		case ".tf":
+			issues = append(issues, checkTerraformErrorHandling(fileDiff)...)
+		case ".proto":
+			issues = append(issues, checkProtobufErrorHandling(fileDiff)...)
+		// Legacy languages
+		case ".vb", ".vbs":
+			issues = append(issues, checkVisualBasicErrorHandling(fileDiff)...)
+		case ".cob", ".cbl", ".cpy":
+			issues = append(issues, checkCobolErrorHandling(fileDiff)...)
+		case ".adb", ".ads":
+			issues = append(issues, checkAdaErrorHandling(fileDiff)...)
+		case ".pas", ".pp", ".dpr", ".lpr":
+			issues = append(issues, checkPascalErrorHandling(fileDiff)...)
 		}
 	}
 

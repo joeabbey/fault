@@ -253,6 +253,79 @@ func isTestFile(path string) bool {
 			strings.HasSuffix(nameNoExt, "_test") ||
 			strings.HasSuffix(nameNoExt, "_spec") ||
 			isInTestsDir(path)
+	// Modern systems
+	case ".zig":
+		return strings.HasSuffix(nameNoExt, "_test") || isInTestsDir(path)
+	case ".nim":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasPrefix(nameNoExt, "t_") ||
+			isInTestsDir(path)
+	case ".cr":
+		return strings.HasSuffix(nameNoExt, "_spec") || isInTestsDir(path) || isInSpecDir(path)
+	case ".v":
+		return strings.HasSuffix(nameNoExt, "_test") || isInTestsDir(path)
+	case ".d":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			strings.HasPrefix(nameNoExt, "test_") ||
+			isInTestsDir(path)
+	// Functional
+	case ".hs", ".lhs":
+		return strings.HasSuffix(nameNoExt, "Spec") ||
+			strings.HasSuffix(nameNoExt, "Test") ||
+			isInTestsDir(path)
+	case ".clj", ".cljs", ".cljc":
+		return strings.HasSuffix(nameNoExt, "_test") || isInTestsDir(path)
+	case ".erl":
+		return strings.HasSuffix(nameNoExt, "_SUITE") ||
+			strings.HasSuffix(nameNoExt, "_tests") ||
+			isInTestsDir(path)
+	case ".fs", ".fsx":
+		return strings.HasSuffix(nameNoExt, "Tests") ||
+			strings.HasSuffix(nameNoExt, "Test") ||
+			isInTestsDir(path)
+	case ".ml", ".mli":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	// Scripting
+	case ".pl", ".pm":
+		return strings.HasSuffix(nameNoExt, ".t") ||
+			strings.HasPrefix(nameNoExt, "test_") ||
+			isInTestsDir(path)
+	case ".ps1":
+		return strings.HasSuffix(nameNoExt, ".Tests") ||
+			strings.HasSuffix(nameNoExt, ".Test") ||
+			isInTestsDir(path)
+	case ".groovy", ".gvy":
+		return strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "Spec") ||
+			isInTestsDir(path)
+	// Domain
+	case ".jl":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".f90", ".f95", ".f03", ".f08":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".sol":
+		return strings.HasSuffix(nameNoExt, ".t") ||
+			strings.HasPrefix(nameNoExt, "Test") ||
+			isInTestsDir(path)
+	// Legacy
+	case ".vb", ".vbs":
+		return strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "Tests") ||
+			isInTestsDir(path)
+	case ".adb", ".ads":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".pas", ".pp":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
 	}
 	return false
 }
@@ -367,6 +440,64 @@ func possibleTestPaths(sourcePath string) []string {
 		paths = append(paths, filepath.Join(dir, "test_"+base))
 		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.lua"))
 		paths = append(paths, filepath.Join(dir, nameNoExt+"_spec.lua"))
+	// Modern systems
+	case ".zig":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.zig"))
+	case ".nim":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, "t_"+base))
+	case ".cr":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_spec.cr"))
+		paths = append(paths, filepath.Join("spec", nameNoExt+"_spec.cr"))
+	case ".v":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.v"))
+	case ".d":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.d"))
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+	// Functional
+	case ".hs", ".lhs":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Spec"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+	case ".clj", ".cljs", ".cljc":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+	case ".erl":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_SUITE.erl"))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_tests.erl"))
+	case ".fs", ".fsx":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+	case ".ml", ".mli":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+	// Scripting
+	case ".pl", ".pm":
+		paths = append(paths, filepath.Join(dir, nameNoExt+".t"))
+		paths = append(paths, filepath.Join("t", nameNoExt+".t"))
+	case ".ps1":
+		paths = append(paths, filepath.Join(dir, nameNoExt+".Tests.ps1"))
+	case ".groovy", ".gvy":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Spec"+ext))
+	// Domain
+	case ".jl":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.jl"))
+	case ".f90", ".f95", ".f03", ".f08":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+	case ".sol":
+		paths = append(paths, filepath.Join(dir, nameNoExt+".t.sol"))
+		paths = append(paths, filepath.Join(dir, "Test"+base))
+	// Legacy
+	case ".vb", ".vbs":
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests"+ext))
+	case ".adb", ".ads":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+	case ".pas", ".pp":
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
 	}
 
 	// Normalize to forward slashes for consistent matching.
