@@ -117,6 +117,8 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.Security
 	case "hallucination":
 		return r.config.Analyzers.Hallucination
+	case "deadcode":
+		return r.config.Analyzers.DeadCode
 	default:
 		// Unknown analyzers are enabled by default
 		return true

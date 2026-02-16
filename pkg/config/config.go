@@ -31,6 +31,7 @@ type AnalyzersConfig struct {
 	Patterns      bool `yaml:"patterns" json:"patterns"`
 	Security      bool `yaml:"security" json:"security"`
 	Hallucination bool `yaml:"hallucination" json:"hallucination"`
+	DeadCode      bool `yaml:"deadcode" json:"deadcode"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -61,6 +62,7 @@ func DefaultConfig() *Config {
 			Patterns:      true,
 			Security:      true,
 			Hallucination: true,
+			DeadCode:      true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

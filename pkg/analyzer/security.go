@@ -60,6 +60,10 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkInsecureCrypto(fileDiff)...)
 		issues = append(issues, checkRustSecurity(fileDiff)...)
 		issues = append(issues, checkTSCodeExecution(fileDiff)...)
+		issues = append(issues, checkGoSecurity(fileDiff)...)
+		issues = append(issues, checkPythonSecurity(fileDiff)...)
+		issues = append(issues, checkTSSecurity(fileDiff)...)
+		issues = append(issues, checkHardcodedIPs(fileDiff)...)
 
 		// Java-specific security checks
 		ext := strings.ToLower(filepath.Ext(fileDiff.Path))
@@ -838,4 +842,419 @@ func checkTSCodeExecution(fileDiff git.FileDiff) []Issue {
 	}
 
 	return issues
+}
+
+// --- Go-specific security checks ---
+
+type goSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var goSecurityRules = []goSecurityRule{
+	// http.ListenAndServe without TLS
+	{
+		pattern:    regexp.MustCompile(`\bhttp\.ListenAndServe\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/go-no-tls",
+		severity:   SeverityWarning,
+		message:    "http.ListenAndServe serves traffic without TLS encryption",
+		suggestion: "Use http.ListenAndServeTLS or terminate TLS at a reverse proxy",
+	},
+	// os/exec.Command with string concatenation
+	{
+		pattern: regexp.MustCompile(`exec\.Command\s*\([^)]*\+`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`exec\.Command\s*\(\s*"[^"]*"\s*\)`), // literal-only
+		},
+		id:         "security/go-command-injection",
+		severity:   SeverityWarning,
+		message:    "Potential command injection: exec.Command with string concatenation",
+		suggestion: "Pass command arguments as separate parameters to exec.Command instead of concatenating strings",
+	},
+	// exec.Command with a variable as first argument (not a string literal)
+	{
+		pattern: regexp.MustCompile(`exec\.Command\s*\(\s*[a-zA-Z_]`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`exec\.Command\s*\(\s*"[^"]*"`), // starts with literal
+		},
+		id:         "security/go-command-injection",
+		severity:   SeverityWarning,
+		message:    "Potential command injection: exec.Command with variable argument",
+		suggestion: "Validate and sanitize the command name; prefer hardcoded command paths",
+	},
+	// net/http server without timeout
+	{
+		pattern: regexp.MustCompile(`&http\.Server\s*\{`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)(ReadTimeout|WriteTimeout|IdleTimeout)`),
+		},
+		id:         "security/go-no-timeout",
+		severity:   SeverityInfo,
+		message:    "HTTP server created without explicit timeout configuration",
+		suggestion: "Set ReadTimeout, WriteTimeout, and IdleTimeout on http.Server to prevent slowloris attacks",
+	},
+}
+
+func checkGoSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	ext := strings.ToLower(filepath.Ext(fileDiff.Path))
+	if ext != ".go" {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range goSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Python-specific security checks ---
+
+type pythonSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var pythonSecurityRules = []pythonSecurityRule{
+	// pickle.load / pickle.loads
+	{
+		pattern:    regexp.MustCompile(`\bpickle\.(load|loads)\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/python-pickle",
+		severity:   SeverityWarning,
+		message:    "Insecure deserialization: pickle.load() can execute arbitrary code",
+		suggestion: "Use JSON or a safer serialization format; avoid unpickling untrusted data",
+	},
+	// subprocess with shell=True
+	{
+		pattern:    regexp.MustCompile(`\bsubprocess\.(call|Popen|run|check_call|check_output)\s*\([^)]*shell\s*=\s*True`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/python-shell-injection",
+		severity:   SeverityWarning,
+		message:    "Potential command injection: subprocess with shell=True",
+		suggestion: "Use shell=False (the default) and pass arguments as a list instead of a string",
+	},
+	// yaml.load without SafeLoader
+	{
+		pattern: regexp.MustCompile(`\byaml\.load\s*\(`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`Loader\s*=\s*(yaml\.)?SafeLoader`),
+			regexp.MustCompile(`yaml\.safe_load`),
+		},
+		id:         "security/python-unsafe-yaml",
+		severity:   SeverityWarning,
+		message:    "Insecure YAML loading: yaml.load() without SafeLoader can execute arbitrary code",
+		suggestion: "Use yaml.safe_load() or pass Loader=yaml.SafeLoader to yaml.load()",
+	},
+}
+
+func checkPythonSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isPythonFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+
+			for _, rule := range pythonSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- TypeScript/JS-specific security checks ---
+
+type tsSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var tsSecurityRules = []tsSecurityRule{
+	// child_process.exec with template literal
+	{
+		pattern:    regexp.MustCompile("child_process\\.exec\\s*\\(\\s*`"),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ts-command-injection",
+		severity:   SeverityWarning,
+		message:    "Potential command injection: child_process.exec with template literal",
+		suggestion: "Use child_process.execFile with argument array instead of exec with interpolated strings",
+	},
+	// child_process.exec with string concatenation
+	{
+		pattern:    regexp.MustCompile(`child_process\.exec\s*\([^)]*\+`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ts-command-injection",
+		severity:   SeverityWarning,
+		message:    "Potential command injection: child_process.exec with string concatenation",
+		suggestion: "Use child_process.execFile with argument array instead of exec with concatenated strings",
+	},
+	// require() with variable argument (not a string literal)
+	{
+		pattern: regexp.MustCompile(`\brequire\s*\(\s*[a-zA-Z_$]`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`\brequire\s*\(\s*["']`), // string literal
+		},
+		id:         "security/ts-dynamic-require",
+		severity:   SeverityWarning,
+		message:    "Dynamic require() with variable argument may load untrusted modules",
+		suggestion: "Use a string literal in require() calls; validate dynamic paths if unavoidable",
+	},
+	// Prototype pollution: __proto__
+	{
+		pattern:    regexp.MustCompile(`__proto__\s*[=\[]`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ts-prototype-pollution",
+		severity:   SeverityWarning,
+		message:    "Potential prototype pollution: __proto__ assignment",
+		suggestion: "Use Object.create(null) for lookup objects and validate property names from user input",
+	},
+	// Prototype pollution: constructor.prototype
+	{
+		pattern:    regexp.MustCompile(`constructor\.prototype\s*[=\[]`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ts-prototype-pollution",
+		severity:   SeverityWarning,
+		message:    "Potential prototype pollution: constructor.prototype assignment",
+		suggestion: "Avoid modifying constructor.prototype directly; validate property names from user input",
+	},
+}
+
+func checkTSSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isTypeScriptFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range tsSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Hardcoded IP address detection (cross-language) ---
+
+// ipAddressPattern matches IPv4 addresses in string literals.
+var ipAddressPattern = regexp.MustCompile(`["'](\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})["']`)
+
+// ipExclusions skip common non-production IPs and false positives.
+var ipExclusions = []*regexp.Regexp{
+	regexp.MustCompile(`["']0\.0\.0\.0["']`),     // bind-all
+	regexp.MustCompile(`["']127\.0\.0\.1["']`),    // localhost
+	regexp.MustCompile(`["']255\.255\.\d`),        // subnet mask
+	regexp.MustCompile(`(?i)(version|semver)`),     // version strings like "1.2.3.4"
+	regexp.MustCompile(`(?i)(test|mock|fake|example|placeholder)`),
+}
+
+func checkHardcodedIPs(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "#") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			if !ipAddressPattern.MatchString(content) {
+				continue
+			}
+
+			excluded := false
+			for _, excl := range ipExclusions {
+				if excl.MatchString(content) {
+					excluded = true
+					break
+				}
+			}
+			if excluded {
+				continue
+			}
+
+			// Validate it looks like a real IP (each octet 0-255)
+			matches := ipAddressPattern.FindStringSubmatch(content)
+			if len(matches) < 2 || !isValidIP(matches[1]) {
+				continue
+			}
+
+			issues = append(issues, Issue{
+				ID:         "security/hardcoded-ip",
+				Severity:   SeverityInfo,
+				Category:   "security",
+				File:       fileDiff.Path,
+				Line:       line.NewNum,
+				Message:    "Hardcoded IP address detected: " + matches[1],
+				Suggestion: "Use configuration, environment variables, or DNS names instead of hardcoded IP addresses",
+			})
+		}
+	}
+
+	return issues
+}
+
+// isValidIP validates that each octet in a dotted-quad is 0-255.
+func isValidIP(ip string) bool {
+	parts := strings.Split(ip, ".")
+	if len(parts) != 4 {
+		return false
+	}
+	for _, part := range parts {
+		if len(part) == 0 || len(part) > 3 {
+			return false
+		}
+		n := 0
+		for _, ch := range part {
+			if ch < '0' || ch > '9' {
+				return false
+			}
+			n = n*10 + int(ch-'0')
+		}
+		if n > 255 {
+			return false
+		}
+		// Reject leading zeros (e.g., "01")
+		if len(part) > 1 && part[0] == '0' {
+			return false
+		}
+	}
+	return true
 }

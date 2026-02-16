@@ -935,3 +935,579 @@ func TestSecuritySecretCommentIgnored(t *testing.T) {
 		t.Errorf("did not expect secret issue for commented-out code")
 	}
 }
+
+// --- Go security tests ---
+
+func TestSecurityGoListenAndServe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "server.go", line: 10, content: `	http.ListenAndServe(":8080", mux)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-no-tls")
+	if found == nil {
+		t.Fatal("expected go-no-tls issue for http.ListenAndServe")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityGoListenAndServeNonGoIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "notes.md", line: 10, content: `http.ListenAndServe(":8080", mux)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-no-tls")
+	if found != nil {
+		t.Errorf("did not expect go-no-tls for non-Go file")
+	}
+}
+
+func TestSecurityGoExecCommandConcat(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.go", line: 15, content: `	cmd := exec.Command("sh", "-c", "ls " + userInput)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-command-injection")
+	if found == nil {
+		t.Fatal("expected go-command-injection issue for exec.Command with concat")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityGoExecCommandVariable(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.go", line: 15, content: `	cmd := exec.Command(userCmd, args...)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-command-injection")
+	if found == nil {
+		t.Fatal("expected go-command-injection issue for exec.Command with variable")
+	}
+}
+
+func TestSecurityGoExecCommandLiteralSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.go", line: 15, content: `	cmd := exec.Command("git", "status")`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-command-injection")
+	if found != nil {
+		t.Errorf("did not expect go-command-injection for literal exec.Command")
+	}
+}
+
+func TestSecurityGoServerNoTimeout(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "server.go", line: 20, content: `	srv := &http.Server{Addr: ":8080", Handler: mux}`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-no-timeout")
+	if found == nil {
+		t.Fatal("expected go-no-timeout issue for http.Server without timeouts")
+	}
+	if found.Severity != SeverityInfo {
+		t.Errorf("expected info severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityGoServerWithTimeoutSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "server.go", line: 20, content: `	srv := &http.Server{Addr: ":8080", Handler: mux, ReadTimeout: 5 * time.Second}`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/go-no-timeout")
+	if found != nil {
+		t.Errorf("did not expect go-no-timeout when ReadTimeout is set")
+	}
+}
+
+// --- Python security tests ---
+
+func TestSecurityPythonPickleLoad(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "loader.py", line: 10, content: `    data = pickle.load(open("data.pkl", "rb"))`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-pickle")
+	if found == nil {
+		t.Fatal("expected python-pickle issue for pickle.load")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityPythonPickleLoads(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "loader.py", line: 10, content: `    data = pickle.loads(raw_bytes)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-pickle")
+	if found == nil {
+		t.Fatal("expected python-pickle issue for pickle.loads")
+	}
+}
+
+func TestSecurityPythonSubprocessShellTrue(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.py", line: 5, content: `    subprocess.call("ls -la " + user_dir, shell=True)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-shell-injection")
+	if found == nil {
+		t.Fatal("expected python-shell-injection for subprocess.call(shell=True)")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityPythonSubprocessPopenShellTrue(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.py", line: 5, content: `    proc = subprocess.Popen(cmd, shell=True)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-shell-injection")
+	if found == nil {
+		t.Fatal("expected python-shell-injection for subprocess.Popen(shell=True)")
+	}
+}
+
+func TestSecurityPythonSubprocessShellFalseSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.py", line: 5, content: `    subprocess.call(["ls", "-la"], shell=False)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-shell-injection")
+	if found != nil {
+		t.Errorf("did not expect python-shell-injection for shell=False")
+	}
+}
+
+func TestSecurityPythonUnsafeYamlLoad(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.py", line: 8, content: `    data = yaml.load(open("config.yml"))`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-unsafe-yaml")
+	if found == nil {
+		t.Fatal("expected python-unsafe-yaml for yaml.load without SafeLoader")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityPythonYamlSafeLoaderSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.py", line: 8, content: `    data = yaml.load(open("config.yml"), Loader=yaml.SafeLoader)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-unsafe-yaml")
+	if found != nil {
+		t.Errorf("did not expect python-unsafe-yaml when SafeLoader is used")
+	}
+}
+
+func TestSecurityPythonYamlSafeLoadSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.py", line: 8, content: `    data = yaml.safe_load(open("config.yml"))`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-unsafe-yaml")
+	if found != nil {
+		t.Errorf("did not expect python-unsafe-yaml for yaml.safe_load")
+	}
+}
+
+func TestSecurityPythonNonPyIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.go", line: 8, content: `    data = pickle.load(open("data.pkl"))`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/python-pickle")
+	if found != nil {
+		t.Errorf("did not expect python-pickle for non-Python file")
+	}
+}
+
+// --- TypeScript/JS security tests ---
+
+func TestSecurityTSChildProcessExecTemplate(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.ts", line: 10, content: "    child_process.exec(`ls ${userDir}`)"},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-command-injection")
+	if found == nil {
+		t.Fatal("expected ts-command-injection for child_process.exec with template literal")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityTSChildProcessExecConcat(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "runner.js", line: 10, content: `    child_process.exec("ls " + userDir)`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-command-injection")
+	if found == nil {
+		t.Fatal("expected ts-command-injection for child_process.exec with concat")
+	}
+}
+
+func TestSecurityTSDynamicRequire(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "loader.js", line: 5, content: `    const mod = require(modulePath);`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-dynamic-require")
+	if found == nil {
+		t.Fatal("expected ts-dynamic-require for require with variable argument")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityTSRequireLiteralSafe(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "app.js", line: 5, content: `    const fs = require("fs");`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-dynamic-require")
+	if found != nil {
+		t.Errorf("did not expect ts-dynamic-require for string literal require")
+	}
+}
+
+func TestSecurityTSProtoPollutionDunderProto(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "merge.js", line: 12, content: `    obj.__proto__ = malicious;`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-prototype-pollution")
+	if found == nil {
+		t.Fatal("expected ts-prototype-pollution for __proto__ assignment")
+	}
+	if found.Severity != SeverityWarning {
+		t.Errorf("expected warning severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityTSProtoPollutionConstructor(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "util.ts", line: 8, content: `    constructor.prototype = polluted;`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-prototype-pollution")
+	if found == nil {
+		t.Fatal("expected ts-prototype-pollution for constructor.prototype assignment")
+	}
+}
+
+func TestSecurityTSNonTSFileIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "merge.go", line: 12, content: `    obj.__proto__ = malicious;`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/ts-prototype-pollution")
+	if found != nil {
+		t.Errorf("did not expect ts-prototype-pollution for non-TS/JS file")
+	}
+}
+
+// --- Hardcoded IP tests ---
+
+func TestSecurityHardcodedIP(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.go", line: 5, content: `	host := "192.168.1.100"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found == nil {
+		t.Fatal("expected hardcoded-ip issue for private IP address")
+	}
+	if found.Severity != SeverityInfo {
+		t.Errorf("expected info severity, got %q", found.Severity)
+	}
+}
+
+func TestSecurityHardcodedIPPublic(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "deploy.py", line: 10, content: `    server = "10.0.0.50"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found == nil {
+		t.Fatal("expected hardcoded-ip issue for IP address in string")
+	}
+}
+
+func TestSecurityHardcodedIPLocalhostIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "server.go", line: 5, content: `	addr := "127.0.0.1:8080"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found != nil {
+		t.Errorf("did not expect hardcoded-ip for localhost 127.0.0.1")
+	}
+}
+
+func TestSecurityHardcodedIPBindAllIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "server.go", line: 5, content: `	addr := "0.0.0.0:8080"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found != nil {
+		t.Errorf("did not expect hardcoded-ip for 0.0.0.0")
+	}
+}
+
+func TestSecurityHardcodedIPVersionStringIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "version.go", line: 5, content: `	version := "1.2.3.4" // semver`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found != nil {
+		t.Errorf("did not expect hardcoded-ip for version string")
+	}
+}
+
+func TestSecurityHardcodedIPTestFileIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config_test.go", line: 5, content: `	host := "192.168.1.100"`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found != nil {
+		t.Errorf("did not expect hardcoded-ip in test file")
+	}
+}
+
+func TestSecurityHardcodedIPCommentIgnored(t *testing.T) {
+	a := NewSecurityAnalyzer()
+	ctx := makePatternContext([]addedLine{
+		{file: "config.go", line: 5, content: `	// The server at "192.168.1.100" is the gateway`},
+	})
+
+	issues, err := a.Analyze(ctx)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	found := findIssueByID(issues, "security/hardcoded-ip")
+	if found != nil {
+		t.Errorf("did not expect hardcoded-ip in comment")
+	}
+}
+
+// --- isValidIP unit tests ---
+
+func TestIsValidIP(t *testing.T) {
+	tests := []struct {
+		ip   string
+		want bool
+	}{
+		{"192.168.1.1", true},
+		{"10.0.0.1", true},
+		{"255.255.255.255", true},
+		{"0.0.0.0", true},
+		{"256.1.1.1", false},
+		{"1.1.1.999", false},
+		{"1.2.3", false},
+		{"1.2.3.4.5", false},
+		{"01.2.3.4", false},   // leading zero
+		{"1.02.3.4", false},   // leading zero
+		{"abc.1.2.3", false},
+	}
+
+	for _, tt := range tests {
+		got := isValidIP(tt.ip)
+		if got != tt.want {
+			t.Errorf("isValidIP(%q) = %v, want %v", tt.ip, got, tt.want)
+		}
+	}
+}
