@@ -4,30 +4,48 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fault - Catch AI agent mistakes before they hit your codebase</title>
-<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — catching broken imports, stale references, and missing tests before you commit.">
+<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — 10 analyzers across 10 languages catch broken imports, swallowed errors, dead code, and hallucinated APIs before you commit.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #0c1821;
-  color: #f0f4f8;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #060d11;
+  color: #e4ecf0;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 a { color: #2dd4bf; text-decoration: none; }
 a:hover { text-decoration: underline; }
+code, .mono { font-family: "JetBrains Mono", monospace; }
+
+/* Texture overlay */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
 
 /* Layout */
-.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+.container { max-width: 1100px; margin: 0 auto; padding: 0 24px; position: relative; z-index: 1; }
 
 /* Nav */
 nav {
-  border-bottom: 1px solid #1e3a3f;
+  border-bottom: 1px solid rgba(45,212,191,0.08);
   padding: 16px 0;
+  position: sticky;
+  top: 0;
+  background: rgba(6,13,17,0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 100;
 }
 nav .container {
   display: flex;
@@ -38,20 +56,20 @@ nav .container {
   font-family: "JetBrains Mono", monospace;
   font-size: 20px;
   font-weight: 700;
-  color: #f0f4f8;
+  color: #e4ecf0;
   letter-spacing: -0.5px;
 }
 .logo-accent { color: #2dd4bf; }
 .nav-links { display: flex; gap: 24px; align-items: center; }
 .nav-links a {
-  color: #8ba4b0;
+  color: #6b8a95;
   font-size: 14px;
   font-weight: 500;
 }
-.nav-links a:hover { color: #f0f4f8; text-decoration: none; }
+.nav-links a:hover { color: #e4ecf0; text-decoration: none; }
 .nav-links .nav-btn {
   background: #0d9488;
-  color: #f0f4f8;
+  color: #e4ecf0;
   padding: 6px 16px;
   border-radius: 6px;
   font-weight: 600;
@@ -62,34 +80,74 @@ nav .container {
 
 /* Hero */
 .hero {
-  padding: 80px 0 64px;
+  padding: 100px 0 40px;
   text-align: center;
+  position: relative;
+}
+.hero::before {
+  content: "";
+  position: absolute;
+  top: -120px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 600px;
+  background: radial-gradient(ellipse at center, rgba(13,148,136,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+.hero-version {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(13,148,136,0.1);
+  border: 1px solid rgba(45,212,191,0.15);
+  border-radius: 100px;
+  padding: 6px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #2dd4bf;
+  margin-bottom: 28px;
+}
+.hero-version .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #2dd4bf;
+  animation: pulse 2s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 .hero h1 {
   font-family: "JetBrains Mono", monospace;
-  font-size: 48px;
+  font-size: 52px;
   font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -1.5px;
-  margin-bottom: 20px;
-  max-width: 780px;
+  line-height: 1.08;
+  letter-spacing: -2px;
+  margin-bottom: 24px;
+  max-width: 800px;
   margin-left: auto;
   margin-right: auto;
 }
 .hero h1 em {
   font-style: normal;
-  color: #2dd4bf;
+  background: linear-gradient(135deg, #2dd4bf, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 .hero .subhead {
   font-size: 18px;
-  color: #8ba4b0;
-  max-width: 640px;
+  color: #6b8a95;
+  max-width: 620px;
   margin: 0 auto 40px;
   line-height: 1.7;
 }
 .install-block {
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  background: rgba(14,26,33,0.8);
+  border: 1px solid rgba(45,212,191,0.12);
   border-radius: 8px;
   padding: 16px 20px;
   display: inline-flex;
@@ -105,26 +163,56 @@ nav .container {
   white-space: nowrap;
 }
 .copy-btn {
-  background: #1e3a3f;
-  color: #f0f4f8;
-  border: none;
+  background: rgba(45,212,191,0.1);
+  color: #2dd4bf;
+  border: 1px solid rgba(45,212,191,0.2);
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  font-family: inherit;
-  transition: background 0.15s;
+  font-family: "DM Sans", sans-serif;
+  transition: all 0.15s;
 }
-.copy-btn:hover { background: #2a4a50; }
+.copy-btn:hover { background: rgba(45,212,191,0.2); }
 .hero .cta-text {
-  color: #8ba4b0;
+  color: #6b8a95;
   font-size: 14px;
 }
 
+/* Stats bar */
+.stats-bar {
+  padding: 48px 0;
+  border-top: 1px solid rgba(45,212,191,0.06);
+  border-bottom: 1px solid rgba(45,212,191,0.06);
+}
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 32px;
+  text-align: center;
+}
+.stat-item .stat-num {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -2px;
+  background: linear-gradient(135deg, #2dd4bf, #06b6d4);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-item .stat-label {
+  font-size: 14px;
+  color: #6b8a95;
+  font-weight: 500;
+}
+
 /* Section */
-section { padding: 64px 0; }
-section + section { border-top: 1px solid #152028; }
+section { padding: 72px 0; }
+section + section { border-top: 1px solid rgba(45,212,191,0.06); }
 .section-label {
   font-family: "JetBrains Mono", monospace;
   font-size: 13px;
@@ -142,7 +230,7 @@ section + section { border-top: 1px solid #152028; }
   margin-bottom: 20px;
 }
 .section-desc {
-  color: #8ba4b0;
+  color: #6b8a95;
   font-size: 17px;
   max-width: 640px;
   line-height: 1.7;
@@ -154,61 +242,104 @@ section + section { border-top: 1px solid #152028; }
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
   max-width: 680px;
 }
 .problem-list li {
-  padding: 16px 20px;
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  padding: 14px 20px 14px 48px;
+  background: rgba(14,26,33,0.6);
+  border: 1px solid rgba(248,113,113,0.1);
   border-radius: 8px;
   font-size: 15px;
-  color: #c4d5db;
+  color: #9ab0b8;
   line-height: 1.6;
   position: relative;
-  padding-left: 48px;
 }
 .problem-list li::before {
   content: "\2715";
   position: absolute;
   left: 18px;
-  top: 16px;
+  top: 14px;
   color: #f87171;
   font-weight: 700;
   font-size: 14px;
+}
+
+/* Language pills */
+.lang-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 28px;
+}
+.lang-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(14,26,33,0.8);
+  border: 1px solid rgba(45,212,191,0.1);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ab0b8;
+  transition: border-color 0.2s;
+}
+.lang-pill:hover {
+  border-color: rgba(45,212,191,0.3);
+  color: #e4ecf0;
+}
+.lang-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
 /* Feature grid */
 .feature-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: 16px;
 }
 .feature-card {
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  background: rgba(14,26,33,0.6);
+  border: 1px solid rgba(45,212,191,0.08);
   border-radius: 10px;
   padding: 28px;
+  transition: border-color 0.2s;
 }
+.feature-card:hover { border-color: rgba(45,212,191,0.2); }
+.feature-card.new-feature { border-color: rgba(45,212,191,0.2); }
 .feature-card .badge {
   display: inline-block;
-  background: rgba(13, 148, 136, 0.15);
-  color: #2dd4bf;
   font-family: "JetBrains Mono", monospace;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   padding: 3px 10px;
   border-radius: 100px;
   margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.badge-new {
+  background: rgba(45,212,191,0.12);
+  color: #2dd4bf;
+}
+.badge-pro {
+  background: rgba(251,191,36,0.12);
+  color: #fbbf24;
 }
 .feature-card h3 {
   font-family: "JetBrains Mono", monospace;
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 600;
   margin-bottom: 8px;
+  letter-spacing: -0.3px;
 }
 .feature-card p {
-  color: #8ba4b0;
+  color: #6b8a95;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -230,7 +361,8 @@ section + section { border-top: 1px solid #152028; }
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(13, 148, 136, 0.15);
+  background: rgba(13,148,136,0.12);
+  border: 1px solid rgba(45,212,191,0.15);
   color: #2dd4bf;
   font-family: "JetBrains Mono", monospace;
   font-weight: 700;
@@ -246,14 +378,14 @@ section + section { border-top: 1px solid #152028; }
   margin-bottom: 6px;
 }
 .step-content p {
-  color: #8ba4b0;
+  color: #6b8a95;
   font-size: 15px;
   line-height: 1.6;
 }
 .step-connector {
   width: 2px;
   height: 24px;
-  background: #1e3a3f;
+  background: rgba(45,212,191,0.12);
   margin-left: 19px;
 }
 
@@ -261,51 +393,96 @@ section + section { border-top: 1px solid #152028; }
 .comparison-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;
+  font-size: 14px;
 }
 .comparison-table th,
 .comparison-table td {
-  padding: 14px 18px;
+  padding: 13px 18px;
   text-align: left;
-  border-bottom: 1px solid #1e3a3f;
+  border-bottom: 1px solid rgba(45,212,191,0.06);
 }
 .comparison-table th {
   font-family: "JetBrains Mono", monospace;
   font-weight: 600;
-  font-size: 13px;
-  color: #8ba4b0;
+  font-size: 12px;
+  color: #6b8a95;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #152028;
+  background: rgba(14,26,33,0.8);
 }
 .comparison-table th:first-child { border-radius: 8px 0 0 0; }
 .comparison-table th:last-child { border-radius: 0 8px 0 0; }
-.comparison-table td { color: #c4d5db; }
+.comparison-table td { color: #9ab0b8; }
 .comparison-table tr:last-child td { border-bottom: none; }
 .check { color: #2dd4bf; font-weight: 700; }
-.no { color: #546e7a; }
+.no { color: #3d5560; }
 .partial { color: #fbbf24; }
 .table-wrap {
-  border: 1px solid #1e3a3f;
+  border: 1px solid rgba(45,212,191,0.08);
   border-radius: 8px;
   overflow: hidden;
-  max-width: 720px;
+  max-width: 740px;
+}
+
+/* Analyzers */
+.analyzer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 28px;
+}
+.analyzer-item {
+  background: rgba(14,26,33,0.6);
+  border: 1px solid rgba(45,212,191,0.08);
+  border-radius: 8px;
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+.analyzer-item.is-new { border-color: rgba(45,212,191,0.2); }
+.analyzer-icon {
+  font-size: 16px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.analyzer-item .analyzer-name {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
+  font-weight: 600;
+  color: #e4ecf0;
+  margin-bottom: 2px;
+}
+.analyzer-item .analyzer-desc {
+  font-size: 12px;
+  color: #6b8a95;
+  line-height: 1.4;
+}
+.analyzer-new-tag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #2dd4bf;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 6px;
 }
 
 /* Tools */
 .tools-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 10px;
 }
 .tool-tag {
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  background: rgba(14,26,33,0.6);
+  border: 1px solid rgba(45,212,191,0.08);
   border-radius: 8px;
   padding: 12px 20px;
   font-size: 15px;
   font-weight: 500;
-  color: #c4d5db;
+  color: #9ab0b8;
 }
 
 /* Pricing */
@@ -316,23 +493,23 @@ section + section { border-top: 1px solid #152028; }
   align-items: start;
 }
 .pricing-card {
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  background: rgba(14,26,33,0.6);
+  border: 1px solid rgba(45,212,191,0.08);
   border-radius: 12px;
   padding: 32px 28px;
   position: relative;
 }
 .pricing-card.recommended {
-  border-color: #0d9488;
-  box-shadow: 0 0 0 1px #0d9488;
+  border-color: rgba(45,212,191,0.35);
+  background: rgba(14,26,33,0.8);
 }
 .pricing-card .rec-badge {
   position: absolute;
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: #0d9488;
-  color: #f0f4f8;
+  background: linear-gradient(135deg, #0d9488, #06b6d4);
+  color: #e4ecf0;
   font-family: "JetBrains Mono", monospace;
   font-size: 12px;
   font-weight: 700;
@@ -356,11 +533,11 @@ section + section { border-top: 1px solid #152028; }
 .pricing-card .price span {
   font-size: 16px;
   font-weight: 400;
-  color: #8ba4b0;
+  color: #6b8a95;
 }
 .pricing-card .price-desc {
   font-size: 14px;
-  color: #8ba4b0;
+  color: #6b8a95;
   margin-bottom: 24px;
 }
 .pricing-card ul {
@@ -371,7 +548,7 @@ section + section { border-top: 1px solid #152028; }
 }
 .pricing-card li {
   font-size: 14px;
-  color: #c4d5db;
+  color: #9ab0b8;
   padding-left: 22px;
   position: relative;
   line-height: 1.5;
@@ -389,7 +566,7 @@ section + section { border-top: 1px solid #152028; }
 .final-cta {
   text-align: center;
   padding: 80px 0 64px;
-  border-top: 1px solid #152028;
+  border-top: 1px solid rgba(45,212,191,0.06);
 }
 .final-cta h2 {
   font-family: "JetBrains Mono", monospace;
@@ -411,38 +588,38 @@ section + section { border-top: 1px solid #152028; }
 
 /* Footer */
 footer {
-  border-top: 1px solid #152028;
+  border-top: 1px solid rgba(45,212,191,0.06);
   padding: 32px 0;
   text-align: center;
 }
 footer p {
-  color: #546e7a;
+  color: #3d5560;
   font-size: 14px;
 }
-footer a { color: #546e7a; }
-footer a:hover { color: #8ba4b0; }
+footer a { color: #3d5560; }
+footer a:hover { color: #6b8a95; }
 
 /* Code blocks in CTA */
 .cta-code {
-  background: #152028;
-  border: 1px solid #1e3a3f;
+  background: rgba(14,26,33,0.8);
+  border: 1px solid rgba(45,212,191,0.1);
   border-radius: 8px;
   padding: 20px 24px;
   text-align: left;
-  max-width: 540px;
+  max-width: 560px;
   margin: 0 auto 24px;
   font-family: "JetBrains Mono", monospace;
   font-size: 14px;
   line-height: 1.8;
-  color: #8ba4b0;
+  color: #6b8a95;
   overflow-x: auto;
 }
 .cta-code .cmd { color: #2dd4bf; }
-.cta-code .comment { color: #546e7a; }
+.cta-code .comment { color: #3d5560; }
 
 /* Responsive */
 @media (max-width: 768px) {
-  .hero h1 { font-size: 32px; }
+  .hero h1 { font-size: 34px; letter-spacing: -1px; }
   .hero .subhead { font-size: 16px; }
   .install-block {
     flex-direction: column;
@@ -452,13 +629,20 @@ footer a:hover { color: #8ba4b0; }
   .install-block code { font-size: 13px; }
   .feature-grid { grid-template-columns: 1fr; }
   .pricing-grid { grid-template-columns: 1fr; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 24px; }
+  .stat-item .stat-num { font-size: 32px; }
   .section-heading { font-size: 26px; }
   section { padding: 48px 0; }
-  .hero { padding: 48px 0 40px; }
+  .hero { padding: 56px 0 32px; }
   .comparison-table { font-size: 13px; }
   .comparison-table th,
   .comparison-table td { padding: 10px 12px; }
   .step { gap: 14px; }
+  .analyzer-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .analyzer-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -477,27 +661,153 @@ footer a:hover { color: #8ba4b0; }
 
 <header class="hero">
   <div class="container">
+    <div class="hero-version"><span class="dot"></span> v2 &mdash; 10 languages, 10 analyzers</div>
     <h1>Catch AI agent mistakes <em>before</em> they hit your codebase</h1>
-    <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; catching broken imports, stale references, and missing tests before you commit.</p>
+    <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; catching broken imports, swallowed errors, dead code, and hallucinated APIs before you commit.</p>
     <div class="install-block">
       <code>curl -sSf https://fault.jabbey.io/install.sh | sh</code>
       <button class="copy-btn" id="copy-btn" onclick="copyInstall()">Copy</button>
     </div>
-    <div><span class="cta-text">Get started &mdash; it's free</span></div>
+    <div><span class="cta-text">Works offline. No account required.</span></div>
   </div>
 </header>
+
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num">10</div>
+        <div class="stat-label">Languages</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">10</div>
+        <div class="stat-label">Analyzers</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">9</div>
+        <div class="stat-label">Manifest formats</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">0</div>
+        <div class="stat-label">API calls required</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <section>
   <div class="container">
     <div class="section-label">The problem</div>
     <h2 class="section-heading">AI agents are fast. But they make structural mistakes.</h2>
-    <p class="section-desc">AI coding agents can scaffold an entire feature across a dozen files in seconds. But they make structural mistakes that are easy to miss during review:</p>
+    <p class="section-desc">AI coding agents can scaffold entire features across a dozen files in seconds. But they make mistakes that slip through code review:</p>
     <ul class="problem-list">
-      <li>An import references a module that was never created</li>
+      <li>An import references a package that doesn't exist in your manifest</li>
       <li>A function signature changed but not all callers were updated</li>
-      <li>A file was renamed but old references remain in three other files</li>
-      <li>TODO placeholders were left behind as "implementation notes"</li>
+      <li>Error handling was silently swallowed &mdash; <code class="mono" style="color:#6b8a95;font-size:13px">_ = err</code> in Go, empty <code class="mono" style="color:#6b8a95;font-size:13px">catch {}</code> in Java</li>
+      <li>Exported code is now dead &mdash; nothing imports it anymore</li>
+      <li>Circular dependencies were introduced between modules</li>
+      <li>TODO placeholders and debug statements were left behind</li>
     </ul>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Languages</div>
+    <h2 class="section-heading">Ten languages. Full cross-file analysis.</h2>
+    <p class="section-desc">Fault parses imports, exports, function signatures, and manifest files for every language it supports. No configuration beyond <code class="mono" style="color:#2dd4bf;font-size:15px">fault init</code>.</p>
+    <div class="lang-grid">
+      <div class="lang-pill"><span class="lang-dot" style="background:#00ADD8"></span> Go</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#3178C6"></span> TypeScript</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#3776AB"></span> Python</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#B07219"></span> Java</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#DEA584"></span> Rust</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#CC342D"></span> Ruby</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#A97BFF"></span> Kotlin</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#68217A"></span> C#</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#777BB4"></span> PHP</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#F05138"></span> Swift</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="container">
+    <div class="section-label">Analyzers</div>
+    <h2 class="section-heading">Ten analyzers. Three that nobody else has.</h2>
+    <p class="section-desc">Every analyzer runs in parallel against your git diff. No network calls, no cloud dependencies, no data leaves your machine.</p>
+    <div class="analyzer-grid">
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F517;</div>
+        <div>
+          <div class="analyzer-name">imports</div>
+          <div class="analyzer-desc">Broken imports, missing modules</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F50D;</div>
+        <div>
+          <div class="analyzer-name">references</div>
+          <div class="analyzer-desc">Stale callers, renamed symbols</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F4CB;</div>
+        <div>
+          <div class="analyzer-name">consistency</div>
+          <div class="analyzer-desc">Signature mismatches across files</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F9EA;</div>
+        <div>
+          <div class="analyzer-name">tests</div>
+          <div class="analyzer-desc">Missing test updates for changed code</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x26A0;</div>
+        <div>
+          <div class="analyzer-name">patterns</div>
+          <div class="analyzer-desc">Debug logs, TODO placeholders</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F512;</div>
+        <div>
+          <div class="analyzer-name">security</div>
+          <div class="analyzer-desc">Secrets, injection, insecure crypto</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F47B;</div>
+        <div>
+          <div class="analyzer-name">hallucination</div>
+          <div class="analyzer-desc">Phantom packages, invented APIs</div>
+        </div>
+      </div>
+      <div class="analyzer-item is-new">
+        <div class="analyzer-icon">&#x1F6A8;</div>
+        <div>
+          <div class="analyzer-name">errorhandling<span class="analyzer-new-tag">new</span></div>
+          <div class="analyzer-desc">Swallowed errors, missing catch blocks</div>
+        </div>
+      </div>
+      <div class="analyzer-item is-new">
+        <div class="analyzer-icon">&#x1FAA6;</div>
+        <div>
+          <div class="analyzer-name">deadcode<span class="analyzer-new-tag">new</span></div>
+          <div class="analyzer-desc">Exported symbols nothing imports</div>
+        </div>
+      </div>
+      <div class="analyzer-item is-new">
+        <div class="analyzer-icon">&#x1F504;</div>
+        <div>
+          <div class="analyzer-name">depgraph<span class="analyzer-new-tag">new</span></div>
+          <div class="analyzer-desc">Circular deps, unused manifest entries</div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -507,39 +817,45 @@ footer a:hover { color: #8ba4b0; }
     <h2 class="section-heading">Everything you need to validate AI-generated code</h2>
     <div class="feature-grid">
       <div class="feature-card">
-        <h3>Static analysis that works offline</h3>
-        <p>Seven analyzers across 5 languages run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.</p>
+        <h3>Works completely offline</h3>
+        <p>All ten analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.</p>
       </div>
       <div class="feature-card">
-        <h3>Multi-language support</h3>
-        <p>Parses and validates Go, TypeScript, Python, Java, and Rust. Understands imports, exports, function signatures, and cross-file references for each language.</p>
+        <h3>Manifest-aware validation</h3>
+        <p>Validates imports against your actual project dependencies &mdash; package.json, go.mod, Cargo.toml, pom.xml, build.gradle, .csproj, composer.json, Gemfile, and Package.swift.</p>
       </div>
       <div class="feature-card">
         <h3>Git native</h3>
-        <p>Installs as a pre-commit hook with <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
+        <p>Installs as a pre-commit hook with <code class="mono" style="color:#2dd4bf">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
       </div>
       <div class="feature-card">
         <h3>Auto-fix engine</h3>
-        <p>Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault fix</code> to automatically repair broken imports, replace hardcoded secrets with env vars, and remove debug statements. Preview changes with <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">--dry-run</code>.</p>
+        <p>Run <code class="mono" style="color:#2dd4bf">fault fix</code> to automatically repair broken imports, replace hardcoded secrets with env vars, and remove debug statements. Preview changes with <code class="mono" style="color:#2dd4bf">--dry-run</code>.</p>
       </div>
       <div class="feature-card">
         <h3>Watch mode</h3>
-        <p>Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault watch</code> for continuous validation as you edit. Detects file changes in real-time and re-runs analysis within milliseconds &mdash; the tightest feedback loop for AI coding.</p>
+        <p>Run <code class="mono" style="color:#2dd4bf">fault watch</code> for continuous validation as you edit. Detects file changes in real-time and re-runs analysis within milliseconds.</p>
       </div>
       <div class="feature-card">
         <h3>GitHub PR review</h3>
         <p>Post inline review comments directly on pull requests via GitHub Actions. Findings appear right in the diff where developers already review code.</p>
       </div>
-      <div class="feature-card">
-        <h3>Security &amp; hallucination detection</h3>
-        <p>Catches hardcoded secrets, insecure crypto, references to non-existent APIs, phantom packages, and invented function signatures that AI agents hallucinate.</p>
+      <div class="feature-card new-feature">
+        <div class="badge badge-new">New</div>
+        <h3>Error handling detection</h3>
+        <p>Catches discarded Go errors (<code class="mono" style="color:#6b8a95;font-size:13px">_ = err</code>), unhandled TS promises, bare Python <code class="mono" style="color:#6b8a95;font-size:13px">except:</code>, empty Java catch blocks, and Rust <code class="mono" style="color:#6b8a95;font-size:13px">.unwrap()</code> outside tests.</p>
+      </div>
+      <div class="feature-card new-feature">
+        <div class="badge badge-new">New</div>
+        <h3>Dead code &amp; dep graph</h3>
+        <p>Detects exported symbols that nothing imports, circular dependencies between modules, and unused entries in your manifest files.</p>
       </div>
       <div class="feature-card">
         <h3>VS Code extension</h3>
         <p>See Fault findings inline as you code. The VS Code extension runs analysis on save and shows diagnostics, quick-fixes, and code actions right in the editor.</p>
       </div>
       <div class="feature-card">
-        <div class="badge">Pro</div>
+        <div class="badge badge-pro">Pro</div>
         <h3>AI-enhanced validation</h3>
         <p>LLM-powered confidence scoring rates how likely each changed file is to be correct. Optional spec comparison flags when changes deviate from your requirements.</p>
       </div>
@@ -564,7 +880,7 @@ footer a:hover { color: #8ba4b0; }
         <div class="step-num">2</div>
         <div class="step-content">
           <h3>Fault validates the diff</h3>
-          <p>When you commit, <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs seven analyzers in parallel.</p>
+          <p>When you commit, <code class="mono" style="color:#2dd4bf">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs ten analyzers in parallel.</p>
         </div>
       </div>
       <div class="step-connector"></div>
@@ -572,7 +888,7 @@ footer a:hover { color: #8ba4b0; }
         <div class="step-num">3</div>
         <div class="step-content">
           <h3>Auto-fix or commit with confidence</h3>
-          <p>If Fault finds errors, the commit is blocked. Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault fix</code> to auto-repair what it can, or fix manually. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
+          <p>If Fault finds errors, the commit is blocked. Run <code class="mono" style="color:#2dd4bf">fault fix</code> to auto-repair what it can, or fix manually. If everything passes, the commit proceeds.</p>
         </div>
       </div>
     </div>
@@ -581,9 +897,9 @@ footer a:hover { color: #8ba4b0; }
 
 <section>
   <div class="container">
-    <div class="section-label">Built for AI agent workflows</div>
-    <h2 class="section-heading">Fault checks what single-file linters can't</h2>
-    <p class="section-desc">Traditional linters check syntax within a single file. Fault checks the relationships between files.</p>
+    <div class="section-label">Comparison</div>
+    <h2 class="section-heading">What single-file linters miss</h2>
+    <p class="section-desc">Traditional linters check syntax within a single file. Fault checks the relationships between files &mdash; the exact things AI agents get wrong.</p>
     <div class="table-wrap">
       <table class="comparison-table">
         <thead>
@@ -595,14 +911,14 @@ footer a:hover { color: #8ba4b0; }
         </thead>
         <tbody>
           <tr>
-            <td>Syntax errors</td>
-            <td><span class="check">Yes</span></td>
-            <td><span class="no">No (use your linter)</span></td>
-          </tr>
-          <tr>
             <td>Broken imports across files</td>
             <td><span class="no">No</span></td>
             <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Phantom packages not in manifest</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes (9 manifest formats)</span></td>
           </tr>
           <tr>
             <td>Signature changes with stale callers</td>
@@ -610,7 +926,17 @@ footer a:hover { color: #8ba4b0; }
             <td><span class="check">Yes</span></td>
           </tr>
           <tr>
-            <td>References to deleted files</td>
+            <td>Swallowed errors &amp; missing catch</td>
+            <td><span class="partial">Partial</span></td>
+            <td><span class="check">Yes (5 languages)</span></td>
+          </tr>
+          <tr>
+            <td>Dead exported code</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes</span></td>
+          </tr>
+          <tr>
+            <td>Circular dependencies</td>
             <td><span class="no">No</span></td>
             <td><span class="check">Yes</span></td>
           </tr>
@@ -628,11 +954,6 @@ footer a:hover { color: #8ba4b0; }
             <td>Hardcoded secrets &amp; insecure crypto</td>
             <td><span class="partial">Partial</span></td>
             <td><span class="check">Yes + auto-fix</span></td>
-          </tr>
-          <tr>
-            <td>Hallucinated APIs &amp; phantom packages</td>
-            <td><span class="no">No</span></td>
-            <td><span class="check">Yes</span></td>
           </tr>
         </tbody>
       </table>
@@ -665,13 +986,14 @@ footer a:hover { color: #8ba4b0; }
         <div class="price">$0</div>
         <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
         <ul>
-          <li>7 analyzers (imports, consistency, references, tests, patterns, security, hallucination)</li>
-          <li>Go, TypeScript, Python, Java, Rust</li>
+          <li>10 analyzers including error handling, dead code, dep graph</li>
+          <li>10 languages (Go, TS, Python, Java, Rust, Ruby, Kotlin, C#, PHP, Swift)</li>
+          <li>9 manifest formats for dependency validation</li>
           <li>Terminal, JSON, SARIF output</li>
-          <li>Auto-fix engine (<code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace;font-size:13px">fault fix</code>)</li>
-          <li>Watch mode (<code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace;font-size:13px">fault watch</code>)</li>
+          <li>Auto-fix engine (<code class="mono" style="color:#2dd4bf;font-size:13px">fault fix</code>)</li>
+          <li>Watch mode (<code class="mono" style="color:#2dd4bf;font-size:13px">fault watch</code>)</li>
           <li>Pre-commit hook &amp; GitHub PR comments</li>
-          <li>Works offline</li>
+          <li>Works offline &mdash; forever</li>
         </ul>
       </div>
       <div class="pricing-card recommended">
@@ -714,13 +1036,13 @@ footer a:hover { color: #8ba4b0; }
       <div><span class="cmd">fault init</span></div>
       <div><span class="cmd">fault hook install</span></div>
       <br>
-      <div><span class="comment"># That's it. Next time you commit, Fault validates your changes.</span></div>
+      <div><span class="comment"># That's it. Next commit, Fault validates your changes.</span></div>
       <br>
       <div><span class="comment"># Or use interactively:</span></div>
       <div><span class="cmd">fault watch</span>       <span class="comment"># continuous validation as you edit</span></div>
       <div><span class="cmd">fault fix</span>         <span class="comment"># auto-fix broken imports, secrets, debug logs</span></div>
       <br>
-      <div><span class="comment"># Supports Go, TypeScript, Python, Java, and Rust</span></div>
+      <div><span class="comment"># Go, TypeScript, Python, Java, Rust, Ruby, Kotlin, C#, PHP, Swift</span></div>
     </div>
     <div class="links">
       <a href="https://github.com/joeabbey/fault/blob/master/README.md">Read the docs</a>
