@@ -858,6 +858,9 @@ func registerAllParsers(reg *parser.Registry) {
 	reg.Register(parser.NewRParser())
 	reg.Register(parser.NewElixirParser())
 	reg.Register(parser.NewLuaParser())
+	reg.Register(parser.NewPerlParser())
+	reg.Register(parser.NewPowershellParser())
+	reg.Register(parser.NewGroovyParser())
 }
 
 func versionCmd() *cobra.Command {

@@ -57,6 +57,13 @@ var extensionToLanguage = map[string]string{
 	".sol":   "solidity",
 	".tf":    "terraform",
 	".proto": "protobuf",
+	// v4 scripting languages
+	".pl":      "perl",
+	".pm":      "perl",
+	".ps1":     "powershell",
+	".psm1":    "powershell",
+	".groovy":  "groovy",
+	".gvy":     "groovy",
 }
 
 // Registry manages parsers for different languages.

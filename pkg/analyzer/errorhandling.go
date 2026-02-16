@@ -63,6 +63,12 @@ func (a *ErrorHandlingAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 			issues = append(issues, checkElixirErrorHandling(fileDiff)...)
 		case ".scala", ".sc":
 			issues = append(issues, checkScalaErrorHandling(fileDiff)...)
+		case ".pl", ".pm":
+			issues = append(issues, checkPerlErrorHandling(fileDiff)...)
+		case ".ps1", ".psm1":
+			issues = append(issues, checkPowershellErrorHandling(fileDiff)...)
+		case ".groovy", ".gvy":
+			issues = append(issues, checkGroovyErrorHandling(fileDiff)...)
 		}
 	}
 
