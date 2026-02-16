@@ -178,11 +178,19 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 	case ext == ".py":
 		issues = append(issues, h.checkPythonImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".java":
-		issues = append(issues, h.checkJavaImports(fileDiff.Path, pf)...)
+		issues = append(issues, h.checkJavaImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".rs":
 		issues = append(issues, h.checkRustImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".rb" || ext == ".rake":
 		issues = append(issues, h.checkRubyImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".kt" || ext == ".kts":
+		issues = append(issues, h.checkKotlinImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".cs":
+		issues = append(issues, h.checkCSharpImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".php":
+		issues = append(issues, h.checkPHPImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".swift":
+		issues = append(issues, h.checkSwiftImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues
@@ -673,7 +681,50 @@ func extractPyprojectDeps(line string, deps map[string]bool) {
 
 // --- Java phantom import detection ---
 
-// javaStdlibPrefixes are top-level Java standard library package prefixes.
+// javaStdlib is a set of Java standard library package prefixes.
+var javaStdlib = map[string]bool{
+	"java.lang":     true,
+	"java.util":     true,
+	"java.io":       true,
+	"java.nio":      true,
+	"java.net":      true,
+	"java.math":     true,
+	"java.text":     true,
+	"java.time":     true,
+	"java.security": true,
+	"java.sql":      true,
+	"java.beans":    true,
+	"java.applet":   true,
+	"java.awt":      true,
+	"java.rmi":      true,
+	"java.logging":  false, // This is NOT a real package — see phantomJavaPackages
+	"javax.swing":   true,
+	"javax.servlet": true,
+	"javax.xml":     true,
+	"javax.crypto":  true,
+	"javax.net":     true,
+	"javax.sql":     true,
+	"javax.naming":  true,
+	"javax.script":  true,
+	"javax.sound":   true,
+	"javax.imageio": true,
+	"javax.print":   true,
+	"javax.annotation": true,
+	"jakarta.servlet":  true,
+	"jakarta.xml":      true,
+	"jakarta.json":     true,
+	"jakarta.inject":   true,
+	"jakarta.ws":       true,
+	"jakarta.persistence": true,
+	"jakarta.validation":  true,
+	"jakarta.annotation":  true,
+	"org.w3c.dom":    true,
+	"org.xml.sax":    true,
+	"org.ietf.jgss":  true,
+}
+
+// javaStdlibPrefixes are top-level Java standard library package prefixes
+// for broad matching when the specific subpackage isn't in javaStdlib.
 var javaStdlibPrefixes = []string{
 	"java.", "javax.", "jakarta.",
 	"org.w3c.", "org.xml.", "org.ietf.",
@@ -704,8 +755,146 @@ var phantomJavaPackages = []string{
 	"org.spring.",       // Correct is org.springframework
 }
 
-func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.ParsedFile) []Issue {
+// parsePomXml walks up from repoPath to find pom.xml and extracts groupId
+// prefixes from <dependency> blocks. Returns a map of groupId prefixes.
+func parsePomXml(repoPath string) (map[string]bool, error) {
+	pomPath := findFileUp(repoPath, "pom.xml")
+	if pomPath == "" {
+		return nil, os.ErrNotExist
+	}
+
+	data, err := os.ReadFile(pomPath)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string]bool)
+	lines := strings.Split(string(data), "\n")
+	inDependency := false
+	groupIDRe := regexp.MustCompile(`<groupId>\s*([^<]+?)\s*</groupId>`)
+
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if strings.Contains(trimmed, "<dependency>") {
+			inDependency = true
+			continue
+		}
+		if strings.Contains(trimmed, "</dependency>") {
+			inDependency = false
+			continue
+		}
+
+		if inDependency {
+			if m := groupIDRe.FindStringSubmatch(trimmed); len(m) >= 2 {
+				groupID := m[1]
+				deps[groupID] = true
+			}
+		}
+	}
+
+	return deps, nil
+}
+
+// parseBuildGradle walks up from repoPath to find build.gradle or build.gradle.kts
+// and extracts dependency group prefixes. Returns a map of group prefixes.
+func parseBuildGradle(repoPath string) (map[string]bool, error) {
+	gradlePath := findFileUp(repoPath, "build.gradle")
+	if gradlePath == "" {
+		gradlePath = findFileUp(repoPath, "build.gradle.kts")
+	}
+	if gradlePath == "" {
+		return nil, os.ErrNotExist
+	}
+
+	data, err := os.ReadFile(gradlePath)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string]bool)
+	depKeywords := []string{
+		"implementation", "api", "compile", "compileOnly",
+		"runtimeOnly", "testImplementation", "testCompile",
+		"testCompileOnly", "testRuntimeOnly", "annotationProcessor",
+		"kapt", "ksp",
+	}
+
+	colonNotation := regexp.MustCompile(`['"]([^'":\s]+):([^'":\s]+)(?::([^'":\s]+))?['"]`)
+	groupNotation := regexp.MustCompile(`group:\s*['"]([^'"]+)['"]`)
+
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+			continue
+		}
+
+		isDep := false
+		for _, kw := range depKeywords {
+			if strings.HasPrefix(trimmed, kw+" ") || strings.HasPrefix(trimmed, kw+"(") {
+				isDep = true
+				break
+			}
+		}
+		if !isDep {
+			continue
+		}
+
+		if m := colonNotation.FindStringSubmatch(trimmed); len(m) >= 3 {
+			deps[m[1]] = true
+			continue
+		}
+
+		if m := groupNotation.FindStringSubmatch(trimmed); len(m) >= 2 {
+			deps[m[1]] = true
+		}
+	}
+
+	return deps, nil
+}
+
+// findFileUp walks up the directory tree from startDir looking for a file with
+// the given name. Returns the full path or empty string if not found.
+func findFileUp(startDir, filename string) string {
+	dir, err := filepath.Abs(startDir)
+	if err != nil {
+		return ""
+	}
+
+	for {
+		candidate := filepath.Join(dir, filename)
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return ""
+		}
+		dir = parent
+	}
+}
+
+func (h *HallucinationAnalyzer) checkJavaImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
 	issues := make([]Issue, 0)
+
+	// Try to parse manifest files for dependency validation.
+	manifestDeps := make(map[string]bool)
+	hasManifest := false
+
+	if pomDeps, err := parsePomXml(repoPath); err == nil {
+		hasManifest = true
+		for k, v := range pomDeps {
+			manifestDeps[k] = v
+		}
+	}
+	if gradleDeps, err := parseBuildGradle(repoPath); err == nil {
+		hasManifest = true
+		for k, v := range gradleDeps {
+			manifestDeps[k] = v
+		}
+	}
 
 	for _, imp := range pf.Imports {
 		importPath := imp.Path
@@ -714,6 +903,7 @@ func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.Par
 		checkPath := strings.TrimSuffix(importPath, ".*")
 
 		// Check known phantom patterns first
+		isPhantom := false
 		for _, phantom := range phantomJavaPackages {
 			if strings.HasPrefix(checkPath, phantom) || strings.HasPrefix(checkPath+".", phantom) {
 				issues = append(issues, Issue{
@@ -726,11 +916,15 @@ func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.Par
 					Message:    "Import references likely hallucinated package: " + importPath,
 					Suggestion: "This package does not exist in the Java standard library. Check the correct package name",
 				})
+				isPhantom = true
 				break
 			}
 		}
+		if isPhantom {
+			continue
+		}
 
-		// Standard library imports are assumed valid (we can't fully verify without the JDK)
+		// Standard library imports — check broad prefix match.
 		isStdlib := false
 		for _, prefix := range javaStdlibPrefixes {
 			if strings.HasPrefix(checkPath, prefix) {
@@ -742,10 +936,288 @@ func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.Par
 			continue
 		}
 
-		// Known third-party libraries — skip
-		isKnown := false
-		for _, prefix := range commonJavaLibPrefixes {
+		// If no manifest found, fail open — don't flag unknown packages.
+		if !hasManifest {
+			continue
+		}
+
+		// Check if the import's groupId prefix matches any manifest dependency.
+		found := false
+		for depGroup := range manifestDeps {
+			if strings.HasPrefix(checkPath, depGroup) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			issues = append(issues, Issue{
+				ID:         "hallucination/phantom-import",
+				Severity:   SeverityError,
+				Category:   "hallucination",
+				File:       filePath,
+				Line:       imp.Line,
+				Message:    "Import references unknown package: " + importPath,
+				Suggestion: "Verify the package exists and add it to pom.xml or build.gradle",
+			})
+		}
+	}
+
+	return issues
+}
+
+// --- Kotlin phantom import detection ---
+
+// kotlinStdlib is a set of Kotlin standard library and kotlinx package prefixes.
+var kotlinStdlib = map[string]bool{
+	"kotlin":                   true,
+	"kotlin.annotation":        true,
+	"kotlin.collections":       true,
+	"kotlin.comparisons":       true,
+	"kotlin.concurrent":        true,
+	"kotlin.contracts":         true,
+	"kotlin.coroutines":        true,
+	"kotlin.io":                true,
+	"kotlin.jvm":               true,
+	"kotlin.math":              true,
+	"kotlin.properties":        true,
+	"kotlin.random":            true,
+	"kotlin.ranges":            true,
+	"kotlin.reflect":           true,
+	"kotlin.sequences":         true,
+	"kotlin.streams":           true,
+	"kotlin.system":            true,
+	"kotlin.text":              true,
+	"kotlin.time":              true,
+	"kotlinx.coroutines":       true,
+	"kotlinx.serialization":    true,
+	"kotlinx.datetime":         true,
+	"kotlinx.io":               true,
+}
+
+// checkKotlinImports validates Kotlin imports against manifests, Java stdlib, and Kotlin stdlib.
+func (h *HallucinationAnalyzer) checkKotlinImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	// Kotlin reuses Java manifests (pom.xml / build.gradle).
+	manifestDeps := make(map[string]bool)
+	hasManifest := false
+
+	if pomDeps, err := parsePomXml(repoPath); err == nil {
+		hasManifest = true
+		for k, v := range pomDeps {
+			manifestDeps[k] = v
+		}
+	}
+	if gradleDeps, err := parseBuildGradle(repoPath); err == nil {
+		hasManifest = true
+		for k, v := range gradleDeps {
+			manifestDeps[k] = v
+		}
+	}
+
+	for _, imp := range pf.Imports {
+		importPath := imp.Path
+		checkPath := strings.TrimSuffix(importPath, ".*")
+
+		// Check Kotlin stdlib — match by prefix.
+		isKotlinStd := false
+		for prefix := range kotlinStdlib {
+			if checkPath == prefix || strings.HasPrefix(checkPath, prefix+".") {
+				isKotlinStd = true
+				break
+			}
+		}
+		if isKotlinStd {
+			continue
+		}
+
+		// Check Java stdlib — Kotlin can import Java classes.
+		isJavaStd := false
+		for _, prefix := range javaStdlibPrefixes {
 			if strings.HasPrefix(checkPath, prefix) {
+				isJavaStd = true
+				break
+			}
+		}
+		if isJavaStd {
+			continue
+		}
+
+		// Check known Java phantom patterns.
+		isPhantom := false
+		for _, phantom := range phantomJavaPackages {
+			if strings.HasPrefix(checkPath, phantom) || strings.HasPrefix(checkPath+".", phantom) {
+				issues = append(issues, Issue{
+					ID:         "hallucination/phantom-import",
+					FixID:      "import-broken-java",
+					Severity:   SeverityError,
+					Category:   "hallucination",
+					File:       filePath,
+					Line:       imp.Line,
+					Message:    "Import references likely hallucinated package: " + importPath,
+					Suggestion: "This package does not exist. Check the correct package name",
+				})
+				isPhantom = true
+				break
+			}
+		}
+		if isPhantom {
+			continue
+		}
+
+		// If no manifest found, fail open.
+		if !hasManifest {
+			continue
+		}
+
+		// Check if the import matches any manifest dependency.
+		found := false
+		for depGroup := range manifestDeps {
+			if strings.HasPrefix(checkPath, depGroup) {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			issues = append(issues, Issue{
+				ID:         "hallucination/phantom-import",
+				Severity:   SeverityError,
+				Category:   "hallucination",
+				File:       filePath,
+				Line:       imp.Line,
+				Message:    "Import references unknown package: " + importPath,
+				Suggestion: "Verify the package exists and add it to pom.xml or build.gradle",
+			})
+		}
+	}
+
+	return issues
+}
+
+// --- C# phantom import detection ---
+
+// csharpStdNamespaces is a set of well-known C# standard library / .NET namespaces.
+var csharpStdNamespaces = map[string]bool{
+	"System":                          true,
+	"System.Buffers":                  true,
+	"System.Collections":              true,
+	"System.Collections.Concurrent":   true,
+	"System.Collections.Generic":      true,
+	"System.Collections.Immutable":    true,
+	"System.Collections.ObjectModel":  true,
+	"System.Collections.Specialized":  true,
+	"System.ComponentModel":           true,
+	"System.Configuration":            true,
+	"System.Data":                     true,
+	"System.Diagnostics":              true,
+	"System.Drawing":                  true,
+	"System.Dynamic":                  true,
+	"System.Globalization":            true,
+	"System.IO":                       true,
+	"System.IO.Compression":           true,
+	"System.IO.Pipes":                 true,
+	"System.Linq":                     true,
+	"System.Linq.Expressions":         true,
+	"System.Math":                     true,
+	"System.Net":                      true,
+	"System.Net.Http":                 true,
+	"System.Net.Sockets":              true,
+	"System.Numerics":                 true,
+	"System.Reflection":               true,
+	"System.Resources":                true,
+	"System.Runtime":                  true,
+	"System.Runtime.CompilerServices": true,
+	"System.Runtime.InteropServices":  true,
+	"System.Runtime.Serialization":    true,
+	"System.Security":                 true,
+	"System.Security.Claims":          true,
+	"System.Security.Cryptography":    true,
+	"System.Text":                     true,
+	"System.Text.Encoding":            true,
+	"System.Text.Json":                true,
+	"System.Text.RegularExpressions":  true,
+	"System.Threading":                true,
+	"System.Threading.Channels":       true,
+	"System.Threading.Tasks":          true,
+	"System.Xml":                      true,
+	"System.Xml.Linq":                 true,
+	"System.Xml.Serialization":        true,
+}
+
+// commonCSharpLibPrefixes are well-known third-party and framework namespace prefixes.
+var commonCSharpLibPrefixes = []string{
+	"Microsoft.AspNetCore.",
+	"Microsoft.Extensions.",
+	"Microsoft.EntityFrameworkCore.",
+	"Microsoft.Identity.",
+	"Microsoft.Azure.",
+	"Microsoft.Data.",
+	"Microsoft.VisualStudio.",
+	"Newtonsoft.Json",
+	"Serilog.",
+	"AutoMapper.",
+	"FluentValidation.",
+	"MediatR.",
+	"Polly.",
+	"Dapper.",
+	"NUnit.",
+	"Xunit.",
+	"Moq.",
+	"FluentAssertions.",
+}
+
+// phantomCSharpNamespaces are AI-hallucinated namespace patterns that don't exist.
+var phantomCSharpNamespaces = []string{
+	"System.Collections.Generics.",  // Common hallucination — correct is System.Collections.Generic
+	"System.Collection.",            // Doesn't exist — correct is System.Collections
+	"System.Util.",                  // Doesn't exist
+	"System.Utils.",                 // Doesn't exist
+	"System.Networking.",            // Correct is System.Net
+	"System.Threading.Task.",        // Correct is System.Threading.Tasks
+	"System.Text.Jsons.",            // Correct is System.Text.Json
+	"Microsoft.AspNet.",             // Correct is Microsoft.AspNetCore
+}
+
+func (h *HallucinationAnalyzer) checkCSharpImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	deps, _ := parseCsproj(repoPath)
+
+	for _, imp := range pf.Imports {
+		namespacePath := imp.Path
+
+		// Check known phantom patterns first
+		for _, phantom := range phantomCSharpNamespaces {
+			if strings.HasPrefix(namespacePath, phantom) || strings.HasPrefix(namespacePath+".", phantom) {
+				issues = append(issues, Issue{
+					ID:         "hallucination/phantom-import",
+					FixID:      "import-broken-csharp",
+					Severity:   SeverityError,
+					Category:   "hallucination",
+					File:       filePath,
+					Line:       imp.Line,
+					Message:    "Import references likely hallucinated namespace: " + namespacePath,
+					Suggestion: "This namespace does not exist in .NET. Check the correct namespace name",
+				})
+				break
+			}
+		}
+
+		// Check standard library namespaces
+		if csharpStdNamespaces[namespacePath] {
+			continue
+		}
+		// Check if it's under a known System.* prefix
+		if strings.HasPrefix(namespacePath, "System.") {
+			continue
+		}
+
+		// Check known third-party library prefixes
+		isKnown := false
+		for _, prefix := range commonCSharpLibPrefixes {
+			if strings.HasPrefix(namespacePath, prefix) {
 				isKnown = true
 				break
 			}
@@ -754,11 +1226,349 @@ func (h *HallucinationAnalyzer) checkJavaImports(filePath string, pf *parser.Par
 			continue
 		}
 
-		// For unknown packages, we can't easily verify without a build system (Maven/Gradle).
-		// We only flag the known-bad patterns above.
+		// Check against project references from .csproj
+		if deps != nil && len(deps) > 0 {
+			found := false
+			for dep := range deps {
+				if namespacePath == dep || strings.HasPrefix(namespacePath, dep+".") {
+					found = true
+					break
+				}
+			}
+			if !found {
+				// Not in stdlib, not in known libs, not in project deps — may be phantom
+				// But only flag if we successfully parsed .csproj (otherwise fail open)
+			}
+		}
 	}
 
 	return issues
+}
+
+// parseCsproj reads .csproj files in the repo root for PackageReference elements.
+func parseCsproj(repoPath string) (map[string]bool, error) {
+	deps := make(map[string]bool)
+	found := false
+
+	entries, err := os.ReadDir(repoPath)
+	if err != nil {
+		return nil, err
+	}
+
+	pkgRefPattern := regexp.MustCompile(`<PackageReference\s+Include="([^"]+)"`)
+	pkgConfigPattern := regexp.MustCompile(`<package\s+id="([^"]+)"`)
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+
+		if strings.HasSuffix(name, ".csproj") {
+			data, err := os.ReadFile(filepath.Join(repoPath, name))
+			if err != nil {
+				continue
+			}
+			found = true
+			for _, match := range pkgRefPattern.FindAllStringSubmatch(string(data), -1) {
+				if len(match) >= 2 {
+					deps[match[1]] = true
+				}
+			}
+		}
+
+		if name == "packages.config" {
+			data, err := os.ReadFile(filepath.Join(repoPath, name))
+			if err != nil {
+				continue
+			}
+			found = true
+			for _, match := range pkgConfigPattern.FindAllStringSubmatch(string(data), -1) {
+				if len(match) >= 2 {
+					deps[match[1]] = true
+				}
+			}
+		}
+	}
+
+	if !found {
+		return nil, os.ErrNotExist
+	}
+
+	return deps, nil
+}
+
+// --- PHP phantom import detection ---
+
+// checkPHPImports validates PHP use statements against composer.json.
+func (h *HallucinationAnalyzer) checkPHPImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	deps, err := parseComposerJSON(repoPath)
+	if err != nil {
+		return issues
+	}
+
+	for _, imp := range pf.Imports {
+		importPath := imp.Path
+
+		topVendor := importPath
+		if idx := strings.Index(importPath, `\`); idx != -1 {
+			topVendor = importPath[:idx]
+		}
+
+		if phpBuiltinNamespaces[topVendor] {
+			continue
+		}
+
+		normalizedVendor := strings.ToLower(topVendor)
+		if deps[normalizedVendor] {
+			continue
+		}
+
+		parts := strings.SplitN(importPath, `\`, 3)
+		if len(parts) >= 2 {
+			composerKey := strings.ToLower(parts[0]) + "/" + strings.ToLower(parts[1])
+			if deps[composerKey] {
+				continue
+			}
+		}
+
+		if phpAppNamespaces[topVendor] {
+			continue
+		}
+
+		issues = append(issues, Issue{
+			ID:         "hallucination/phantom-import",
+			Severity:   SeverityError,
+			Category:   "hallucination",
+			File:       filePath,
+			Line:       imp.Line,
+			Message:    "Import references unknown package: " + importPath,
+			Suggestion: "Verify the package exists and add it to composer.json with 'composer require'",
+		})
+	}
+
+	return issues
+}
+
+// phpBuiltinNamespaces are top-level PHP namespaces that are always available.
+var phpBuiltinNamespaces = map[string]bool{
+	"PHP":           true,
+	"Ds":            true,
+	"FFI":           true,
+	"Fiber":         true,
+	"Random":        true,
+	"IntlException": true,
+}
+
+// phpAppNamespaces are common application-level namespace prefixes that are local code.
+var phpAppNamespaces = map[string]bool{
+	"App":      true,
+	"Src":      true,
+	"Tests":    true,
+	"Test":     true,
+	"Database": true,
+	"Modules":  true,
+	"Domain":   true,
+	"Http":     true,
+	"Console":  true,
+}
+
+// parseComposerJSON reads a composer.json and returns a set of dependency identifiers.
+func parseComposerJSON(repoPath string) (map[string]bool, error) {
+	composerPath := filepath.Join(repoPath, "composer.json")
+	f, err := os.Open(composerPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	deps := make(map[string]bool)
+
+	scanner := bufio.NewScanner(f)
+	inDepsBlock := false
+	braceDepth := 0
+
+	depsKeyPattern := regexp.MustCompile(`"(require|require-dev)"\s*:\s*\{`)
+	pkgNamePattern := regexp.MustCompile(`^\s*"([^"]+)"\s*:`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		if !inDepsBlock {
+			if depsKeyPattern.MatchString(line) {
+				inDepsBlock = true
+				braceDepth = 1
+				afterBrace := line[strings.Index(line, "{")+1:]
+				if m := pkgNamePattern.FindStringSubmatch(afterBrace); len(m) >= 2 {
+					addComposerDep(deps, m[1])
+				}
+			}
+			continue
+		}
+
+		for _, ch := range line {
+			if ch == '{' {
+				braceDepth++
+			} else if ch == '}' {
+				braceDepth--
+				if braceDepth <= 0 {
+					inDepsBlock = false
+					break
+				}
+			}
+		}
+
+		if inDepsBlock {
+			if m := pkgNamePattern.FindStringSubmatch(line); len(m) >= 2 {
+				addComposerDep(deps, m[1])
+			}
+		}
+	}
+
+	return deps, nil
+}
+
+// addComposerDep adds a composer dependency name in multiple lookup forms.
+func addComposerDep(deps map[string]bool, name string) {
+	if name == "php" || strings.HasPrefix(name, "ext-") || strings.HasPrefix(name, "lib-") {
+		return
+	}
+
+	deps[strings.ToLower(name)] = true
+
+	if idx := strings.Index(name, "/"); idx != -1 {
+		vendor := strings.ToLower(name[:idx])
+		deps[vendor] = true
+	}
+}
+
+// --- Swift phantom import detection ---
+
+// swiftStdModules is a set of well-known Swift standard library and Apple framework modules.
+var swiftStdModules = map[string]bool{
+	"Foundation": true, "UIKit": true, "SwiftUI": true, "Combine": true,
+	"CoreData": true, "CoreGraphics": true, "CoreLocation": true, "MapKit": true,
+	"AVFoundation": true, "CoreImage": true, "CoreML": true, "Metal": true,
+	"SceneKit": true, "SpriteKit": true, "ARKit": true, "RealityKit": true,
+	"Observation": true, "Swift": true, "_Concurrency": true, "os": true,
+	"AppKit": true, "WatchKit": true, "WidgetKit": true, "GameKit": true,
+	"StoreKit": true, "CloudKit": true, "WebKit": true, "SafariServices": true,
+	"AuthenticationServices": true, "CryptoKit": true, "Network": true,
+	"NaturalLanguage": true, "Vision": true, "CoreBluetooth": true,
+	"CoreMotion": true, "CoreTelephony": true, "CoreText": true,
+	"Dispatch": true, "ObjectiveC": true, "Darwin": true, "XCTest": true,
+}
+
+// checkSwiftImports validates Swift imports against Package.swift and Podfile.
+func (h *HallucinationAnalyzer) checkSwiftImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	deps := make(map[string]bool)
+	pkgDeps, pkgErr := parsePackageSwift(repoPath)
+	if pkgErr == nil {
+		for k, v := range pkgDeps {
+			deps[k] = v
+		}
+	}
+	podDeps, podErr := parsePodfile(repoPath)
+	if podErr == nil {
+		for k, v := range podDeps {
+			deps[k] = v
+		}
+	}
+
+	if pkgErr != nil && podErr != nil {
+		return issues
+	}
+
+	for _, imp := range pf.Imports {
+		moduleName := imp.Path
+
+		if swiftStdModules[moduleName] {
+			continue
+		}
+
+		if deps[moduleName] {
+			continue
+		}
+
+		issues = append(issues, Issue{
+			ID:         "hallucination/phantom-import",
+			Severity:   SeverityError,
+			Category:   "hallucination",
+			File:       filePath,
+			Line:       imp.Line,
+			Message:    "Import references unknown module: " + moduleName,
+			Suggestion: "Verify the module exists and add it to Package.swift or Podfile",
+		})
+	}
+
+	return issues
+}
+
+// parsePackageSwift reads a Package.swift file and returns dependency names.
+func parsePackageSwift(repoPath string) (map[string]bool, error) {
+	pkgPath := filepath.Join(repoPath, "Package.swift")
+	data, err := os.ReadFile(pkgPath)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string]bool)
+
+	rePackageURL := regexp.MustCompile(`\.package\s*\(\s*url\s*:\s*"[^"]*?/([^/"]+?)(?:\.git)?"\s*,`)
+	matches := rePackageURL.FindAllStringSubmatch(string(data), -1)
+	for _, m := range matches {
+		if len(m) >= 2 {
+			deps[m[1]] = true
+		}
+	}
+
+	rePackageName := regexp.MustCompile(`\.package\s*\(\s*name\s*:\s*"([^"]+)"`)
+	matches = rePackageName.FindAllStringSubmatch(string(data), -1)
+	for _, m := range matches {
+		if len(m) >= 2 {
+			deps[m[1]] = true
+		}
+	}
+
+	reProductName := regexp.MustCompile(`\.product\s*\(\s*name\s*:\s*"([^"]+)"`)
+	matches = reProductName.FindAllStringSubmatch(string(data), -1)
+	for _, m := range matches {
+		if len(m) >= 2 {
+			deps[m[1]] = true
+		}
+	}
+
+	return deps, nil
+}
+
+// parsePodfile reads a Podfile and returns pod names.
+func parsePodfile(repoPath string) (map[string]bool, error) {
+	podfilePath := filepath.Join(repoPath, "Podfile")
+	data, err := os.ReadFile(podfilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	deps := make(map[string]bool)
+
+	rePod := regexp.MustCompile(`pod\s+['"]([^'"]+)['"]`)
+	matches := rePod.FindAllStringSubmatch(string(data), -1)
+	for _, m := range matches {
+		if len(m) >= 2 {
+			name := m[1]
+			if idx := strings.Index(name, "/"); idx != -1 {
+				name = name[:idx]
+			}
+			deps[name] = true
+		}
+	}
+
+	return deps, nil
 }
 
 // --- Stub function detection ---
@@ -781,6 +1591,18 @@ var javaFuncPattern = regexp.MustCompile(`^\s*(?:public|protected|private)?\s*(?
 
 // Rust function declaration.
 var rustFuncPattern = regexp.MustCompile(`^(?:pub(?:\((?:crate|super)\))?\s+)?(?:async\s+)?fn\s+\w+`)
+
+// Kotlin function declaration (for stub detection).
+var kotlinFuncPattern = regexp.MustCompile(`^\s*(?:(?:public|protected|private|internal)\s+)?(?:override\s+)?(?:suspend\s+)?(?:inline\s+)?fun\s+`)
+
+// C# method declaration (for stub detection).
+var csharpFuncPattern = regexp.MustCompile(`^\s*(?:public|protected|private|internal)?\s*(?:static\s+)?(?:async\s+)?(?:virtual\s+)?(?:override\s+)?(?:\w[\w<>\[\],\s?]*?\s+)(\w+)\s*\(`)
+
+// PHP function/method declaration.
+var phpFuncPattern = regexp.MustCompile(`^\s*(?:public|protected|private)?\s*(?:static\s+)?function\s+\w+`)
+
+// Swift function declaration.
+var swiftFuncPattern = regexp.MustCompile(`^(?:open|public|internal|fileprivate|private)?\s*(?:static\s+|class\s+)?(?:override\s+)?func\s+\w+`)
 
 // Stub body patterns.
 var stubPatterns = []*regexp.Regexp{
@@ -832,6 +1654,14 @@ func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issu
 				isFuncDecl = javaFuncPattern.MatchString(content)
 			case ext == ".rs":
 				isFuncDecl = rustFuncPattern.MatchString(content)
+			case ext == ".kt" || ext == ".kts":
+				isFuncDecl = kotlinFuncPattern.MatchString(content)
+			case ext == ".cs":
+				isFuncDecl = csharpFuncPattern.MatchString(content)
+			case ext == ".php":
+				isFuncDecl = phpFuncPattern.MatchString(content)
+			case ext == ".swift":
+				isFuncDecl = swiftFuncPattern.MatchString(content)
 			}
 
 			if !isFuncDecl {

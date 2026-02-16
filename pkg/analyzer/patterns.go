@@ -57,11 +57,22 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		issues = append(issues, checkUnreachableCode(fileDiff)...)
 		issues = append(issues, checkRustAntiPatterns(fileDiff)...)
 		issues = append(issues, checkTypeScriptPatterns(fileDiff)...)
+		issues = append(issues, checkSwiftAntiPatterns(fileDiff)...)
 
 		// Java-specific patterns
 		if isJavaFile(fileDiff.Path) {
 			issues = append(issues, checkJavaEmptyCatch(fileDiff)...)
 			issues = append(issues, checkJavaStringEquals(fileDiff)...)
+		}
+
+		// C#-specific patterns
+		if isCSharpFile(fileDiff.Path) {
+			issues = append(issues, checkCSharpPatterns(fileDiff)...)
+		}
+
+		// PHP-specific patterns
+		if isPHPFile(fileDiff.Path) {
+			issues = append(issues, checkPHPPatterns(fileDiff)...)
 		}
 	}
 
@@ -222,6 +233,16 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bbinding\.pry\b`), "anti-debugger"},
 	{regexp.MustCompile(`\bbyebug\b`), "anti-debugger"},
 	{regexp.MustCompile(`\bdebugger\b`), "anti-debugger"},
+	// Kotlin
+	{regexp.MustCompile(`\bprintln\(`), "anti-kotlin-println"},
+	// C#
+	{regexp.MustCompile(`\bConsole\.Write(Line)?\(`), "anti-console-write"},
+	// PHP
+	{regexp.MustCompile(`\bvar_dump\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bprint_r\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bdd\(`), "anti-debug-print"},
+	// Swift
+	{regexp.MustCompile(`\bdebugPrint\(`), "anti-debug-print"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -566,6 +587,23 @@ func isRubyFile(path string) bool {
 	return strings.HasSuffix(path, ".rb") || strings.HasSuffix(path, ".rake")
 }
 
+func isKotlinFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".kt" || ext == ".kts"
+}
+
+func isCSharpFile(path string) bool {
+	return strings.HasSuffix(path, ".cs")
+}
+
+func isPHPFile(path string) bool {
+	return strings.HasSuffix(path, ".php")
+}
+
+func isSwiftFile(path string) bool {
+	return strings.HasSuffix(path, ".swift")
+}
+
 func isTypeScriptFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".ts" || ext == ".tsx" || ext == ".js" || ext == ".jsx" || ext == ".mjs"
@@ -847,6 +885,194 @@ func checkRustAntiPatterns(fileDiff git.FileDiff) []Issue {
 			}
 
 			for _, rule := range rustAntiPatterns {
+				if rule.pattern.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         rule.id,
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    rule.message + ": " + strings.TrimSpace(content),
+						Suggestion: rule.suggest,
+					})
+					break
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- C#-specific pattern detection ---
+
+var csharpAntiPatterns = []struct {
+	pattern *regexp.Regexp
+	id      string
+	message string
+	suggest string
+}{
+	{
+		pattern: regexp.MustCompile(`\bConsole\.Write(Line)?\(`),
+		id:      "patterns/console-debug",
+		message: "Console.Write/Console.WriteLine left in code",
+		suggest: "Remove debug output or replace with proper logging (ILogger, Serilog, etc.)",
+	},
+	{
+		pattern: regexp.MustCompile(`\bSystem\.Diagnostics\.Debug\.Write(Line)?\(`),
+		id:      "patterns/console-debug",
+		message: "Debug.WriteLine left in code",
+		suggest: "Remove debug output or replace with proper logging",
+	},
+	{
+		pattern: regexp.MustCompile(`#pragma\s+warning\s+disable\b`),
+		id:      "patterns/pragma-disable",
+		message: "#pragma warning disable without corresponding restore",
+		suggest: "Add a matching #pragma warning restore, or fix the underlying warning instead of suppressing it",
+	},
+}
+
+func checkCSharpPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range csharpAntiPatterns {
+				if rule.pattern.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         rule.id,
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    rule.message + ": " + strings.TrimSpace(content),
+						Suggestion: rule.suggest,
+					})
+					break
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- PHP-specific pattern detection ---
+
+var phpAntiPatterns = []struct {
+	pattern *regexp.Regexp
+	id      string
+	message string
+	suggest string
+}{
+	{
+		pattern: regexp.MustCompile(`\berror_reporting\s*\(\s*0\s*\)`),
+		id:      "patterns/php-error-suppression",
+		message: "Error reporting disabled with error_reporting(0)",
+		suggest: "Use proper error handling instead of suppressing all errors",
+	},
+	{
+		pattern: regexp.MustCompile(`@\$`),
+		id:      "patterns/php-error-suppression",
+		message: "Error suppression operator (@) hides errors",
+		suggest: "Use proper error handling (try/catch) instead of the @ operator",
+	},
+}
+
+func checkPHPPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") ||
+				strings.HasPrefix(trimmed, "*") || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+
+			for _, rule := range phpAntiPatterns {
+				if rule.pattern.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         rule.id,
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    rule.message + ": " + strings.TrimSpace(content),
+						Suggestion: rule.suggest,
+					})
+					break
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Swift-specific anti-pattern detection ---
+
+var swiftAntiPatterns = []struct {
+	pattern *regexp.Regexp
+	id      string
+	message string
+	suggest string
+}{
+	{
+		pattern: regexp.MustCompile(`\bfatalError\(`),
+		id:      "patterns/swift-fatal-error",
+		message: "fatalError() will crash the application at runtime",
+		suggest: "Use proper error handling with throws/Result instead of fatalError()",
+	},
+	{
+		pattern: regexp.MustCompile(`#if\s+DEBUG`),
+		id:      "patterns/swift-debug-block",
+		message: "#if DEBUG block may contain code not intended for production",
+		suggest: "Review and ensure debug-only code is appropriate, or use runtime configuration instead",
+	},
+}
+
+func checkSwiftAntiPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	if !isSwiftFile(fileDiff.Path) {
+		return issues
+	}
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range swiftAntiPatterns {
 				if rule.pattern.MatchString(content) {
 					issues = append(issues, Issue{
 						ID:         rule.id,

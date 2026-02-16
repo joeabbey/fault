@@ -54,7 +54,7 @@ type WatchConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Version:   1,
-		Languages: []string{"typescript", "python", "go", "rust", "ruby"},
+		Languages: []string{"typescript", "python", "go", "rust", "ruby", "kotlin", "csharp", "php", "swift"},
 		BlockOn:   "error",
 		Analyzers: AnalyzersConfig{
 			Imports:       true,
@@ -141,6 +141,10 @@ func (c *Config) Validate() error {
 		"java":       true,
 		"rust":       true,
 		"ruby":       true,
+		"kotlin":     true,
+		"csharp":     true,
+		"php":        true,
+		"swift":      true,
 	}
 	for _, lang := range c.Languages {
 		if !validLangs[lang] {

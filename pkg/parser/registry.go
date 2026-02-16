@@ -19,8 +19,13 @@ var extensionToLanguage = map[string]string{
 	".py":   "python",
 	".java": "java",
 	".rs":   "rust",
-	".rb":   "ruby",
-	".rake": "ruby",
+	".rb":    "ruby",
+	".rake":  "ruby",
+	".kt":    "kotlin",
+	".kts":   "kotlin",
+	".cs":    "csharp",
+	".php":   "php",
+	".swift": "swift",
 }
 
 // Registry manages parsers for different languages.

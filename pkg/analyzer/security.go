@@ -75,6 +75,26 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".rb" || ext == ".rake" {
 			issues = append(issues, checkRubySecurity(fileDiff)...)
 		}
+
+		// Kotlin inherits Java security rules plus Kotlin-specific checks
+		if ext == ".kt" || ext == ".kts" {
+			issues = append(issues, checkKotlinSecurity(fileDiff)...)
+		}
+
+		// C#-specific security checks
+		if ext == ".cs" {
+			issues = append(issues, checkCSharpSecurity(fileDiff)...)
+		}
+
+		// PHP-specific security checks
+		if ext == ".php" {
+			issues = append(issues, checkPHPSecurity(fileDiff)...)
+		}
+
+		// Swift-specific security checks
+		if ext == ".swift" {
+			issues = append(issues, checkSwiftSecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -1345,6 +1365,431 @@ func checkHardcodedIPs(fileDiff git.FileDiff) []Issue {
 				Message:    "Hardcoded IP address detected: " + matches[1],
 				Suggestion: "Use configuration, environment variables, or DNS names instead of hardcoded IP addresses",
 			})
+		}
+	}
+
+	return issues
+}
+
+// --- Kotlin-specific security checks ---
+
+type kotlinSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	message    string
+	suggestion string
+}
+
+var kotlinSecurityRules = []kotlinSecurityRule{
+	// Java XXE vulnerability also applies to Kotlin
+	{
+		pattern:    regexp.MustCompile(`DocumentBuilderFactory\.newInstance\(\)`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`setFeature`)},
+		id:         "security/xxe",
+		message:    "Potential XXE vulnerability: DocumentBuilderFactory without disabling external entities",
+		suggestion: "Call factory.setFeature(\"http://apache.org/xml/features/disallow-doctype-decl\", true) to prevent XXE attacks",
+	},
+	// Java deserialization also applies to Kotlin
+	{
+		pattern:    regexp.MustCompile(`ObjectInputStream\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/deserialization",
+		message:    "Potential insecure deserialization: ObjectInputStream on untrusted data",
+		suggestion: "Avoid deserializing untrusted data. Use allowlists (ObjectInputFilter) or safer formats like JSON",
+	},
+	// Runtime.exec() command injection
+	{
+		pattern:    regexp.MustCompile(`Runtime\.getRuntime\(\)\.exec\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/command-injection",
+		message:    "Potential command injection via Runtime.exec()",
+		suggestion: "Use ProcessBuilder with explicit argument lists instead of Runtime.exec() with string concatenation",
+	},
+	// ProcessBuilder with variable argument
+	{
+		pattern:    regexp.MustCompile(`ProcessBuilder\s*\(\s*[a-zA-Z]`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`ProcessBuilder\s*\(\s*"[^"]*"\s*\)`)},
+		id:         "security/command-injection",
+		message:    "Potential command injection via ProcessBuilder with variable argument",
+		suggestion: "Validate and sanitize all inputs to ProcessBuilder to prevent command injection",
+	},
+	// Hardcoded credentials in Kotlin
+	{
+		pattern: regexp.MustCompile(`(?i)(password|passwd|secret|apiKey|api_key)\s*=\s*"[^"]{8,}"`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)=\s*""\s*$`),
+			regexp.MustCompile(`(?i)System\.getenv\(`),
+			regexp.MustCompile(`(?i)(test|example|dummy|fake|mock|sample|placeholder|changeme)`),
+		},
+		id:         "security/hardcoded-secret",
+		message:    "Hardcoded credential detected in Kotlin code",
+		suggestion: "Use environment variables or a secrets manager instead of hardcoding credentials",
+	},
+}
+
+func checkKotlinSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range kotlinSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   SeverityError,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- C#-specific security detection ---
+
+type csharpSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	message    string
+	suggestion string
+}
+
+var csharpSecurityRules = []csharpSecurityRule{
+	{
+		pattern:    regexp.MustCompile(`BinaryFormatter`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/deserialization",
+		message:    "BinaryFormatter is insecure and can lead to remote code execution via deserialization",
+		suggestion: "Use System.Text.Json or a safe serializer instead of BinaryFormatter",
+	},
+	{
+		pattern:    regexp.MustCompile(`Process\.Start\s*\([^)]*\+`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/command-injection",
+		message:    "Potential command injection: Process.Start with string concatenation",
+		suggestion: "Validate and sanitize all inputs to Process.Start; avoid string concatenation for command arguments",
+	},
+	{
+		pattern:    regexp.MustCompile(`\$"(?i)(SELECT|INSERT|UPDATE|DELETE|DROP|ALTER)\b[^"]*\{`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/sql-injection",
+		message:    "Potential SQL injection: string interpolation in SQL query",
+		suggestion: "Use parameterized queries (SqlParameter) instead of string interpolation in SQL",
+	},
+	{
+		pattern:    regexp.MustCompile(`\[AllowAnonymous\]`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/allow-anonymous",
+		message:    "[AllowAnonymous] attribute detected — verify this endpoint should be publicly accessible",
+		suggestion: "Review whether this endpoint handles sensitive data or actions that require authentication",
+	},
+}
+
+func checkCSharpSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range csharpSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				severity := SeverityWarning
+				if rule.id == "security/deserialization" || rule.id == "security/sql-injection" {
+					severity = SeverityError
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- PHP-specific security detection ---
+
+type phpSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var phpSecurityRules = []phpSecurityRule{
+	{
+		pattern:    regexp.MustCompile(`\beval\s*\(\s*\$`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/code-execution",
+		severity:   SeverityError,
+		message:    "eval() with variable input allows arbitrary code execution",
+		suggestion: "Avoid eval() entirely; use safer alternatives like call_user_func() or match expressions",
+	},
+	{
+		pattern:    regexp.MustCompile(`\b(exec|system|shell_exec|passthru|popen|proc_open)\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/command-injection",
+		severity:   SeverityError,
+		message:    "Command execution function detected — verify input is not user-controlled",
+		suggestion: "Use escapeshellarg()/escapeshellcmd() to sanitize arguments, or avoid shell commands entirely",
+	},
+	{
+		pattern:    regexp.MustCompile(`preg_replace\s*\(\s*['"][^'"]*\/e\b`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/code-execution",
+		severity:   SeverityError,
+		message:    "preg_replace with /e modifier allows code execution (deprecated since PHP 5.5)",
+		suggestion: "Use preg_replace_callback() instead of the /e modifier",
+	},
+	{
+		pattern:    regexp.MustCompile(`\bunserialize\s*\(\s*\$_(GET|POST|REQUEST|COOKIE|SERVER)`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/deserialization",
+		severity:   SeverityError,
+		message:    "Insecure deserialization: unserialize() on user input",
+		suggestion: "Never unserialize user input. Use json_decode() or specify allowed_classes option",
+	},
+	{
+		pattern:    regexp.MustCompile(`\b(include|require|include_once|require_once)\s*\(\s*\$`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/file-inclusion",
+		severity:   SeverityError,
+		message:    "File inclusion with variable path — potential local/remote file inclusion",
+		suggestion: "Validate and whitelist file paths; never include files based on user input",
+	},
+	{
+		pattern:    regexp.MustCompile(`mysqli_query\s*\(\s*\$\w+\s*,\s*["'][^"']*["']\s*\.`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`\?`), // parameterized
+		},
+		id:         "security/sql-injection",
+		severity:   SeverityError,
+		message:    "Potential SQL injection: string concatenation in mysqli_query()",
+		suggestion: "Use prepared statements with mysqli_prepare() and bind_param() instead of string concatenation",
+	},
+	{
+		pattern:    regexp.MustCompile(`\$_(GET|POST|REQUEST)\s*\[`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`htmlspecialchars`),
+			regexp.MustCompile(`htmlentities`),
+			regexp.MustCompile(`filter_input`),
+			regexp.MustCompile(`filter_var`),
+			regexp.MustCompile(`intval`),
+			regexp.MustCompile(`\(int\)`),
+		},
+		id:         "security/input-validation",
+		severity:   SeverityWarning,
+		message:    "Direct use of superglobal — validate and sanitize before use",
+		suggestion: "Use filter_input() or filter_var() to validate superglobal data before using it",
+	},
+}
+
+func checkPHPSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") ||
+				strings.HasPrefix(trimmed, "*") || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+
+			for _, rule := range phpSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Swift-specific security detection ---
+
+type swiftSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var swiftSecurityRules = []swiftSecurityRule{
+	{
+		pattern:    regexp.MustCompile(`NSKeyedUnarchiver\s*\(`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`requiresSecureCoding`)},
+		id:         "security/swift-insecure-deserialization",
+		severity:   SeverityError,
+		message:    "NSKeyedUnarchiver without requiresSecureCoding may allow insecure deserialization",
+		suggestion: "Use NSSecureCoding and set requiresSecureCoding = true, or use NSKeyedUnarchiver.unarchivedObject(ofClass:from:)",
+	},
+	{
+		pattern:    regexp.MustCompile(`\w+!\.[a-zA-Z]`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/swift-force-unwrap",
+		severity:   SeverityWarning,
+		message:    "Force unwrap (!) on optional may crash at runtime",
+		suggestion: "Use optional binding (if let/guard let) or nil-coalescing (??) instead of force unwrapping",
+	},
+	{
+		pattern:    regexp.MustCompile(`\btry!\s`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/swift-force-try",
+		severity:   SeverityWarning,
+		message:    "Force try (try!) will crash on error instead of handling it",
+		suggestion: "Use do/catch for proper error handling, or try? to convert errors to nil",
+	},
+	{
+		pattern:    regexp.MustCompile(`\bUnsafe(?:Mutable)?(?:Raw)?Pointer\b`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/swift-unsafe-pointer",
+		severity:   SeverityWarning,
+		message:    "Unsafe pointer usage bypasses Swift's memory safety guarantees",
+		suggestion: "Use safe alternatives like Array, Data, or withUnsafeBufferPointer when possible",
+	},
+}
+
+func checkSwiftSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range swiftSecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
 		}
 	}
 

@@ -199,6 +199,24 @@ func isTestFile(path string) bool {
 			strings.HasSuffix(nameNoExt, "_spec") ||
 			isInTestsDir(path) ||
 			isInSpecDir(path)
+	case ".kt", ".kts":
+		return strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "Tests") ||
+			strings.HasSuffix(nameNoExt, "Spec") ||
+			isInTestsDir(path)
+	case ".cs":
+		return strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "Tests") ||
+			isInTestsDir(path) ||
+			isInCSharpTestDir(path)
+	case ".php":
+		return strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".swift":
+		return strings.HasSuffix(nameNoExt, "Tests") ||
+			strings.HasSuffix(nameNoExt, "Test") ||
+			isInTestsDir(path)
 	}
 	return false
 }
@@ -219,6 +237,17 @@ func isInSpecDir(path string) bool {
 	parts := strings.Split(filepath.ToSlash(path), "/")
 	for _, p := range parts {
 		if p == "spec" {
+			return true
+		}
+	}
+	return false
+}
+
+// isInCSharpTestDir checks if a path is in a C# test directory convention.
+func isInCSharpTestDir(path string) bool {
+	parts := strings.Split(filepath.ToSlash(path), "/")
+	for _, p := range parts {
+		if p == "Tests" || p == "test" || strings.HasSuffix(p, ".Tests") || strings.HasSuffix(p, ".Test") {
 			return true
 		}
 	}
@@ -246,6 +275,24 @@ func possibleTestPaths(sourcePath string) []string {
 		// foo.py -> test_foo.py, tests/test_foo.py
 		paths = append(paths, filepath.Join(dir, "test_"+base))
 		paths = append(paths, filepath.Join(dir, "tests", "test_"+base))
+	case ".kt", ".kts":
+		// UserService.kt -> UserServiceTest.kt, UserServiceTests.kt
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests"+ext))
+	case ".cs":
+		// Foo.cs -> FooTest.cs, FooTests.cs, Tests/FooTests.cs
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests"+ext))
+		paths = append(paths, filepath.Join(dir, "Tests", nameNoExt+"Tests"+ext))
+	case ".php":
+		// UserController.php -> UserControllerTest.php, tests/UserControllerTest.php
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join(dir, "tests", nameNoExt+"Test"+ext))
+		paths = append(paths, filepath.Join("tests", nameNoExt+"Test"+ext))
+	case ".swift":
+		// Foo.swift -> FooTests.swift, FooTest.swift
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests.swift"))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test.swift"))
 	}
 
 	// Normalize to forward slashes for consistent matching.
@@ -290,6 +337,44 @@ func sourcePathFromTest(testPath string) string {
 			if filepath.Base(dir) == "tests" {
 				return filepath.ToSlash(filepath.Join(filepath.Dir(dir), srcName))
 			}
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".kt", ".kts":
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Tests") {
+			srcName := strings.TrimSuffix(nameNoExt, "Tests") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".cs":
+		if strings.HasSuffix(nameNoExt, "Tests") {
+			srcName := strings.TrimSuffix(nameNoExt, "Tests") + ext
+			if filepath.Base(dir) == "Tests" {
+				return filepath.ToSlash(filepath.Join(filepath.Dir(dir), srcName))
+			}
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".php":
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			if filepath.Base(dir) == "tests" {
+				return filepath.ToSlash(filepath.Join(filepath.Dir(dir), srcName))
+			}
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".swift":
+		if strings.HasSuffix(nameNoExt, "Tests") {
+			srcName := strings.TrimSuffix(nameNoExt, "Tests") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
 			return filepath.ToSlash(filepath.Join(dir, srcName))
 		}
 	}

@@ -119,6 +119,11 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 	reg.Register(parser.NewPythonParser())
 	reg.Register(parser.NewJavaParser())
 	reg.Register(parser.NewRustParser())
+	reg.Register(parser.NewRubyParser())
+	reg.Register(parser.NewKotlinParser())
+	reg.Register(parser.NewCSharpParser())
+	reg.Register(parser.NewPHPParser())
+	reg.Register(parser.NewSwiftParser())
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -627,6 +632,12 @@ func baselineCmd() *cobra.Command {
 			reg.Register(parser.NewTypeScriptParser())
 			reg.Register(parser.NewPythonParser())
 			reg.Register(parser.NewJavaParser())
+			reg.Register(parser.NewRustParser())
+			reg.Register(parser.NewRubyParser())
+			reg.Register(parser.NewKotlinParser())
+			reg.Register(parser.NewCSharpParser())
+			reg.Register(parser.NewPHPParser())
+			reg.Register(parser.NewSwiftParser())
 
 			parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
 
@@ -733,6 +744,11 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	reg.Register(parser.NewPythonParser())
 	reg.Register(parser.NewJavaParser())
 	reg.Register(parser.NewRustParser())
+	reg.Register(parser.NewRubyParser())
+	reg.Register(parser.NewKotlinParser())
+	reg.Register(parser.NewCSharpParser())
+	reg.Register(parser.NewPHPParser())
+	reg.Register(parser.NewSwiftParser())
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -897,6 +913,11 @@ func runWatch(noColor bool) error {
 	reg.Register(parser.NewPythonParser())
 	reg.Register(parser.NewJavaParser())
 	reg.Register(parser.NewRustParser())
+	reg.Register(parser.NewRubyParser())
+	reg.Register(parser.NewKotlinParser())
+	reg.Register(parser.NewCSharpParser())
+	reg.Register(parser.NewPHPParser())
+	reg.Register(parser.NewSwiftParser())
 
 	// 4. Build or load the index
 	repoRoot, _ := repo.RepoRoot()
