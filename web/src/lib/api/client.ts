@@ -1,6 +1,5 @@
 import type {
 	UsageResponse,
-	SignupResponse,
 	RotateKeyResponse,
 	CheckoutResponse,
 	PortalResponse,
@@ -10,25 +9,16 @@ import type {
 
 const API_BASE = '/api';
 
-function getApiKey(): string | null {
-	if (typeof localStorage === 'undefined') return null;
-	return localStorage.getItem('fault_api_key');
-}
-
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-	const apiKey = getApiKey();
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
 		...(options.headers as Record<string, string>)
 	};
 
-	if (apiKey) {
-		headers['Authorization'] = `Bearer ${apiKey}`;
-	}
-
 	const response = await fetch(`${API_BASE}${endpoint}`, {
 		...options,
-		headers
+		headers,
+		credentials: 'include'
 	});
 
 	if (response.status === 401 || response.status === 403) {
@@ -36,7 +26,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 	}
 
 	if (!response.ok) {
-		const body = await response.json().catch(() => ({ error: 'Request failed' })) as ErrorResponse;
+		const body = (await response.json().catch(() => ({ error: 'Request failed' }))) as ErrorResponse;
 		throw new Error(body.error || `HTTP ${response.status}`);
 	}
 
@@ -51,13 +41,6 @@ export class AuthError extends Error {
 }
 
 export const api = {
-	signup(email: string): Promise<SignupResponse> {
-		return request('/v1/signup', {
-			method: 'POST',
-			body: JSON.stringify({ email })
-		});
-	},
-
 	usage(): Promise<UsageResponse> {
 		return request('/v1/usage');
 	},

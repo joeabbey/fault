@@ -42,7 +42,8 @@ func RequestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// CORSMiddleware adds permissive CORS headers for CLI access from any origin.
+// CORSMiddleware adds CORS headers. For same-origin dashboard requests (cookie auth),
+// CORS is not needed. These headers support CLI access from any origin.
 func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -59,10 +60,10 @@ func CORSMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// APIKeyAuth is middleware that validates the Authorization: Bearer fk_xxx header.
-// It extracts the API key, hashes it with SHA-256, and looks up the user in the store.
-// Requests to public endpoints (like /api/health) bypass auth.
-func APIKeyAuth(store Store, logger *slog.Logger) func(http.Handler) http.Handler {
+// AuthMiddleware validates authentication via JWT cookie or API key Bearer token.
+// JWT cookie is tried first (dashboard auth), then API key (CLI auth).
+// Requests to public endpoints bypass auth entirely.
+func AuthMiddleware(store Store, jwtSecret string, logger *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Skip auth for public endpoints
@@ -71,33 +72,35 @@ func APIKeyAuth(store Store, logger *slog.Logger) func(http.Handler) http.Handle
 				return
 			}
 
+			// Try JWT cookie first (dashboard auth)
+			if token := GetTokenFromCookie(r); token != "" {
+				claims, err := ValidateJWT(token, jwtSecret)
+				if err == nil {
+					user, err := store.GetUserByID(r.Context(), claims.Sub)
+					if err == nil && user != nil {
+						ctx := context.WithValue(r.Context(), userContextKey, user)
+						next.ServeHTTP(w, r.WithContext(ctx))
+						return
+					}
+				}
+			}
+
+			// Try API key Bearer token (CLI auth)
 			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				http.Error(w, `{"error":"missing Authorization header"}`, http.StatusUnauthorized)
-				return
+			if authHeader != "" && strings.HasPrefix(authHeader, "Bearer ") {
+				rawKey := strings.TrimPrefix(authHeader, "Bearer ")
+				if strings.HasPrefix(rawKey, "fk_") {
+					hash := HashAPIKey(rawKey)
+					user, err := store.GetUserByAPIKeyHash(r.Context(), hash)
+					if err == nil && user != nil {
+						ctx := context.WithValue(r.Context(), userContextKey, user)
+						next.ServeHTTP(w, r.WithContext(ctx))
+						return
+					}
+				}
 			}
 
-			if !strings.HasPrefix(authHeader, "Bearer ") {
-				http.Error(w, `{"error":"invalid Authorization header format"}`, http.StatusUnauthorized)
-				return
-			}
-
-			rawKey := strings.TrimPrefix(authHeader, "Bearer ")
-			if !strings.HasPrefix(rawKey, "fk_") {
-				http.Error(w, `{"error":"invalid API key format"}`, http.StatusUnauthorized)
-				return
-			}
-
-			hash := HashAPIKey(rawKey)
-			user, err := store.GetUserByAPIKeyHash(r.Context(), hash)
-			if err != nil {
-				logger.Warn("auth failed", "error", err)
-				http.Error(w, `{"error":"invalid API key"}`, http.StatusUnauthorized)
-				return
-			}
-
-			ctx := context.WithValue(r.Context(), userContextKey, user)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
 		})
 	}
 }
@@ -142,16 +145,22 @@ func UsageLimitsMiddleware(engine *limits.Engine, logger *slog.Logger) func(http
 // isPublicPath returns true for endpoints that do not require authentication.
 func isPublicPath(path string) bool {
 	publicPaths := []string{
-		"/",
 		"/api/health",
 		"/api/v1/signup",
 		"/api/v1/billing/webhook",
-		"/install.sh",
+		"/api/auth/google/login",
+		"/api/auth/google/callback",
+		"/api/auth/me",
+		"/api/auth/logout",
 	}
 	for _, p := range publicPaths {
 		if path == p {
 			return true
 		}
+	}
+	// Non-API paths (landing page, SPA, static files) are always public
+	if !strings.HasPrefix(path, "/api/") {
+		return true
 	}
 	return false
 }

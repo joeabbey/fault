@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,12 +29,23 @@ type Config struct {
 	DatabaseURL string
 	LogLevel    string
 
+	// Google OAuth
+	GoogleClientID     string
+	GoogleClientSecret string
+	JWTSecret          string
+	CookieDomain       string
+	CookieSecure       bool
+	AllowedEmails      []string
+
 	// Stripe billing (optional — billing disabled if StripeSecretKey is empty)
 	StripeSecretKey     string
 	StripeWebhookSecret string
 	StripePriceIDPro    string
 	StripePriceIDTeam   string
 	AppURL              string
+
+	// Web dashboard directory (optional — SPA serving disabled if empty)
+	WebDir string
 }
 
 // ConfigFromEnv loads server configuration from environment variables.
@@ -52,15 +65,34 @@ func ConfigFromEnv() Config {
 		appURL = "https://fault.jabbey.io"
 	}
 
+	cookieSecure := os.Getenv("COOKIE_SECURE") != "false" // default true
+
+	var allowedEmails []string
+	if emails := os.Getenv("ALLOWED_EMAILS"); emails != "" {
+		for _, e := range strings.Split(emails, ",") {
+			e = strings.TrimSpace(e)
+			if e != "" {
+				allowedEmails = append(allowedEmails, e)
+			}
+		}
+	}
+
 	return Config{
 		Port:                port,
 		DatabaseURL:         os.Getenv("DATABASE_URL"),
 		LogLevel:            logLevel,
+		GoogleClientID:      os.Getenv("GOOGLE_CLIENT_ID"),
+		GoogleClientSecret:  os.Getenv("GOOGLE_CLIENT_SECRET"),
+		JWTSecret:           os.Getenv("JWT_SECRET"),
+		CookieDomain:        os.Getenv("COOKIE_DOMAIN"),
+		CookieSecure:        cookieSecure,
+		AllowedEmails:       allowedEmails,
 		StripeSecretKey:     os.Getenv("STRIPE_SECRET_KEY"),
 		StripeWebhookSecret: os.Getenv("STRIPE_WEBHOOK_SECRET"),
 		StripePriceIDPro:    os.Getenv("STRIPE_PRICE_ID_PRO"),
 		StripePriceIDTeam:   os.Getenv("STRIPE_PRICE_ID_TEAM"),
 		AppURL:              appURL,
+		WebDir:              os.Getenv("WEB_DIR"),
 	}
 }
 
@@ -70,6 +102,7 @@ type Server struct {
 	store           Store
 	logger          *slog.Logger
 	handlers        *Handlers
+	authHandlers    *AuthHandlers
 	limitsEngine    *limits.Engine
 	billingHandlers *BillingHandlers
 	mux             *http.ServeMux
@@ -105,6 +138,18 @@ func NewServer(cfg Config, store Store) *Server {
 		mux:          http.NewServeMux(),
 	}
 
+	// Set up Google OAuth auth handlers if configured
+	if cfg.GoogleClientID != "" && cfg.JWTSecret != "" {
+		s.authHandlers = NewAuthHandlers(
+			store, logger,
+			cfg.GoogleClientID, cfg.GoogleClientSecret, cfg.JWTSecret,
+			cfg.AppURL, cfg.CookieDomain, cfg.CookieSecure, cfg.AllowedEmails,
+		)
+		logger.Info("google OAuth enabled")
+	} else {
+		logger.Info("google OAuth disabled (GOOGLE_CLIENT_ID or JWT_SECRET not set)")
+	}
+
 	// Set up Stripe billing if configured
 	if cfg.StripeSecretKey != "" {
 		prices := map[string]string{
@@ -137,12 +182,21 @@ func NewServer(cfg Config, store Store) *Server {
 
 // registerRoutes sets up the HTTP route handlers.
 func (s *Server) registerRoutes() {
+	// API routes
 	s.mux.HandleFunc("GET /api/health", s.handlers.HandleHealth)
 	s.mux.HandleFunc("POST /api/v1/signup", s.handlers.HandleSignup)
 	s.mux.HandleFunc("POST /api/v1/analyze/confidence", s.handlers.HandleAnalyzeConfidence)
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
 	s.mux.HandleFunc("POST /api/v1/api-keys/rotate", s.handlers.HandleRotateKey)
+
+	// Auth routes (only if Google OAuth is configured)
+	if s.authHandlers != nil {
+		s.mux.HandleFunc("GET /api/auth/google/login", s.authHandlers.HandleGoogleLogin)
+		s.mux.HandleFunc("GET /api/auth/google/callback", s.authHandlers.HandleGoogleCallback)
+		s.mux.HandleFunc("GET /api/auth/me", s.authHandlers.HandleAuthMe)
+		s.mux.HandleFunc("POST /api/auth/logout", s.authHandlers.HandleLogout)
+	}
 
 	// Billing routes (only if Stripe is configured)
 	if s.billingHandlers != nil {
@@ -152,11 +206,17 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("POST /api/v1/billing/webhook", s.billingHandlers.HandleWebhook)
 	}
 
-	// Public: landing page
+	// Public: landing page at exact root path
 	s.mux.HandleFunc("GET /{$}", handleLandingPage)
 
 	// Public: serve install script for `curl -sSf https://fault.jabbey.io/install.sh | sh`
 	s.mux.HandleFunc("GET /install.sh", handleInstallScript)
+
+	// SPA: serve dashboard static files (catch-all for non-API paths)
+	if s.cfg.WebDir != "" {
+		s.mux.HandleFunc("GET /", s.spaHandler())
+		s.logger.Info("SPA serving enabled", "web_dir", s.cfg.WebDir)
+	}
 }
 
 func handleLandingPage(w http.ResponseWriter, r *http.Request) {
@@ -170,13 +230,37 @@ func handleInstallScript(w http.ResponseWriter, r *http.Request) {
 	w.Write(installScript)
 }
 
+// spaHandler serves SvelteKit static files with SPA fallback.
+// Static assets are served directly; all other paths serve index.html
+// for client-side routing.
+func (s *Server) spaHandler() http.HandlerFunc {
+	webDir := s.cfg.WebDir
+
+	return func(w http.ResponseWriter, r *http.Request) {
+		urlPath := filepath.Clean(r.URL.Path)
+		if urlPath == "." {
+			urlPath = "/"
+		}
+
+		// Try to serve a static file
+		filePath := filepath.Join(webDir, urlPath)
+		if info, err := os.Stat(filePath); err == nil && !info.IsDir() {
+			http.ServeFile(w, r, filePath)
+			return
+		}
+
+		// SPA fallback: serve index.html for client-side routing
+		http.ServeFile(w, r, filepath.Join(webDir, "index.html"))
+	}
+}
+
 // Handler returns the fully wrapped HTTP handler with all middleware applied.
 func (s *Server) Handler() http.Handler {
 	var handler http.Handler = s.mux
 
 	// Apply middleware in reverse order (outermost first)
 	handler = UsageLimitsMiddleware(s.limitsEngine, s.logger)(handler)
-	handler = APIKeyAuth(s.store, s.logger)(handler)
+	handler = AuthMiddleware(s.store, s.cfg.JWTSecret, s.logger)(handler)
 	handler = CORSMiddleware(handler)
 	handler = RequestLogger(s.logger)(handler)
 

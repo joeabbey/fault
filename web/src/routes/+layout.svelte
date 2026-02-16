@@ -6,7 +6,6 @@
 	import { browser } from '$app/environment';
 	import { createRawSnippet } from 'svelte';
 	import { auth, isAuthenticated, isLoading, currentEmail } from '$lib/stores/auth';
-	import { api, AuthError } from '$lib/api/client';
 	import { DashboardLayout, Dropdown, Spinner } from '@jabbey/atlas';
 
 	let { children: pageContent } = $props();
@@ -17,7 +16,7 @@
 
 	const activeNavId = $derived.by(() => {
 		const path = $page.url.pathname;
-		if (path === '/') return 'dashboard';
+		if (path === '/dashboard') return 'dashboard';
 		const segment = path.split('/')[1];
 		return segment || 'dashboard';
 	});
@@ -33,7 +32,7 @@
 		{
 			id: 'dashboard',
 			label: 'Dashboard',
-			href: '/',
+			href: '/dashboard',
 			icon: icon(
 				'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z'
 			)
@@ -62,7 +61,7 @@
 	];
 
 	onMount(() => {
-		// Initialize auth from localStorage
+		// Initialize auth from cookie session
 		auth.init();
 
 		// Initialize dark mode
@@ -83,17 +82,6 @@
 		}
 	});
 
-	// Validate API key on auth change
-	$effect(() => {
-		if (browser && !$isLoading && $isAuthenticated) {
-			api.usage().catch((err) => {
-				if (err instanceof AuthError) {
-					auth.logout();
-				}
-			});
-		}
-	});
-
 	// Route guard
 	$effect(() => {
 		if (browser && !$isLoading) {
@@ -102,7 +90,7 @@
 
 			if ($isAuthenticated) {
 				if (pathname === '/login') {
-					goto('/');
+					goto('/dashboard');
 				}
 			} else if (!isPublicRoute) {
 				goto('/login');
@@ -193,7 +181,9 @@
 							<div
 								class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-colors cursor-pointer"
 							>
-								<div class="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+								<div
+									class="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+								>
 									{$currentEmail.charAt(0).toUpperCase()}
 								</div>
 								{#if !sidebarCollapsed}

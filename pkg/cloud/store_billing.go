@@ -12,9 +12,13 @@ import (
 func (s *PostgresStore) GetUserByID(ctx context.Context, userID string) (*User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, email, plan, COALESCE(api_key_hash, ''), COALESCE(stripe_customer_id, ''), created_at, COALESCE(last_active_at, created_at)
+		`SELECT id, email, plan, COALESCE(api_key_hash, ''), COALESCE(stripe_customer_id, ''),
+		        COALESCE(google_id, ''), COALESCE(name, ''), COALESCE(picture_url, ''),
+		        created_at, COALESCE(last_active_at, created_at)
 		 FROM users WHERE id = $1`, userID,
-	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID, &u.CreatedAt, &u.LastActiveAt)
+	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID,
+		&u.GoogleID, &u.Name, &u.PictureURL,
+		&u.CreatedAt, &u.LastActiveAt)
 	if err != nil {
 		return nil, fmt.Errorf("looking up user by ID: %w", err)
 	}
@@ -26,9 +30,13 @@ func (s *PostgresStore) GetUserByID(ctx context.Context, userID string) (*User, 
 func (s *PostgresStore) GetUserByStripeCustomerID(ctx context.Context, customerID string) (*User, error) {
 	var u User
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, email, plan, COALESCE(api_key_hash, ''), COALESCE(stripe_customer_id, ''), created_at, COALESCE(last_active_at, created_at)
+		`SELECT id, email, plan, COALESCE(api_key_hash, ''), COALESCE(stripe_customer_id, ''),
+		        COALESCE(google_id, ''), COALESCE(name, ''), COALESCE(picture_url, ''),
+		        created_at, COALESCE(last_active_at, created_at)
 		 FROM users WHERE stripe_customer_id = $1`, customerID,
-	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID, &u.CreatedAt, &u.LastActiveAt)
+	).Scan(&u.ID, &u.Email, &u.Plan, &u.APIKeyHash, &u.StripeCustomerID,
+		&u.GoogleID, &u.Name, &u.PictureURL,
+		&u.CreatedAt, &u.LastActiveAt)
 	if err != nil {
 		return nil, nil // not found
 	}

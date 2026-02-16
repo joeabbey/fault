@@ -129,6 +129,44 @@ func (m *mockStore) GetSubscriptionByUserID(_ context.Context, userID string) (*
 	return nil, nil
 }
 
+func (m *mockStore) GetUserByGoogleID(_ context.Context, googleID string) (*User, error) {
+	for _, u := range m.users {
+		if u.GoogleID == googleID {
+			return u, nil
+		}
+	}
+	return nil, nil
+}
+
+func (m *mockStore) CreateUserFromGoogle(_ context.Context, email, googleID, name, pictureURL string) (*User, error) {
+	u := &User{
+		ID:           "test-user-id",
+		Email:        email,
+		Plan:         "free",
+		GoogleID:     googleID,
+		Name:         name,
+		PictureURL:   pictureURL,
+		CreatedAt:    time.Now(),
+		LastActiveAt: time.Now(),
+	}
+	return u, nil
+}
+
+func (m *mockStore) SetGoogleID(_ context.Context, userID, googleID string) error {
+	if u := m.findUserByID(userID); u != nil {
+		u.GoogleID = googleID
+	}
+	return nil
+}
+
+func (m *mockStore) UpdateUserProfile(_ context.Context, userID, name, pictureURL string) error {
+	if u := m.findUserByID(userID); u != nil {
+		u.Name = name
+		u.PictureURL = pictureURL
+	}
+	return nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {

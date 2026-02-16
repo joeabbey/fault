@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api/client';
-	import { auth, currentEmail } from '$lib/stores/auth';
+	import { currentEmail } from '$lib/stores/auth';
 	import { Card, Button, Badge, Alert } from '@jabbey/atlas';
 
 	let rotating = $state(false);
@@ -8,14 +8,6 @@
 	let newKey = $state<string | null>(null);
 	let copied = $state(false);
 	let confirmRotate = $state(false);
-
-	// Get masked key from localStorage
-	function getMaskedKey(): string {
-		const key = localStorage.getItem('fault_api_key');
-		if (!key) return 'No key stored';
-		if (key.length < 8) return '****';
-		return key.substring(0, 3) + '_****...' + key.substring(key.length - 4);
-	}
 
 	async function handleRotate() {
 		if (!confirmRotate) {
@@ -28,7 +20,6 @@
 		try {
 			const response = await api.rotateKey();
 			newKey = response.api_key;
-			auth.updateKey(response.api_key);
 			confirmRotate = false;
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to rotate key';
@@ -41,7 +32,9 @@
 		if (newKey) {
 			await navigator.clipboard.writeText(newKey);
 			copied = true;
-			setTimeout(() => { copied = false; }, 2000);
+			setTimeout(() => {
+				copied = false;
+			}, 2000);
 		}
 	}
 
@@ -61,18 +54,15 @@
 		<Alert variant="error">{error}</Alert>
 	{/if}
 
-	<!-- Current Key -->
+	<!-- Account Info -->
 	<Card class="p-6">
-		<h2 class="text-sm font-medium text-muted mb-1">Current API Key</h2>
-		<div class="flex items-center gap-3">
-			<code class="text-sm font-mono text-foreground bg-accent px-3 py-2 rounded-md">
-				{getMaskedKey()}
-			</code>
-			<Badge variant="success">Active</Badge>
-		</div>
+		<h2 class="text-sm font-medium text-muted mb-1">Account</h2>
 		{#if $currentEmail}
-			<p class="mt-2 text-xs text-muted">Associated with {$currentEmail}</p>
+			<p class="text-sm text-foreground">{$currentEmail}</p>
 		{/if}
+		<p class="mt-2 text-xs text-muted">
+			API keys authenticate CLI tools. Use the dashboard with Google sign-in.
+		</p>
 	</Card>
 
 	<!-- New Key Display -->

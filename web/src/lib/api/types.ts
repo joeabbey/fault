@@ -11,11 +11,6 @@ export interface UsageResponse {
 	llm_remaining: number;
 }
 
-export interface SignupResponse {
-	api_key: string;
-	email: string;
-}
-
 export interface RotateKeyResponse {
 	api_key: string;
 	email: string;

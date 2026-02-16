@@ -1,4 +1,20 @@
 # syntax=docker/dockerfile:1
+
+# Stage 1: Build SvelteKit frontend
+FROM node:22-alpine AS web-builder
+
+WORKDIR /web
+
+# Install dependencies first (cache layer)
+COPY web/package.json web/package-lock.json ./
+COPY web/vendor ./vendor
+RUN npm ci
+
+# Copy source and build
+COPY web/ .
+RUN npm run build
+
+# Stage 2: Build Go binary
 FROM golang:1.22-alpine AS builder
 
 RUN apk add --no-cache git openssh-client
@@ -33,11 +49,15 @@ RUN --mount=type=secret,id=magma_ssh \
     fi && \
     CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o /fault-cloud ./cmd/fault-cloud
 
+# Stage 3: Final image
 FROM alpine:3.19
 
 RUN apk add --no-cache ca-certificates
 
 COPY --from=builder /fault-cloud /usr/local/bin/fault-cloud
+COPY --from=web-builder /web/build /srv/web
+
+ENV WEB_DIR=/srv/web
 
 EXPOSE 8082
 
