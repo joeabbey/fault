@@ -46,6 +46,17 @@ var extensionToLanguage = map[string]string{
 	".ex":    "elixir",
 	".exs":   "elixir",
 	".lua":   "lua",
+	// v4 domain languages
+	".jl":    "julia",
+	".f90":   "fortran",
+	".f95":   "fortran",
+	".f03":   "fortran",
+	".f08":   "fortran",
+	".f":     "fortran",
+	".for":   "fortran",
+	".sol":   "solidity",
+	".tf":    "terraform",
+	".proto": "protobuf",
 }
 
 // Registry manages parsers for different languages.
