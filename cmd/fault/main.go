@@ -646,6 +646,10 @@ func baselineCmd() *cobra.Command {
 				analyzer.NewSecurityAnalyzer(),
 				analyzer.NewHallucinationAnalyzer(),
 				analyzer.NewComplexityAnalyzer(),
+				analyzer.NewConcurrencyAnalyzer(),
+				analyzer.NewResourceAnalyzer(),
+				analyzer.NewMigrationAnalyzer(),
+				analyzer.NewDocDriftAnalyzer(),
 			}
 			runner := analyzer.NewRunner(cfg, analyzers)
 
