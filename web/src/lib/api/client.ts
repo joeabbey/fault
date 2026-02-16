@@ -1,0 +1,85 @@
+import type {
+	UsageResponse,
+	SignupResponse,
+	RotateKeyResponse,
+	CheckoutResponse,
+	PortalResponse,
+	SubscriptionResponse,
+	ErrorResponse
+} from './types';
+
+const API_BASE = '/api';
+
+function getApiKey(): string | null {
+	if (typeof localStorage === 'undefined') return null;
+	return localStorage.getItem('fault_api_key');
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+	const apiKey = getApiKey();
+	const headers: Record<string, string> = {
+		'Content-Type': 'application/json',
+		...(options.headers as Record<string, string>)
+	};
+
+	if (apiKey) {
+		headers['Authorization'] = `Bearer ${apiKey}`;
+	}
+
+	const response = await fetch(`${API_BASE}${endpoint}`, {
+		...options,
+		headers
+	});
+
+	if (response.status === 401 || response.status === 403) {
+		throw new AuthError('Unauthorized');
+	}
+
+	if (!response.ok) {
+		const body = await response.json().catch(() => ({ error: 'Request failed' })) as ErrorResponse;
+		throw new Error(body.error || `HTTP ${response.status}`);
+	}
+
+	return response.json() as Promise<T>;
+}
+
+export class AuthError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'AuthError';
+	}
+}
+
+export const api = {
+	signup(email: string): Promise<SignupResponse> {
+		return request('/v1/signup', {
+			method: 'POST',
+			body: JSON.stringify({ email })
+		});
+	},
+
+	usage(): Promise<UsageResponse> {
+		return request('/v1/usage');
+	},
+
+	rotateKey(): Promise<RotateKeyResponse> {
+		return request('/v1/api-keys/rotate', { method: 'POST' });
+	},
+
+	billing: {
+		subscription(): Promise<SubscriptionResponse> {
+			return request('/v1/billing/subscription');
+		},
+
+		checkout(plan: string): Promise<CheckoutResponse> {
+			return request('/v1/billing/checkout', {
+				method: 'POST',
+				body: JSON.stringify({ plan })
+			});
+		},
+
+		portal(): Promise<PortalResponse> {
+			return request('/v1/billing/portal', { method: 'POST' });
+		}
+	}
+};

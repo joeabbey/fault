@@ -7,6 +7,7 @@
 # IDE
 .idea/
 .vscode/
+.grok/
 *.swp
 *.swo
 
@@ -23,3 +24,10 @@ coverage.out
 
 # Cache
 .fault-cache/
+
+# Web frontend
+web/node_modules/
+web/.svelte-kit/
+web/build/
+web/vendor/atlas/node_modules/
+web/vendor/atlas/.svelte-kit/

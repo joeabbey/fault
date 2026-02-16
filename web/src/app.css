@@ -1,0 +1,5 @@
+@import '@jabbey/atlas/styles/base.css';
+@import "tailwindcss";
+
+/* Class-based dark mode for Tailwind v4 (must be after tailwindcss import) */
+@custom-variant dark (&:where(.dark, .dark *));

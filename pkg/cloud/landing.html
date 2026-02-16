@@ -5,17 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fault - Catch AI agent mistakes before they hit your codebase</title>
 <meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — catching broken imports, stale references, and missing tests before you commit.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html { scroll-behavior: smooth; }
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #0f172a;
-  color: #f8fafc;
+  background: #0c1821;
+  color: #f0f4f8;
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
-a { color: #38bdf8; text-decoration: none; }
+a { color: #2dd4bf; text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 /* Layout */
@@ -23,7 +26,7 @@ a:hover { text-decoration: underline; }
 
 /* Nav */
 nav {
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #1e3a3f;
   padding: 16px 0;
 }
 nav .container {
@@ -32,18 +35,30 @@ nav .container {
   justify-content: space-between;
 }
 .logo {
+  font-family: "JetBrains Mono", monospace;
   font-size: 20px;
   font-weight: 700;
-  color: #f8fafc;
+  color: #f0f4f8;
   letter-spacing: -0.5px;
 }
-.nav-links { display: flex; gap: 24px; }
+.logo-accent { color: #2dd4bf; }
+.nav-links { display: flex; gap: 24px; align-items: center; }
 .nav-links a {
-  color: #94a3b8;
+  color: #8ba4b0;
   font-size: 14px;
   font-weight: 500;
 }
-.nav-links a:hover { color: #f8fafc; text-decoration: none; }
+.nav-links a:hover { color: #f0f4f8; text-decoration: none; }
+.nav-links .nav-btn {
+  background: #0d9488;
+  color: #f0f4f8;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+.nav-links .nav-btn:hover { background: #0f766e; text-decoration: none; }
 
 /* Hero */
 .hero {
@@ -51,6 +66,7 @@ nav .container {
   text-align: center;
 }
 .hero h1 {
+  font-family: "JetBrains Mono", monospace;
   font-size: 48px;
   font-weight: 800;
   line-height: 1.1;
@@ -60,16 +76,20 @@ nav .container {
   margin-left: auto;
   margin-right: auto;
 }
+.hero h1 em {
+  font-style: normal;
+  color: #2dd4bf;
+}
 .hero .subhead {
   font-size: 18px;
-  color: #94a3b8;
+  color: #8ba4b0;
   max-width: 640px;
   margin: 0 auto 40px;
   line-height: 1.7;
 }
 .install-block {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 8px;
   padding: 16px 20px;
   display: inline-flex;
@@ -79,14 +99,14 @@ nav .container {
   max-width: 100%;
 }
 .install-block code {
-  font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 15px;
-  color: #22d3ee;
+  color: #2dd4bf;
   white-space: nowrap;
 }
 .copy-btn {
-  background: #334155;
-  color: #f8fafc;
+  background: #1e3a3f;
+  color: #f0f4f8;
   border: none;
   border-radius: 6px;
   padding: 6px 14px;
@@ -96,31 +116,33 @@ nav .container {
   font-family: inherit;
   transition: background 0.15s;
 }
-.copy-btn:hover { background: #475569; }
+.copy-btn:hover { background: #2a4a50; }
 .hero .cta-text {
-  color: #94a3b8;
+  color: #8ba4b0;
   font-size: 14px;
 }
 
 /* Section */
 section { padding: 64px 0; }
-section + section { border-top: 1px solid #1e293b; }
+section + section { border-top: 1px solid #152028; }
 .section-label {
-  font-size: 14px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 13px;
   font-weight: 600;
-  color: #38bdf8;
+  color: #2dd4bf;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   margin-bottom: 12px;
 }
 .section-heading {
+  font-family: "JetBrains Mono", monospace;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.5px;
   margin-bottom: 20px;
 }
 .section-desc {
-  color: #94a3b8;
+  color: #8ba4b0;
   font-size: 17px;
   max-width: 640px;
   line-height: 1.7;
@@ -137,11 +159,11 @@ section + section { border-top: 1px solid #1e293b; }
 }
 .problem-list li {
   padding: 16px 20px;
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 8px;
   font-size: 15px;
-  color: #cbd5e1;
+  color: #c4d5db;
   line-height: 1.6;
   position: relative;
   padding-left: 48px;
@@ -163,15 +185,16 @@ section + section { border-top: 1px solid #1e293b; }
   gap: 20px;
 }
 .feature-card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 10px;
   padding: 28px;
 }
 .feature-card .badge {
   display: inline-block;
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  background: rgba(13, 148, 136, 0.15);
+  color: #2dd4bf;
+  font-family: "JetBrains Mono", monospace;
   font-size: 12px;
   font-weight: 600;
   padding: 3px 10px;
@@ -179,12 +202,13 @@ section + section { border-top: 1px solid #1e293b; }
   margin-bottom: 12px;
 }
 .feature-card h3 {
-  font-size: 18px;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 17px;
   font-weight: 600;
   margin-bottom: 8px;
 }
 .feature-card p {
-  color: #94a3b8;
+  color: #8ba4b0;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -206,8 +230,9 @@ section + section { border-top: 1px solid #1e293b; }
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  background: rgba(13, 148, 136, 0.15);
+  color: #2dd4bf;
+  font-family: "JetBrains Mono", monospace;
   font-weight: 700;
   font-size: 16px;
   display: flex;
@@ -215,19 +240,20 @@ section + section { border-top: 1px solid #1e293b; }
   justify-content: center;
 }
 .step-content h3 {
+  font-family: "JetBrains Mono", monospace;
   font-size: 17px;
   font-weight: 600;
   margin-bottom: 6px;
 }
 .step-content p {
-  color: #94a3b8;
+  color: #8ba4b0;
   font-size: 15px;
   line-height: 1.6;
 }
 .step-connector {
   width: 2px;
   height: 24px;
-  background: #334155;
+  background: #1e3a3f;
   margin-left: 19px;
 }
 
@@ -241,25 +267,26 @@ section + section { border-top: 1px solid #1e293b; }
 .comparison-table td {
   padding: 14px 18px;
   text-align: left;
-  border-bottom: 1px solid #334155;
+  border-bottom: 1px solid #1e3a3f;
 }
 .comparison-table th {
+  font-family: "JetBrains Mono", monospace;
   font-weight: 600;
   font-size: 13px;
-  color: #94a3b8;
+  color: #8ba4b0;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  background: #1e293b;
+  background: #152028;
 }
 .comparison-table th:first-child { border-radius: 8px 0 0 0; }
 .comparison-table th:last-child { border-radius: 0 8px 0 0; }
-.comparison-table td { color: #cbd5e1; }
+.comparison-table td { color: #c4d5db; }
 .comparison-table tr:last-child td { border-bottom: none; }
-.check { color: #22d3ee; font-weight: 700; }
-.no { color: #64748b; }
+.check { color: #2dd4bf; font-weight: 700; }
+.no { color: #546e7a; }
 .partial { color: #fbbf24; }
 .table-wrap {
-  border: 1px solid #334155;
+  border: 1px solid #1e3a3f;
   border-radius: 8px;
   overflow: hidden;
   max-width: 720px;
@@ -272,13 +299,13 @@ section + section { border-top: 1px solid #1e293b; }
   gap: 12px;
 }
 .tool-tag {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 8px;
   padding: 12px 20px;
   font-size: 15px;
   font-weight: 500;
-  color: #cbd5e1;
+  color: #c4d5db;
 }
 
 /* Pricing */
@@ -289,23 +316,24 @@ section + section { border-top: 1px solid #1e293b; }
   align-items: start;
 }
 .pricing-card {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 12px;
   padding: 32px 28px;
   position: relative;
 }
 .pricing-card.recommended {
-  border-color: #38bdf8;
-  box-shadow: 0 0 0 1px #38bdf8;
+  border-color: #0d9488;
+  box-shadow: 0 0 0 1px #0d9488;
 }
 .pricing-card .rec-badge {
   position: absolute;
   top: -12px;
   left: 50%;
   transform: translateX(-50%);
-  background: #38bdf8;
-  color: #0f172a;
+  background: #0d9488;
+  color: #f0f4f8;
+  font-family: "JetBrains Mono", monospace;
   font-size: 12px;
   font-weight: 700;
   padding: 4px 14px;
@@ -313,11 +341,13 @@ section + section { border-top: 1px solid #1e293b; }
   white-space: nowrap;
 }
 .pricing-card h3 {
+  font-family: "JetBrains Mono", monospace;
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 4px;
 }
 .pricing-card .price {
+  font-family: "JetBrains Mono", monospace;
   font-size: 36px;
   font-weight: 800;
   letter-spacing: -1px;
@@ -326,11 +356,11 @@ section + section { border-top: 1px solid #1e293b; }
 .pricing-card .price span {
   font-size: 16px;
   font-weight: 400;
-  color: #94a3b8;
+  color: #8ba4b0;
 }
 .pricing-card .price-desc {
   font-size: 14px;
-  color: #94a3b8;
+  color: #8ba4b0;
   margin-bottom: 24px;
 }
 .pricing-card ul {
@@ -341,7 +371,7 @@ section + section { border-top: 1px solid #1e293b; }
 }
 .pricing-card li {
   font-size: 14px;
-  color: #cbd5e1;
+  color: #c4d5db;
   padding-left: 22px;
   position: relative;
   line-height: 1.5;
@@ -350,7 +380,7 @@ section + section { border-top: 1px solid #1e293b; }
   content: "\2713";
   position: absolute;
   left: 0;
-  color: #22d3ee;
+  color: #2dd4bf;
   font-weight: 700;
   font-size: 13px;
 }
@@ -359,9 +389,10 @@ section + section { border-top: 1px solid #1e293b; }
 .final-cta {
   text-align: center;
   padding: 80px 0 64px;
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid #152028;
 }
 .final-cta h2 {
+  font-family: "JetBrains Mono", monospace;
   font-size: 32px;
   font-weight: 700;
   letter-spacing: -0.5px;
@@ -380,34 +411,34 @@ section + section { border-top: 1px solid #1e293b; }
 
 /* Footer */
 footer {
-  border-top: 1px solid #1e293b;
+  border-top: 1px solid #152028;
   padding: 32px 0;
   text-align: center;
 }
 footer p {
-  color: #64748b;
+  color: #546e7a;
   font-size: 14px;
 }
-footer a { color: #64748b; }
-footer a:hover { color: #94a3b8; }
+footer a { color: #546e7a; }
+footer a:hover { color: #8ba4b0; }
 
 /* Code blocks in CTA */
 .cta-code {
-  background: #1e293b;
-  border: 1px solid #334155;
+  background: #152028;
+  border: 1px solid #1e3a3f;
   border-radius: 8px;
   padding: 20px 24px;
   text-align: left;
   max-width: 540px;
   margin: 0 auto 24px;
-  font-family: "SF Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
+  font-family: "JetBrains Mono", monospace;
   font-size: 14px;
   line-height: 1.8;
-  color: #94a3b8;
+  color: #8ba4b0;
   overflow-x: auto;
 }
-.cta-code .cmd { color: #22d3ee; }
-.cta-code .comment { color: #64748b; }
+.cta-code .cmd { color: #2dd4bf; }
+.cta-code .comment { color: #546e7a; }
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -435,17 +466,18 @@ footer a:hover { color: #94a3b8; }
 
 <nav>
   <div class="container">
-    <div class="logo">Fault</div>
+    <div class="logo"><span class="logo-accent">//</span> Fault</div>
     <div class="nav-links">
       <a href="https://github.com/joeabbey/fault">GitHub</a>
       <a href="https://github.com/joeabbey/fault/blob/master/README.md">Docs</a>
+      <a href="/dashboard" class="nav-btn">Dashboard</a>
     </div>
   </div>
 </nav>
 
 <header class="hero">
   <div class="container">
-    <h1>Catch AI agent mistakes before they hit your codebase</h1>
+    <h1>Catch AI agent mistakes <em>before</em> they hit your codebase</h1>
     <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; catching broken imports, stale references, and missing tests before you commit.</p>
     <div class="install-block">
       <code>curl -sSf https://fault.jabbey.io/install.sh | sh</code>
@@ -484,15 +516,15 @@ footer a:hover { color: #94a3b8; }
       </div>
       <div class="feature-card">
         <h3>Git native</h3>
-        <p>Installs as a pre-commit hook with <code style="color:#22d3ee">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
+        <p>Installs as a pre-commit hook with <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault hook install</code>. Reads staged, unstaged, or branch diffs directly from git. Outputs terminal, JSON, or SARIF.</p>
       </div>
       <div class="feature-card">
         <h3>Auto-fix engine</h3>
-        <p>Run <code style="color:#22d3ee">fault fix</code> to automatically repair broken imports, replace hardcoded secrets with env vars, and remove debug statements. Preview changes with <code style="color:#22d3ee">--dry-run</code>.</p>
+        <p>Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault fix</code> to automatically repair broken imports, replace hardcoded secrets with env vars, and remove debug statements. Preview changes with <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">--dry-run</code>.</p>
       </div>
       <div class="feature-card">
         <h3>Watch mode</h3>
-        <p>Run <code style="color:#22d3ee">fault watch</code> for continuous validation as you edit. Detects file changes in real-time and re-runs analysis within milliseconds &mdash; the tightest feedback loop for AI coding.</p>
+        <p>Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault watch</code> for continuous validation as you edit. Detects file changes in real-time and re-runs analysis within milliseconds &mdash; the tightest feedback loop for AI coding.</p>
       </div>
       <div class="feature-card">
         <h3>GitHub PR review</h3>
@@ -532,7 +564,7 @@ footer a:hover { color: #94a3b8; }
         <div class="step-num">2</div>
         <div class="step-content">
           <h3>Fault validates the diff</h3>
-          <p>When you commit, <code style="color:#22d3ee">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs seven analyzers in parallel.</p>
+          <p>When you commit, <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault check --staged</code> runs automatically via the pre-commit hook. It parses every changed file, resolves imports and references, and runs seven analyzers in parallel.</p>
         </div>
       </div>
       <div class="step-connector"></div>
@@ -540,7 +572,7 @@ footer a:hover { color: #94a3b8; }
         <div class="step-num">3</div>
         <div class="step-content">
           <h3>Auto-fix or commit with confidence</h3>
-          <p>If Fault finds errors, the commit is blocked. Run <code style="color:#22d3ee">fault fix</code> to auto-repair what it can, or fix manually. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
+          <p>If Fault finds errors, the commit is blocked. Run <code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace">fault fix</code> to auto-repair what it can, or fix manually. If everything passes, the commit proceeds. No false confidence, no missed breakage.</p>
         </div>
       </div>
     </div>
@@ -636,8 +668,8 @@ footer a:hover { color: #94a3b8; }
           <li>7 analyzers (imports, consistency, references, tests, patterns, security, hallucination)</li>
           <li>Go, TypeScript, Python, Java, Rust</li>
           <li>Terminal, JSON, SARIF output</li>
-          <li>Auto-fix engine (<code style="color:#22d3ee;font-size:13px">fault fix</code>)</li>
-          <li>Watch mode (<code style="color:#22d3ee;font-size:13px">fault watch</code>)</li>
+          <li>Auto-fix engine (<code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace;font-size:13px">fault fix</code>)</li>
+          <li>Watch mode (<code style="color:#2dd4bf;font-family:'JetBrains Mono',monospace;font-size:13px">fault watch</code>)</li>
           <li>Pre-commit hook &amp; GitHub PR comments</li>
           <li>Works offline</li>
         </ul>
