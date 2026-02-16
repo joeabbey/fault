@@ -5,13 +5,14 @@ FROM node:22-alpine AS web-builder
 
 WORKDIR /web
 
-# Install dependencies first (cache layer)
-COPY web/package.json web/package-lock.json ./
-COPY web/vendor ./vendor
-RUN npm ci
-
-# Copy source and build
+# Copy everything
 COPY web/ .
+
+# Build vendored Atlas (dist/ is gitignored so we must build it)
+RUN cd vendor/atlas && npm ci && npm run package
+
+# Install app dependencies and build
+RUN npm ci
 RUN npm run build
 
 # Stage 2: Build Go binary
