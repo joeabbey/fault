@@ -194,6 +194,11 @@ func isTestFile(path string) bool {
 		return strings.HasPrefix(nameNoExt, "test_") ||
 			strings.HasSuffix(nameNoExt, "_test") ||
 			isInTestsDir(path)
+	case ".rb", ".rake":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			strings.HasSuffix(nameNoExt, "_spec") ||
+			isInTestsDir(path) ||
+			isInSpecDir(path)
 	}
 	return false
 }
@@ -202,7 +207,18 @@ func isTestFile(path string) bool {
 func isInTestsDir(path string) bool {
 	parts := strings.Split(filepath.ToSlash(path), "/")
 	for _, p := range parts {
-		if p == "__tests__" || p == "tests" {
+		if p == "__tests__" || p == "tests" || p == "test" {
+			return true
+		}
+	}
+	return false
+}
+
+// isInSpecDir checks if a path is inside a spec directory (Ruby convention).
+func isInSpecDir(path string) bool {
+	parts := strings.Split(filepath.ToSlash(path), "/")
+	for _, p := range parts {
+		if p == "spec" {
 			return true
 		}
 	}

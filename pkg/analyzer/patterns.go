@@ -215,6 +215,13 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bprintln!\(`), "anti-debug-macro"},
 	{regexp.MustCompile(`\beprintln!\(`), "anti-debug-macro"},
 	{regexp.MustCompile(`\bdbg!\(`), "anti-debug-macro"},
+	// Ruby
+	{regexp.MustCompile(`\bputs\s+`), "anti-debug-print"},
+	{regexp.MustCompile(`\b(?:^|\s)p\s+[^=]`), "anti-debug-print"},
+	{regexp.MustCompile(`\bpp\s+`), "anti-debug-print"},
+	{regexp.MustCompile(`\bbinding\.pry\b`), "anti-debugger"},
+	{regexp.MustCompile(`\bbyebug\b`), "anti-debugger"},
+	{regexp.MustCompile(`\bdebugger\b`), "anti-debugger"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -553,6 +560,10 @@ func isJavaFile(path string) bool {
 
 func isRustFile(path string) bool {
 	return strings.HasSuffix(path, ".rs")
+}
+
+func isRubyFile(path string) bool {
+	return strings.HasSuffix(path, ".rb") || strings.HasSuffix(path, ".rake")
 }
 
 func isTypeScriptFile(path string) bool {

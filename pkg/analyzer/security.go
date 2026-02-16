@@ -66,6 +66,11 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".java" {
 			issues = append(issues, checkJavaSecurity(fileDiff)...)
 		}
+
+		// Ruby-specific security checks
+		if ext == ".rb" || ext == ".rake" {
+			issues = append(issues, checkRubySecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -831,6 +836,121 @@ func checkTSCodeExecution(fileDiff git.FileDiff) []Issue {
 					Line:       line.NewNum,
 					Message:    "Unsafe code execution: " + rule.label,
 					Suggestion: "Avoid eval(), new Function(), and string arguments to setTimeout/setInterval; use safer alternatives",
+				})
+				break
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Ruby-specific security checks ---
+
+type rubySecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var rubySecurityRules = []rubySecurityRule{
+	{
+		pattern:    regexp.MustCompile(`\beval\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ruby-eval",
+		severity:   SeverityError,
+		message:    "Use of eval() allows arbitrary code execution",
+		suggestion: "Avoid eval(); use safer alternatives like send() with whitelisted methods or JSON.parse for data",
+	},
+	{
+		pattern:    regexp.MustCompile(`\b(system|exec)\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ruby-command-injection",
+		severity:   SeverityWarning,
+		message:    "Shell command execution — verify input is not user-controlled",
+		suggestion: "Use array form of system() to avoid shell interpolation, e.g., system('cmd', arg1, arg2)",
+	},
+	{
+		pattern: regexp.MustCompile(`\.send\s*\(\s*(params|request|input)`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`(?i)#`),
+		},
+		id:         "security/ruby-unsafe-send",
+		severity:   SeverityError,
+		message:    "Dynamic method dispatch with user input via send()",
+		suggestion: "Validate the method name against an allowlist before calling send()",
+	},
+	{
+		pattern: regexp.MustCompile(`\bKernel\.open\s*\(`),
+		exclusions: []*regexp.Regexp{
+			regexp.MustCompile(`Kernel\.open\s*\(\s*["']`),
+		},
+		id:         "security/ruby-kernel-open",
+		severity:   SeverityWarning,
+		message:    "Kernel.open() can execute shell commands via pipe character",
+		suggestion: "Use File.open() or URI.open() instead of Kernel.open() to avoid command injection",
+	},
+	{
+		pattern:    regexp.MustCompile(`\bYAML\.load\b`),
+		exclusions: []*regexp.Regexp{regexp.MustCompile(`YAML\.load_file`)},
+		id:         "security/ruby-yaml-load",
+		severity:   SeverityWarning,
+		message:    "YAML.load() can deserialize arbitrary Ruby objects",
+		suggestion: "Use YAML.safe_load() instead to prevent deserialization attacks",
+	},
+	{
+		pattern:    regexp.MustCompile(`\bMarshal\.load\s*\(`),
+		exclusions: []*regexp.Regexp{},
+		id:         "security/ruby-marshal-load",
+		severity:   SeverityWarning,
+		message:    "Marshal.load() deserializes arbitrary Ruby objects from untrusted data",
+		suggestion: "Avoid Marshal.load() on untrusted input; use JSON or YAML.safe_load instead",
+	},
+}
+
+func checkRubySecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			if strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+
+			for _, rule := range rubySecurityRules {
+				if !rule.pattern.MatchString(content) {
+					continue
+				}
+
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
 				})
 				break
 			}

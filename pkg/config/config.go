@@ -31,6 +31,8 @@ type AnalyzersConfig struct {
 	Patterns      bool `yaml:"patterns" json:"patterns"`
 	Security      bool `yaml:"security" json:"security"`
 	Hallucination bool `yaml:"hallucination" json:"hallucination"`
+	ErrorHandling bool `yaml:"errorhandling" json:"errorhandling"`
+	DepGraph      bool `yaml:"depgraph" json:"depgraph"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -51,7 +53,7 @@ type WatchConfig struct {
 func DefaultConfig() *Config {
 	return &Config{
 		Version:   1,
-		Languages: []string{"typescript", "python", "go", "rust"},
+		Languages: []string{"typescript", "python", "go", "rust", "ruby"},
 		BlockOn:   "error",
 		Analyzers: AnalyzersConfig{
 			Imports:       true,
@@ -61,6 +63,8 @@ func DefaultConfig() *Config {
 			Patterns:      true,
 			Security:      true,
 			Hallucination: true,
+			ErrorHandling: true,
+			DepGraph:      true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,
@@ -134,6 +138,7 @@ func (c *Config) Validate() error {
 		"python":     true,
 		"java":       true,
 		"rust":       true,
+		"ruby":       true,
 	}
 	for _, lang := range c.Languages {
 		if !validLangs[lang] {

@@ -117,6 +117,10 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.Security
 	case "hallucination":
 		return r.config.Analyzers.Hallucination
+	case "errorhandling":
+		return r.config.Analyzers.ErrorHandling
+	case "depgraph":
+		return r.config.Analyzers.DepGraph
 	default:
 		// Unknown analyzers are enabled by default
 		return true

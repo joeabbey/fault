@@ -83,6 +83,8 @@ func (a *ImportAnalyzer) validateImport(
 		issues = append(issues, a.validatePythonImport(ctx, pf, imp, exportMap, deletedFiles)...)
 	case "go":
 		issues = append(issues, a.validateGoImport(ctx, pf, imp, exportMap)...)
+	case "ruby":
+		issues = append(issues, a.validateRubyImport(ctx, pf, imp, exportMap, deletedFiles)...)
 	}
 
 	return issues
@@ -271,6 +273,59 @@ func (a *ImportAnalyzer) validateGoImport(
 	// The main check is that the package exists and has exported symbols.
 
 	return issues
+}
+
+// validateRubyImport validates a Ruby require/require_relative import.
+func (a *ImportAnalyzer) validateRubyImport(
+	ctx *AnalysisContext,
+	pf *parser.ParsedFile,
+	imp parser.Import,
+	exportMap map[string]map[string]bool,
+	deletedFiles map[string]bool,
+) []Issue {
+	issues := make([]Issue, 0)
+
+	// Only validate relative imports (require_relative).
+	if !strings.HasPrefix(imp.Path, ".") {
+		return issues
+	}
+
+	resolved := resolveRubyImport(pf.Path, imp.Path)
+	target := findRubyFile(resolved, ctx.ParsedFiles)
+
+	if target == "" {
+		if deletedFiles[resolved] || deletedFiles[resolved+".rb"] {
+			issues = append(issues, Issue{
+				ID:       "imports/deleted-import-target",
+				Severity: SeverityError,
+				Category: "imports",
+				File:     pf.Path,
+				Line:     imp.Line,
+				Message:  "Import references deleted file: " + imp.Path,
+				Suggestion: "Update or remove this require_relative — the target file has been deleted",
+			})
+		}
+		return issues
+	}
+
+	return issues
+}
+
+// resolveRubyImport resolves a relative Ruby import path to a file path.
+func resolveRubyImport(fromFile, importPath string) string {
+	dir := filepath.Dir(fromFile)
+	return filepath.Clean(filepath.Join(dir, importPath))
+}
+
+// findRubyFile looks for a Ruby file in parsedFiles with or without .rb extension.
+func findRubyFile(resolved string, parsedFiles map[string]*parser.ParsedFile) string {
+	if _, ok := parsedFiles[resolved]; ok {
+		return resolved
+	}
+	if _, ok := parsedFiles[resolved+".rb"]; ok {
+		return resolved + ".rb"
+	}
+	return ""
 }
 
 // checkRemovedExports scans the diff for removed export lines and checks if
@@ -801,6 +856,12 @@ func resolveImportToFile(pf *parser.ParsedFile, imp parser.Import, parsedFiles m
 		if len(files) > 0 {
 			return files[0]
 		}
+	case "ruby":
+		if !strings.HasPrefix(imp.Path, ".") {
+			return ""
+		}
+		resolved := resolveRubyImport(pf.Path, imp.Path)
+		return findRubyFile(resolved, parsedFiles)
 	}
 	return ""
 }

@@ -181,6 +181,8 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkJavaImports(fileDiff.Path, pf)...)
 	case ext == ".rs":
 		issues = append(issues, h.checkRustImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".rb" || ext == ".rake":
+		issues = append(issues, h.checkRubyImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues
@@ -886,6 +888,111 @@ func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issu
 	}
 
 	return issues
+}
+
+// --- Ruby import validation ---
+
+// rubyStdlib contains Ruby standard library modules/gems.
+var rubyStdlib = map[string]bool{
+	"abbrev": true, "base64": true, "benchmark": true, "bigdecimal": true,
+	"cgi": true, "cmath": true, "coverage": true, "csv": true,
+	"date": true, "dbm": true, "debug": true, "delegate": true,
+	"digest": true, "drb": true, "english": true, "erb": true,
+	"etc": true, "expect": true, "fcntl": true, "fiber": true,
+	"fiddle": true, "fileutils": true, "find": true, "forwardable": true,
+	"gdbm": true, "getoptlong": true, "io/console": true, "io/nonblock": true,
+	"io/wait": true, "ipaddr": true, "irb": true, "json": true,
+	"logger": true, "matrix": true, "minitest": true, "monitor": true,
+	"mutex_m": true, "net/ftp": true, "net/http": true, "net/imap": true,
+	"net/pop": true, "net/smtp": true, "nkf": true, "objspace": true,
+	"observer": true, "open-uri": true, "open3": true, "openssl": true,
+	"optparse": true, "ostruct": true, "pathname": true, "pp": true,
+	"prettyprint": true, "prime": true, "pstore": true, "psych": true,
+	"pty": true, "racc": true, "readline": true, "reline": true,
+	"resolv": true, "ripper": true, "rss": true, "ruby2_keywords": true,
+	"securerandom": true, "set": true, "shellwords": true, "singleton": true,
+	"socket": true, "stringio": true, "strscan": true, "syslog": true,
+	"tempfile": true, "time": true, "timeout": true, "tmpdir": true,
+	"tracer": true, "tsort": true, "un": true, "unicode_normalize": true,
+	"uri": true, "weakref": true, "webrick": true, "yaml": true, "zlib": true,
+	// Commonly available built-in requires
+	"thread": true, "rbconfig": true, "mkmf": true, "rubygems": true,
+	"bundler": true, "bundler/setup": true, "rake": true,
+}
+
+func (h *HallucinationAnalyzer) checkRubyImports(repoPath, filePath string, pf *parser.ParsedFile) []Issue {
+	issues := make([]Issue, 0)
+
+	gems, err := parseGemfile(repoPath)
+	if err != nil {
+		// Can't read Gemfile -- fail open.
+		return issues
+	}
+
+	for _, imp := range pf.Imports {
+		importPath := imp.Path
+
+		// Skip relative imports (require_relative).
+		if strings.HasPrefix(importPath, ".") {
+			continue
+		}
+
+		// Check standard library.
+		if rubyStdlib[importPath] {
+			continue
+		}
+
+		// Normalize: some gems use hyphens but imports use slashes or underscores.
+		topGem := importPath
+		if idx := strings.Index(importPath, "/"); idx != -1 {
+			topGem = importPath[:idx]
+		}
+		normalizedGem := strings.ReplaceAll(topGem, "-", "_")
+
+		if gems[topGem] || gems[normalizedGem] {
+			continue
+		}
+		// Also try with hyphens swapped to underscores and vice versa.
+		hyphenGem := strings.ReplaceAll(topGem, "_", "-")
+		if gems[hyphenGem] {
+			continue
+		}
+
+		issues = append(issues, Issue{
+			ID:         "hallucination/phantom-import",
+			Severity:   SeverityError,
+			Category:   "hallucination",
+			File:       filePath,
+			Line:       imp.Line,
+			Message:    "Import references unknown gem: " + importPath,
+			Suggestion: "Verify the gem exists and add it to your Gemfile with 'gem \"" + topGem + "\"'",
+		})
+	}
+
+	return issues
+}
+
+// parseGemfile reads a Gemfile and returns a set of gem names.
+func parseGemfile(repoPath string) (map[string]bool, error) {
+	gems := make(map[string]bool)
+
+	gemfilePath := filepath.Join(repoPath, "Gemfile")
+	f, err := os.Open(gemfilePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	gemPattern := regexp.MustCompile(`^\s*gem\s+['"]([^'"]+)['"]`)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if m := gemPattern.FindStringSubmatch(line); len(m) >= 2 {
+			gems[m[1]] = true
+		}
+	}
+
+	return gems, nil
 }
 
 // --- Helpers ---
