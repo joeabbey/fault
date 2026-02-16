@@ -84,6 +84,21 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if isBashFile(fileDiff.Path) {
 			issues = append(issues, checkBashAntiPatterns(fileDiff)...)
 		}
+
+		// Perl-specific patterns
+		if isPerlFile(fileDiff.Path) {
+			issues = append(issues, checkPerlPatterns(fileDiff)...)
+		}
+
+		// PowerShell-specific patterns
+		if isPowershellFile(fileDiff.Path) {
+			issues = append(issues, checkPowershellPatterns(fileDiff)...)
+		}
+
+		// Groovy-specific patterns
+		if isGroovyFile(fileDiff.Path) {
+			issues = append(issues, checkGroovyPatterns(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -1124,6 +1139,21 @@ func isCOrCppFile(path string) bool {
 func isBashFile(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
 	return ext == ".sh" || ext == ".bash"
+}
+
+func isPerlFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".pl" || ext == ".pm"
+}
+
+func isPowershellFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".ps1" || ext == ".psm1"
+}
+
+func isGroovyFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".groovy" || ext == ".gvy"
 }
 
 // --- C/C++-specific anti-pattern detection ---

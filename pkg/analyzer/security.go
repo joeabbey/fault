@@ -145,6 +145,21 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".lua" {
 			issues = append(issues, checkLuaSecurity(fileDiff)...)
 		}
+
+		// Perl-specific security checks
+		if ext == ".pl" || ext == ".pm" {
+			issues = append(issues, checkPerlSecurity(fileDiff)...)
+		}
+
+		// PowerShell-specific security checks
+		if ext == ".ps1" || ext == ".psm1" {
+			issues = append(issues, checkPowershellSecurity(fileDiff)...)
+		}
+
+		// Groovy-specific security checks
+		if ext == ".groovy" || ext == ".gvy" {
+			issues = append(issues, checkGroovySecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil

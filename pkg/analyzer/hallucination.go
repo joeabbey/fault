@@ -211,6 +211,12 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkElixirImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".lua":
 		issues = append(issues, h.checkLuaImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".pl" || ext == ".pm":
+		issues = append(issues, h.checkPerlImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".ps1" || ext == ".psm1":
+		issues = append(issues, h.checkPowershellImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".groovy" || ext == ".gvy":
+		issues = append(issues, h.checkGroovyImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues
