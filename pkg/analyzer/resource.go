@@ -282,8 +282,8 @@ var (
 	tsAbortController = regexp.MustCompile(`\bAbortController\b`)
 	tsUseEffect      = regexp.MustCompile(`\buseEffect\s*\(`)
 	tsOnMount        = regexp.MustCompile(`\bonMount\s*\(`)
-	tsSetInterval    = regexp.MustCompile(`\bsetInterval\s*\(`)
-	tsClearInterval  = regexp.MustCompile(`\bclearInterval\s*\(`)
+	resSetInterval    = regexp.MustCompile(`\bsetInterval\s*\(`)
+	resClearInterval  = regexp.MustCompile(`\bclearInterval\s*\(`)
 )
 
 func checkTSResources(fileDiff git.FileDiff) []Issue {
@@ -414,14 +414,14 @@ func checkTSResources(fileDiff git.FileDiff) []Issue {
 			}
 
 			// setInterval without clearInterval
-			if tsSetInterval.MatchString(content) {
+			if resSetInterval.MatchString(content) {
 				allHunkLines := make([]string, 0, len(lines))
 				for _, l := range lines {
 					if l.Type != "removed" {
 						allHunkLines = append(allHunkLines, l.Content)
 					}
 				}
-				if !anyLineMatches(allHunkLines, tsClearInterval) {
+				if !anyLineMatches(allHunkLines, resClearInterval) {
 					issues = append(issues, Issue{
 						ID:         "resource/ts-interval-leak",
 						FixID:      "missing-cleanup",

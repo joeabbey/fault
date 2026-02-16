@@ -35,6 +35,10 @@ type AnalyzersConfig struct {
 	DepGraph      bool `yaml:"depgraph" json:"depgraph"`
 	DeadCode      bool `yaml:"deadcode" json:"deadcode"`
 	Complexity    bool `yaml:"complexity" json:"complexity"`
+	Concurrency   bool `yaml:"concurrency" json:"concurrency"`
+	Resource      bool `yaml:"resource" json:"resource"`
+	Migration     bool `yaml:"migration" json:"migration"`
+	DocDrift      bool `yaml:"docdrift" json:"docdrift"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -77,6 +81,10 @@ func DefaultConfig() *Config {
 			DepGraph:      true,
 			DeadCode:      true,
 			Complexity:    true,
+			Concurrency:   true,
+			Resource:      true,
+			Migration:     true,
+			DocDrift:      true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

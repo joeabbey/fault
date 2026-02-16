@@ -40,7 +40,7 @@ func (a *DocDriftAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if isTestFile(fileDiff.Path) {
 			continue
 		}
-		if isVendorOrNodeModules(fileDiff.Path) {
+		if ddIsVendorOrNodeModules(fileDiff.Path) {
 			continue
 		}
 
@@ -51,8 +51,8 @@ func (a *DocDriftAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 	return issues, nil
 }
 
-// isVendorOrNodeModules returns true if the path is in vendor/ or node_modules/.
-func isVendorOrNodeModules(path string) bool {
+// ddIsVendorOrNodeModules returns true if the path is in vendor/ or node_modules/.
+func ddIsVendorOrNodeModules(path string) bool {
 	return strings.Contains(path, "vendor/") || strings.Contains(path, "node_modules/")
 }
 
@@ -358,7 +358,7 @@ func (a *DocDriftAnalyzer) hasStaleExample(cb *commentBlock, pair sigPair) bool 
 func extractFuncName(line, ext string) string {
 	switch ext {
 	case ".go":
-		return extractGoFuncName(line)
+		return ddExtractGoFuncName(line)
 	case ".py":
 		return extractPythonFuncName(line)
 	case ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs":
@@ -366,9 +366,9 @@ func extractFuncName(line, ext string) string {
 	case ".java":
 		return extractJavaFuncName(line)
 	case ".rs":
-		return extractRustFuncName(line)
+		return ddExtractRustFuncName(line)
 	case ".rb":
-		return extractRubyFuncName(line)
+		return ddExtractRubyFuncName(line)
 	case ".c", ".cpp", ".h", ".hpp", ".cc":
 		return extractCFuncName(line)
 	case ".kt", ".kts":
@@ -378,21 +378,21 @@ func extractFuncName(line, ext string) string {
 	case ".swift":
 		return extractSwiftFuncName(line)
 	case ".php":
-		return extractPHPFuncName(line)
+		return ddExtractPHPFuncName(line)
 	case ".dart":
 		return extractDartFuncName(line)
 	case ".scala":
 		return extractScalaFuncName(line)
 	case ".ex", ".exs":
-		return extractElixirFuncName(line)
+		return ddExtractElixirFuncName(line)
 	case ".zig":
 		return extractZigFuncName(line)
 	}
 	return ""
 }
 
-// extractGoFuncName extracts a Go function name.
-func extractGoFuncName(line string) string {
+// ddExtractGoFuncName extracts a Go function name.
+func ddExtractGoFuncName(line string) string {
 	if !strings.HasPrefix(line, "func ") {
 		return ""
 	}
@@ -537,8 +537,8 @@ func extractJavaFuncName(line string) string {
 	return ""
 }
 
-// extractRustFuncName extracts a Rust function name.
-func extractRustFuncName(line string) string {
+// ddExtractRustFuncName extracts a Rust function name.
+func ddExtractRustFuncName(line string) string {
 	// pub fn name( or fn name( or pub async fn name(
 	stripped := line
 	for _, prefix := range []string{"pub ", "pub(crate) ", "pub(super) ", "async ", "unsafe ", "const ", "extern \"C\" "} {
@@ -560,8 +560,8 @@ func extractRustFuncName(line string) string {
 	return strings.TrimSpace(rest[:parenIdx])
 }
 
-// extractRubyFuncName extracts a Ruby method name.
-func extractRubyFuncName(line string) string {
+// ddExtractRubyFuncName extracts a Ruby method name.
+func ddExtractRubyFuncName(line string) string {
 	if strings.HasPrefix(line, "def ") {
 		rest := line[4:]
 		// def self.name or def name
@@ -688,8 +688,8 @@ func extractSwiftFuncName(line string) string {
 	return strings.TrimSpace(rest[:parenIdx])
 }
 
-// extractPHPFuncName extracts a PHP function/method name.
-func extractPHPFuncName(line string) string {
+// ddExtractPHPFuncName extracts a PHP function/method name.
+func ddExtractPHPFuncName(line string) string {
 	stripped := line
 	for _, prefix := range []string{"public ", "private ", "protected ", "static ", "final ", "abstract "} {
 		stripped = strings.TrimPrefix(stripped, prefix)
@@ -754,8 +754,8 @@ func extractScalaFuncName(line string) string {
 	return strings.TrimSpace(rest[:parenIdx])
 }
 
-// extractElixirFuncName extracts an Elixir function name.
-func extractElixirFuncName(line string) string {
+// ddExtractElixirFuncName extracts an Elixir function name.
+func ddExtractElixirFuncName(line string) string {
 	for _, prefix := range []string{"defp ", "def "} {
 		if strings.HasPrefix(line, prefix) {
 			rest := line[len(prefix):]

@@ -36,6 +36,21 @@ func TestDefaultConfig(t *testing.T) {
 	if !cfg.Analyzers.Hallucination {
 		t.Error("expected hallucination analyzer enabled by default")
 	}
+	if !cfg.Analyzers.Complexity {
+		t.Error("expected complexity analyzer enabled by default")
+	}
+	if !cfg.Analyzers.Concurrency {
+		t.Error("expected concurrency analyzer enabled by default")
+	}
+	if !cfg.Analyzers.Resource {
+		t.Error("expected resource analyzer enabled by default")
+	}
+	if !cfg.Analyzers.Migration {
+		t.Error("expected migration analyzer enabled by default")
+	}
+	if !cfg.Analyzers.DocDrift {
+		t.Error("expected docdrift analyzer enabled by default")
+	}
 	if cfg.LLM.Enabled {
 		t.Error("expected LLM disabled by default")
 	}

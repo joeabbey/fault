@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fault - Catch AI agent mistakes before they hit your codebase</title>
-<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — 10 analyzers across 42 languages catch broken imports, swallowed errors, dead code, and hallucinated APIs before you commit.">
+<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — 15 analyzers across 42 languages catch broken imports, swallowed errors, dead code, and hallucinated APIs before you commit.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -810,7 +810,7 @@ footer a:hover { color: var(--text-muted); }
   <div class="container">
     <div class="hero-inner">
       <div class="hero-text">
-        <div class="hero-version"><span class="dot"></span> v4 &mdash; 42 languages, 10 analyzers</div>
+        <div class="hero-version"><span class="dot"></span> v5 &mdash; 42 languages, 15 analyzers</div>
         <h1>Catch AI agent mistakes <em>before</em> they ship</h1>
         <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; broken imports, swallowed errors, hallucinated APIs, dead code. All offline.</p>
         <div class="install-row">
@@ -860,7 +860,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="stat-label">Languages</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">10</div>
+        <div class="stat-num">15</div>
         <div class="stat-label">Analyzers</div>
       </div>
       <div class="stat-item">
@@ -946,7 +946,7 @@ footer a:hover { color: var(--text-muted); }
 <section>
   <div class="container">
     <div class="section-label">Analyzers</div>
-    <h2 class="section-heading">Ten analyzers. Three that nobody else has.</h2>
+    <h2 class="section-heading">Fifteen analyzers. Five that nobody else has.</h2>
     <p class="section-desc">Every analyzer runs in parallel against your git diff. No network calls, no cloud dependencies.</p>
     <div class="analyzer-grid">
       <div class="analyzer-item">
@@ -1019,6 +1019,41 @@ footer a:hover { color: var(--text-muted); }
           <div class="analyzer-desc">Circular deps, unused manifest entries</div>
         </div>
       </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F3CE;</div>
+        <div>
+          <div class="analyzer-name">concurrency<span class="analyzer-new-tag">v5</span></div>
+          <div class="analyzer-desc">Race conditions, goroutine leaks, missing locks</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F6B0;</div>
+        <div>
+          <div class="analyzer-name">resource<span class="analyzer-new-tag">v5</span></div>
+          <div class="analyzer-desc">Unclosed files, connections, missing defer</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F4BE;</div>
+        <div>
+          <div class="analyzer-name">migration<span class="analyzer-new-tag">v5</span></div>
+          <div class="analyzer-desc">Destructive DB ops: DROP TABLE, column removal</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F4CF;</div>
+        <div>
+          <div class="analyzer-name">complexity<span class="analyzer-new-tag">v5</span></div>
+          <div class="analyzer-desc">Deep nesting, oversized functions, high branching</div>
+        </div>
+      </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F4DD;</div>
+        <div>
+          <div class="analyzer-name">docdrift<span class="analyzer-new-tag">v5</span></div>
+          <div class="analyzer-desc">Stale comments after signature changes</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1030,7 +1065,7 @@ footer a:hover { color: var(--text-muted); }
     <div class="feature-grid">
       <div class="feature-card">
         <h3>Works completely offline</h3>
-        <p>All ten analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.</p>
+        <p>All fifteen analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.</p>
       </div>
       <div class="feature-card">
         <h3>Manifest-aware validation</h3>
@@ -1092,7 +1127,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="step-num">2</div>
         <div class="step-content">
           <h3>Fault validates the diff</h3>
-          <p>When you commit, <code class="mono" style="color:var(--brand-bright)">fault check --staged</code> runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs ten analyzers in parallel.</p>
+          <p>When you commit, <code class="mono" style="color:var(--brand-bright)">fault check --staged</code> runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs fifteen analyzers in parallel.</p>
         </div>
       </div>
       <div class="step-connector"></div>
@@ -1198,7 +1233,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="price">$0</div>
         <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
         <ul>
-          <li>10 analyzers including error handling, dead code, dep graph</li>
+          <li>15 analyzers including concurrency, resource leaks, migration safety</li>
           <li>42 languages with full cross-file analysis</li>
           <li>32 manifest formats for dependency validation</li>
           <li>Terminal, JSON, SARIF output</li>

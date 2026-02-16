@@ -125,6 +125,14 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.DeadCode
 	case "complexity":
 		return r.config.Analyzers.Complexity
+	case "concurrency":
+		return r.config.Analyzers.Concurrency
+	case "resource":
+		return r.config.Analyzers.Resource
+	case "migration":
+		return r.config.Analyzers.Migration
+	case "docdrift":
+		return r.config.Analyzers.DocDrift
 	default:
 		// Unknown analyzers are enabled by default
 		return true

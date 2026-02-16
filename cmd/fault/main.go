@@ -139,6 +139,10 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
 		analyzer.NewComplexityAnalyzer(),
+		analyzer.NewConcurrencyAnalyzer(),
+		analyzer.NewResourceAnalyzer(),
+		analyzer.NewMigrationAnalyzer(),
+		analyzer.NewDocDriftAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -748,6 +752,10 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
 		analyzer.NewComplexityAnalyzer(),
+		analyzer.NewConcurrencyAnalyzer(),
+		analyzer.NewResourceAnalyzer(),
+		analyzer.NewMigrationAnalyzer(),
+		analyzer.NewDocDriftAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -955,6 +963,10 @@ func runWatch(noColor bool) error {
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
 		analyzer.NewComplexityAnalyzer(),
+		analyzer.NewConcurrencyAnalyzer(),
+		analyzer.NewResourceAnalyzer(),
+		analyzer.NewMigrationAnalyzer(),
+		analyzer.NewDocDriftAnalyzer(),
 	}
 
 	// 6. Parse watch config
