@@ -34,6 +34,7 @@ type AnalyzersConfig struct {
 	ErrorHandling bool `yaml:"errorhandling" json:"errorhandling"`
 	DepGraph      bool `yaml:"depgraph" json:"depgraph"`
 	DeadCode      bool `yaml:"deadcode" json:"deadcode"`
+	Complexity    bool `yaml:"complexity" json:"complexity"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -75,6 +76,7 @@ func DefaultConfig() *Config {
 			ErrorHandling: true,
 			DepGraph:      true,
 			DeadCode:      true,
+			Complexity:    true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

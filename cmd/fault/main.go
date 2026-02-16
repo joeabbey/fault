@@ -138,6 +138,7 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		analyzer.NewAntiPatternAnalyzer(),
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
+		analyzer.NewComplexityAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -640,6 +641,7 @@ func baselineCmd() *cobra.Command {
 				analyzer.NewAntiPatternAnalyzer(),
 				analyzer.NewSecurityAnalyzer(),
 				analyzer.NewHallucinationAnalyzer(),
+				analyzer.NewComplexityAnalyzer(),
 			}
 			runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -745,6 +747,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 		analyzer.NewAntiPatternAnalyzer(),
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
+		analyzer.NewComplexityAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -951,6 +954,7 @@ func runWatch(noColor bool) error {
 		analyzer.NewAntiPatternAnalyzer(),
 		analyzer.NewSecurityAnalyzer(),
 		analyzer.NewHallucinationAnalyzer(),
+		analyzer.NewComplexityAnalyzer(),
 	}
 
 	// 6. Parse watch config
