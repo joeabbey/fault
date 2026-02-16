@@ -33,6 +33,7 @@ type AnalyzersConfig struct {
 	Hallucination bool `yaml:"hallucination" json:"hallucination"`
 	ErrorHandling bool `yaml:"errorhandling" json:"errorhandling"`
 	DepGraph      bool `yaml:"depgraph" json:"depgraph"`
+	DeadCode      bool `yaml:"deadcode" json:"deadcode"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -65,6 +66,7 @@ func DefaultConfig() *Config {
 			Hallucination: true,
 			ErrorHandling: true,
 			DepGraph:      true,
+			DeadCode:      true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

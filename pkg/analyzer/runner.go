@@ -121,6 +121,8 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.ErrorHandling
 	case "depgraph":
 		return r.config.Analyzers.DepGraph
+	case "deadcode":
+		return r.config.Analyzers.DeadCode
 	default:
 		// Unknown analyzers are enabled by default
 		return true
