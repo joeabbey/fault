@@ -55,6 +55,14 @@ func (a *ErrorHandlingAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 			issues = append(issues, checkJavaErrorHandling(fileDiff)...)
 		case ".rs":
 			issues = append(issues, checkRustErrorHandling(fileDiff)...)
+		case ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx":
+			issues = append(issues, checkCErrorHandling(fileDiff)...)
+		case ".dart":
+			issues = append(issues, checkDartErrorHandling(fileDiff)...)
+		case ".ex", ".exs":
+			issues = append(issues, checkElixirErrorHandling(fileDiff)...)
+		case ".scala", ".sc":
+			issues = append(issues, checkScalaErrorHandling(fileDiff)...)
 		}
 	}
 

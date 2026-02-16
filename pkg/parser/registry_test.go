@@ -159,15 +159,15 @@ func TestSupportedExtensions(t *testing.T) {
 
 func TestSupportedLanguages(t *testing.T) {
 	langs := SupportedLanguages()
-	if len(langs) != 10 {
-		t.Errorf("expected 10 languages, got %d: %v", len(langs), langs)
+	if len(langs) != 20 {
+		t.Errorf("expected 20 languages, got %d: %v", len(langs), langs)
 	}
 
 	langSet := make(map[string]bool)
 	for _, lang := range langs {
 		langSet[lang] = true
 	}
-	for _, required := range []string{"go", "typescript", "python", "java", "rust", "ruby", "kotlin", "csharp", "php", "swift"} {
+	for _, required := range []string{"go", "typescript", "python", "java", "rust", "ruby", "kotlin", "csharp", "php", "swift", "c", "cpp", "objc", "bash", "sql", "dart", "scala", "r", "elixir", "lua"} {
 		if !langSet[required] {
 			t.Errorf("expected %s in supported languages", required)
 		}

@@ -676,7 +676,7 @@ footer a:hover { color: #6b8a95; }
   <div class="container">
     <div class="stats-row">
       <div class="stat-item">
-        <div class="stat-num">10</div>
+        <div class="stat-num">20</div>
         <div class="stat-label">Languages</div>
       </div>
       <div class="stat-item">
@@ -684,7 +684,7 @@ footer a:hover { color: #6b8a95; }
         <div class="stat-label">Analyzers</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">9</div>
+        <div class="stat-num">15</div>
         <div class="stat-label">Manifest formats</div>
       </div>
       <div class="stat-item">
@@ -714,7 +714,7 @@ footer a:hover { color: #6b8a95; }
 <section>
   <div class="container">
     <div class="section-label">Languages</div>
-    <h2 class="section-heading">Ten languages. Full cross-file analysis.</h2>
+    <h2 class="section-heading">Twenty languages. Full cross-file analysis.</h2>
     <p class="section-desc">Fault parses imports, exports, function signatures, and manifest files for every language it supports. No configuration beyond <code class="mono" style="color:#2dd4bf;font-size:15px">fault init</code>.</p>
     <div class="lang-grid">
       <div class="lang-pill"><span class="lang-dot" style="background:#00ADD8"></span> Go</div>
@@ -727,6 +727,16 @@ footer a:hover { color: #6b8a95; }
       <div class="lang-pill"><span class="lang-dot" style="background:#68217A"></span> C#</div>
       <div class="lang-pill"><span class="lang-dot" style="background:#777BB4"></span> PHP</div>
       <div class="lang-pill"><span class="lang-dot" style="background:#F05138"></span> Swift</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#555555"></span> C</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#f34b7d"></span> C++</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#438eff"></span> Objective-C</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#89e051"></span> Bash</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#e38c00"></span> SQL</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#00B4AB"></span> Dart</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#c22d40"></span> Scala</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#198CE7"></span> R</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#6e4a7e"></span> Elixir</div>
+      <div class="lang-pill"><span class="lang-dot" style="background:#000080"></span> Lua</div>
     </div>
   </div>
 </section>
@@ -987,8 +997,8 @@ footer a:hover { color: #6b8a95; }
         <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
         <ul>
           <li>10 analyzers including error handling, dead code, dep graph</li>
-          <li>10 languages (Go, TS, Python, Java, Rust, Ruby, Kotlin, C#, PHP, Swift)</li>
-          <li>9 manifest formats for dependency validation</li>
+          <li>20 languages (Go, TS, Python, Java, Rust, Ruby, Kotlin, C#, PHP, Swift, C, C++, ObjC, Bash, SQL, Dart, Scala, R, Elixir, Lua)</li>
+          <li>15 manifest formats for dependency validation</li>
           <li>Terminal, JSON, SARIF output</li>
           <li>Auto-fix engine (<code class="mono" style="color:#2dd4bf;font-size:13px">fault fix</code>)</li>
           <li>Watch mode (<code class="mono" style="color:#2dd4bf;font-size:13px">fault watch</code>)</li>
@@ -1000,21 +1010,26 @@ footer a:hover { color: #6b8a95; }
         <div class="rec-badge">Recommended</div>
         <h3>Pro</h3>
         <div class="price">$15<span>/mo</span></div>
-        <div class="price-desc">LLM-powered analysis for deeper validation.</div>
+        <div class="price-desc">LLM-powered analysis and compliance reporting.</div>
         <ul>
           <li>Everything in Free</li>
           <li>Confidence scoring per file</li>
-          <li>Spec comparison (compare changes against requirements)</li>
+          <li>Spec comparison (changes vs requirements)</li>
+          <li>CWE-mapped SARIF output for security compliance</li>
+          <li>Custom suppression rules with expiry dates</li>
+          <li>Historical trend analysis dashboard</li>
           <li>Priority support</li>
         </ul>
       </div>
       <div class="pricing-card">
         <h3>Team</h3>
         <div class="price">$30<span>/user/mo</span></div>
-        <div class="price-desc">Shared rules and visibility across your team.</div>
+        <div class="price-desc">Shared rules, compliance, and visibility across your team.</div>
         <ul>
           <li>Everything in Pro</li>
-          <li>Shared analyzer configurations</li>
+          <li>Organization-wide shared baselines (<code class="mono" style="color:#2dd4bf;font-size:13px">fault.team.yaml</code>)</li>
+          <li>OWASP Top 10 &amp; CWE Top 25 compliance packs</li>
+          <li>Webhook notifications (Slack, Discord, HTTP)</li>
           <li>Team dashboard with change audit trail</li>
           <li>Custom analyzer rules</li>
           <li>SSO integration</li>

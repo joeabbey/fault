@@ -191,6 +191,26 @@ func (h *HallucinationAnalyzer) checkPhantomImports(ctx *AnalysisContext, fileDi
 		issues = append(issues, h.checkPHPImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	case ext == ".swift":
 		issues = append(issues, h.checkSwiftImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".c" || ext == ".h":
+		issues = append(issues, h.checkCImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx":
+		issues = append(issues, h.checkCppImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".m" || ext == ".mm":
+		issues = append(issues, h.checkObjCImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".sh" || ext == ".bash":
+		// Bash has no manifest-based imports — skip phantom check
+	case ext == ".sql":
+		// SQL has no imports — skip phantom check
+	case ext == ".dart":
+		issues = append(issues, h.checkDartImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".scala" || ext == ".sc":
+		issues = append(issues, h.checkScalaImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".r":
+		issues = append(issues, h.checkRImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".ex" || ext == ".exs":
+		issues = append(issues, h.checkElixirImports(ctx.RepoPath, fileDiff.Path, pf)...)
+	case ext == ".lua":
+		issues = append(issues, h.checkLuaImports(ctx.RepoPath, fileDiff.Path, pf)...)
 	}
 
 	return issues
@@ -1662,6 +1682,22 @@ func (h *HallucinationAnalyzer) checkStubFunctions(fileDiff git.FileDiff) []Issu
 				isFuncDecl = phpFuncPattern.MatchString(content)
 			case ext == ".swift":
 				isFuncDecl = swiftFuncPattern.MatchString(content)
+			case ext == ".c" || ext == ".h" || ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx":
+				isFuncDecl = cFuncPattern.MatchString(content)
+			case ext == ".m" || ext == ".mm":
+				isFuncDecl = objcMethodPattern.MatchString(content)
+			case ext == ".dart":
+				isFuncDecl = dartFuncPattern.MatchString(content)
+			case ext == ".scala" || ext == ".sc":
+				isFuncDecl = scalaFuncPattern.MatchString(content)
+			case ext == ".r":
+				isFuncDecl = rFuncPattern.MatchString(content)
+			case ext == ".ex" || ext == ".exs":
+				isFuncDecl = elixirFuncPattern.MatchString(content)
+			case ext == ".lua":
+				isFuncDecl = luaFuncPattern.MatchString(content)
+			case ext == ".sh" || ext == ".bash":
+				isFuncDecl = bashFuncPattern.MatchString(content)
 			}
 
 			if !isFuncDecl {

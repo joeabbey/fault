@@ -217,6 +217,42 @@ func isTestFile(path string) bool {
 		return strings.HasSuffix(nameNoExt, "Tests") ||
 			strings.HasSuffix(nameNoExt, "Test") ||
 			isInTestsDir(path)
+	case ".c", ".h":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			strings.HasPrefix(nameNoExt, "test_") ||
+			isInTestsDir(path)
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hxx":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			strings.HasPrefix(nameNoExt, "test_") ||
+			isInTestsDir(path)
+	case ".m", ".mm":
+		return strings.HasSuffix(nameNoExt, "Tests") ||
+			strings.HasSuffix(nameNoExt, "Test") ||
+			isInTestsDir(path)
+	case ".sh", ".bash":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".dart":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".scala":
+		return strings.HasSuffix(nameNoExt, "Spec") ||
+			strings.HasSuffix(nameNoExt, "Test") ||
+			strings.HasSuffix(nameNoExt, "Suite") ||
+			isInTestsDir(path)
+	case ".r":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasPrefix(nameNoExt, "test-") ||
+			isInTestsDir(path)
+	case ".ex", ".exs":
+		return strings.HasSuffix(nameNoExt, "_test") ||
+			isInTestsDir(path)
+	case ".lua":
+		return strings.HasPrefix(nameNoExt, "test_") ||
+			strings.HasSuffix(nameNoExt, "_test") ||
+			strings.HasSuffix(nameNoExt, "_spec") ||
+			isInTestsDir(path)
 	}
 	return false
 }
@@ -293,6 +329,44 @@ func possibleTestPaths(sourcePath string) []string {
 		// Foo.swift -> FooTests.swift, FooTest.swift
 		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests.swift"))
 		paths = append(paths, filepath.Join(dir, nameNoExt+"Test.swift"))
+	case ".c", ".h":
+		// foo.c -> foo_test.c, test_foo.c
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+	case ".cpp", ".cc", ".cxx", ".hpp", ".hxx":
+		// foo.cpp -> foo_test.cpp, test_foo.cpp
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+	case ".m", ".mm":
+		// Foo.m -> FooTests.m, FooTest.m
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Tests"+ext))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test"+ext))
+	case ".sh", ".bash":
+		// deploy.sh -> test_deploy.sh, deploy_test.sh
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test"+ext))
+	case ".dart":
+		// foo.dart -> foo_test.dart
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.dart"))
+		paths = append(paths, filepath.Join(dir, "test", nameNoExt+"_test.dart"))
+	case ".scala":
+		// UserService.scala -> UserServiceSpec.scala, UserServiceTest.scala
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Spec.scala"))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Test.scala"))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"Suite.scala"))
+	case ".r":
+		// analysis.r -> test_analysis.r, test-analysis.r
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, "test-"+base))
+	case ".ex", ".exs":
+		// foo.ex -> foo_test.exs
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.exs"))
+		paths = append(paths, filepath.Join(dir, "test", nameNoExt+"_test.exs"))
+	case ".lua":
+		// foo.lua -> test_foo.lua, foo_test.lua, foo_spec.lua
+		paths = append(paths, filepath.Join(dir, "test_"+base))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_test.lua"))
+		paths = append(paths, filepath.Join(dir, nameNoExt+"_spec.lua"))
 	}
 
 	// Normalize to forward slashes for consistent matching.
@@ -375,6 +449,81 @@ func sourcePathFromTest(testPath string) string {
 		}
 		if strings.HasSuffix(nameNoExt, "Test") {
 			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".c", ".h", ".cpp", ".cc", ".cxx", ".hpp", ".hxx":
+		if strings.HasSuffix(nameNoExt, "_test") {
+			srcName := strings.TrimSuffix(nameNoExt, "_test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasPrefix(nameNoExt, "test_") {
+			srcName := strings.TrimPrefix(nameNoExt, "test_") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".m", ".mm":
+		if strings.HasSuffix(nameNoExt, "Tests") {
+			srcName := strings.TrimSuffix(nameNoExt, "Tests") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".sh", ".bash":
+		if strings.HasPrefix(nameNoExt, "test_") {
+			srcName := strings.TrimPrefix(nameNoExt, "test_") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "_test") {
+			srcName := strings.TrimSuffix(nameNoExt, "_test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".dart":
+		if strings.HasSuffix(nameNoExt, "_test") {
+			srcName := strings.TrimSuffix(nameNoExt, "_test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".scala":
+		if strings.HasSuffix(nameNoExt, "Spec") {
+			srcName := strings.TrimSuffix(nameNoExt, "Spec") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Test") {
+			srcName := strings.TrimSuffix(nameNoExt, "Test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "Suite") {
+			srcName := strings.TrimSuffix(nameNoExt, "Suite") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".r":
+		if strings.HasPrefix(nameNoExt, "test_") {
+			srcName := strings.TrimPrefix(nameNoExt, "test_") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasPrefix(nameNoExt, "test-") {
+			srcName := strings.TrimPrefix(nameNoExt, "test-") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".ex", ".exs":
+		if strings.HasSuffix(nameNoExt, "_test") {
+			srcName := strings.TrimSuffix(nameNoExt, "_test") + ext
+			if filepath.Base(dir) == "test" {
+				return filepath.ToSlash(filepath.Join(filepath.Dir(dir), srcName))
+			}
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+	case ".lua":
+		if strings.HasPrefix(nameNoExt, "test_") {
+			srcName := strings.TrimPrefix(nameNoExt, "test_") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "_test") {
+			srcName := strings.TrimSuffix(nameNoExt, "_test") + ext
+			return filepath.ToSlash(filepath.Join(dir, srcName))
+		}
+		if strings.HasSuffix(nameNoExt, "_spec") {
+			srcName := strings.TrimSuffix(nameNoExt, "_spec") + ext
 			return filepath.ToSlash(filepath.Join(dir, srcName))
 		}
 	}

@@ -26,6 +26,26 @@ var extensionToLanguage = map[string]string{
 	".cs":    "csharp",
 	".php":   "php",
 	".swift": "swift",
+	// v3 languages
+	".c":     "c",
+	".h":     "c",
+	".cpp":   "cpp",
+	".cc":    "cpp",
+	".cxx":   "cpp",
+	".hpp":   "cpp",
+	".hxx":   "cpp",
+	".m":     "objc",
+	".mm":    "objc",
+	".sh":    "bash",
+	".bash":  "bash",
+	".sql":   "sql",
+	".dart":  "dart",
+	".scala": "scala",
+	".sc":    "scala",
+	".r":     "r",
+	".ex":    "elixir",
+	".exs":   "elixir",
+	".lua":   "lua",
 }
 
 // Registry manages parsers for different languages.

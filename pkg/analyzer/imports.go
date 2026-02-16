@@ -93,6 +93,23 @@ func (a *ImportAnalyzer) validateImport(
 		issues = append(issues, a.validatePHPImport(ctx, pf, imp, exportMap, deletedFiles)...)
 	case "swift":
 		issues = append(issues, a.validateSwiftImport(ctx, pf, imp)...)
+	// v3 languages — namespace/module-based imports, minimal cross-file validation
+	case "c", "cpp", "objc":
+		// C-family #include validation handled by hallucination analyzer
+	case "bash":
+		// source/dot-source validation is path-based, handled by hallucination
+	case "sql":
+		// SQL has no import system
+	case "dart":
+		// Dart package imports validated by hallucination analyzer
+	case "scala":
+		// Scala imports validated by hallucination analyzer
+	case "r":
+		// R library() calls validated by hallucination analyzer
+	case "elixir":
+		// Elixir use/alias/import validated by hallucination analyzer
+	case "lua":
+		// Lua require() validated by hallucination analyzer
 	}
 
 	return issues

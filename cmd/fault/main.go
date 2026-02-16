@@ -114,16 +114,7 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 
 	// 4. Set up parser registry
 	reg := parser.NewRegistry()
-	reg.Register(parser.NewGoParser())
-	reg.Register(parser.NewTypeScriptParser())
-	reg.Register(parser.NewPythonParser())
-	reg.Register(parser.NewJavaParser())
-	reg.Register(parser.NewRustParser())
-	reg.Register(parser.NewRubyParser())
-	reg.Register(parser.NewKotlinParser())
-	reg.Register(parser.NewCSharpParser())
-	reg.Register(parser.NewPHPParser())
-	reg.Register(parser.NewSwiftParser())
+	registerAllParsers(reg)
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -628,16 +619,7 @@ func baselineCmd() *cobra.Command {
 			}
 
 			reg := parser.NewRegistry()
-			reg.Register(parser.NewGoParser())
-			reg.Register(parser.NewTypeScriptParser())
-			reg.Register(parser.NewPythonParser())
-			reg.Register(parser.NewJavaParser())
-			reg.Register(parser.NewRustParser())
-			reg.Register(parser.NewRubyParser())
-			reg.Register(parser.NewKotlinParser())
-			reg.Register(parser.NewCSharpParser())
-			reg.Register(parser.NewPHPParser())
-			reg.Register(parser.NewSwiftParser())
+			registerAllParsers(reg)
 
 			parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
 
@@ -739,16 +721,7 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 
 	// 4. Set up parser registry
 	reg := parser.NewRegistry()
-	reg.Register(parser.NewGoParser())
-	reg.Register(parser.NewTypeScriptParser())
-	reg.Register(parser.NewPythonParser())
-	reg.Register(parser.NewJavaParser())
-	reg.Register(parser.NewRustParser())
-	reg.Register(parser.NewRubyParser())
-	reg.Register(parser.NewKotlinParser())
-	reg.Register(parser.NewCSharpParser())
-	reg.Register(parser.NewPHPParser())
-	reg.Register(parser.NewSwiftParser())
+	registerAllParsers(reg)
 
 	// 5. Parse changed files
 	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
@@ -861,6 +834,32 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 	return nil
 }
 
+// registerAllParsers registers all 20 language parsers in the registry.
+func registerAllParsers(reg *parser.Registry) {
+	// Original 10
+	reg.Register(parser.NewGoParser())
+	reg.Register(parser.NewTypeScriptParser())
+	reg.Register(parser.NewPythonParser())
+	reg.Register(parser.NewJavaParser())
+	reg.Register(parser.NewRustParser())
+	reg.Register(parser.NewRubyParser())
+	reg.Register(parser.NewKotlinParser())
+	reg.Register(parser.NewCSharpParser())
+	reg.Register(parser.NewPHPParser())
+	reg.Register(parser.NewSwiftParser())
+	// v3 expansion
+	reg.Register(parser.NewCParser())
+	reg.Register(parser.NewCppParser())
+	reg.Register(parser.NewObjCParser())
+	reg.Register(parser.NewBashParser())
+	reg.Register(parser.NewSQLParser())
+	reg.Register(parser.NewDartParser())
+	reg.Register(parser.NewScalaParser())
+	reg.Register(parser.NewRParser())
+	reg.Register(parser.NewElixirParser())
+	reg.Register(parser.NewLuaParser())
+}
+
 func versionCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "version",
@@ -908,16 +907,7 @@ func runWatch(noColor bool) error {
 
 	// 3. Set up parser registry
 	reg := parser.NewRegistry()
-	reg.Register(parser.NewGoParser())
-	reg.Register(parser.NewTypeScriptParser())
-	reg.Register(parser.NewPythonParser())
-	reg.Register(parser.NewJavaParser())
-	reg.Register(parser.NewRustParser())
-	reg.Register(parser.NewRubyParser())
-	reg.Register(parser.NewKotlinParser())
-	reg.Register(parser.NewCSharpParser())
-	reg.Register(parser.NewPHPParser())
-	reg.Register(parser.NewSwiftParser())
+	registerAllParsers(reg)
 
 	// 4. Build or load the index
 	repoRoot, _ := repo.RepoRoot()

@@ -39,8 +39,8 @@ func TestDefaultConfig(t *testing.T) {
 	if cfg.LLM.Enabled {
 		t.Error("expected LLM disabled by default")
 	}
-	if len(cfg.Languages) != 9 {
-		t.Errorf("expected 9 languages, got %d", len(cfg.Languages))
+	if len(cfg.Languages) != 19 {
+		t.Errorf("expected 19 languages, got %d", len(cfg.Languages))
 	}
 	if len(cfg.Ignore) != 4 {
 		t.Errorf("expected 4 ignore patterns, got %d", len(cfg.Ignore))

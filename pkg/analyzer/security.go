@@ -95,6 +95,56 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".swift" {
 			issues = append(issues, checkSwiftSecurity(fileDiff)...)
 		}
+
+		// C-specific security checks
+		if ext == ".c" || ext == ".h" {
+			issues = append(issues, checkCSecurity(fileDiff)...)
+		}
+
+		// C++-specific security checks (includes C rules)
+		if ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx" {
+			issues = append(issues, checkCppSecurity(fileDiff)...)
+		}
+
+		// Objective-C-specific security checks
+		if ext == ".m" || ext == ".mm" {
+			issues = append(issues, checkObjCSecurity(fileDiff)...)
+		}
+
+		// Bash-specific security checks
+		if ext == ".sh" || ext == ".bash" {
+			issues = append(issues, checkBashSecurity(fileDiff)...)
+		}
+
+		// SQL-specific security checks
+		if ext == ".sql" {
+			issues = append(issues, checkSQLFileSecurity(fileDiff)...)
+		}
+
+		// Dart-specific security checks
+		if ext == ".dart" {
+			issues = append(issues, checkDartSecurity(fileDiff)...)
+		}
+
+		// Scala-specific security checks
+		if ext == ".scala" {
+			issues = append(issues, checkScalaSecurity(fileDiff)...)
+		}
+
+		// R-specific security checks
+		if ext == ".r" || ext == ".rmd" {
+			issues = append(issues, checkRSecurity(fileDiff)...)
+		}
+
+		// Elixir-specific security checks
+		if ext == ".ex" || ext == ".exs" {
+			issues = append(issues, checkElixirSecurity(fileDiff)...)
+		}
+
+		// Lua-specific security checks
+		if ext == ".lua" {
+			issues = append(issues, checkLuaSecurity(fileDiff)...)
+		}
 	}
 
 	return issues, nil

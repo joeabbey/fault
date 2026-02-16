@@ -74,6 +74,16 @@ func (a *AntiPatternAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if isPHPFile(fileDiff.Path) {
 			issues = append(issues, checkPHPPatterns(fileDiff)...)
 		}
+
+		// C/C++-specific patterns
+		if isCOrCppFile(fileDiff.Path) {
+			issues = append(issues, checkCAntiPatterns(fileDiff)...)
+		}
+
+		// Bash-specific patterns
+		if isBashFile(fileDiff.Path) {
+			issues = append(issues, checkBashAntiPatterns(fileDiff)...)
+		}
 	}
 
 	return issues, nil
@@ -241,8 +251,20 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bvar_dump\(`), "anti-debug-print"},
 	{regexp.MustCompile(`\bprint_r\(`), "anti-debug-print"},
 	{regexp.MustCompile(`\bdd\(`), "anti-debug-print"},
-	// Swift
+	// Swift / Dart
 	{regexp.MustCompile(`\bdebugPrint\(`), "anti-debug-print"},
+	// C/C++
+	{regexp.MustCompile(`\bprintf\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bstd::cout\b`), "anti-debug-print"},
+	{regexp.MustCompile(`\bstd::cerr\b`), "anti-debug-print"},
+	{regexp.MustCompile(`\bfprintf\s*\(\s*stderr\s*,`), "anti-debug-print"},
+	// Elixir
+	{regexp.MustCompile(`\bIO\.puts\b`), "anti-debug-print"},
+	{regexp.MustCompile(`\bIO\.inspect\b`), "anti-debug-print"},
+	{regexp.MustCompile(`\bdbg\(`), "anti-debug-macro"},
+	// R
+	{regexp.MustCompile(`\bcat\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bbrowser\(\)`), "anti-debugger"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for
@@ -1084,6 +1106,119 @@ func checkSwiftAntiPatterns(fileDiff git.FileDiff) []Issue {
 						Suggestion: rule.suggest,
 					})
 					break
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- C/C++ helper ---
+
+func isCOrCppFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".c" || ext == ".h" || ext == ".cpp" || ext == ".cc" || ext == ".cxx" || ext == ".hpp" || ext == ".hxx"
+}
+
+func isBashFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	return ext == ".sh" || ext == ".bash"
+}
+
+// --- C/C++-specific anti-pattern detection ---
+
+var cAntiPatterns = []struct {
+	pattern *regexp.Regexp
+	id      string
+	message string
+	suggest string
+}{
+	{
+		pattern: regexp.MustCompile(`\bgoto\s+`),
+		id:      "patterns/c-goto",
+		message: "goto statement detected — reduces code readability and maintainability",
+		suggest: "Restructure control flow using loops, conditionals, or functions instead of goto",
+	},
+}
+
+func checkCAntiPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+
+			content := line.Content
+			trimmed := strings.TrimSpace(content)
+
+			// Skip comments
+			if strings.HasPrefix(trimmed, "//") || strings.HasPrefix(trimmed, "/*") || strings.HasPrefix(trimmed, "*") {
+				continue
+			}
+
+			for _, rule := range cAntiPatterns {
+				if rule.pattern.MatchString(content) {
+					issues = append(issues, Issue{
+						ID:         rule.id,
+						Severity:   SeverityWarning,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       line.NewNum,
+						Message:    rule.message + ": " + strings.TrimSpace(content),
+						Suggestion: rule.suggest,
+					})
+					break
+				}
+			}
+		}
+	}
+
+	return issues
+}
+
+// --- Bash-specific anti-pattern detection ---
+
+func checkBashAntiPatterns(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+
+	// Check if the first few added lines contain "set -e".
+	hasSetE := false
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+			trimmed := strings.TrimSpace(line.Content)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			// Check the first non-comment, non-blank added line (within first 10 lines).
+			if line.NewNum <= 10 {
+				if strings.Contains(trimmed, "set -e") || strings.Contains(trimmed, "set -euo") || strings.Contains(trimmed, "set -eu") {
+					hasSetE = true
+				}
+			}
+		}
+	}
+
+	if !hasSetE {
+		// Only report if there are added lines (not just a deletion).
+		for _, hunk := range fileDiff.Hunks {
+			for _, line := range hunk.Lines {
+				if line.Type == "added" {
+					issues = append(issues, Issue{
+						ID:         "patterns/bash-no-set-e",
+						Severity:   SeverityInfo,
+						Category:   "patterns",
+						File:       fileDiff.Path,
+						Line:       1,
+						Message:    "Bash script missing 'set -e' — errors may be silently ignored",
+						Suggestion: "Add 'set -euo pipefail' near the top of the script to fail on errors",
+					})
+					return issues
 				}
 			}
 		}
