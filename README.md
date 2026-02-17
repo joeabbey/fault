@@ -58,14 +58,49 @@ fault check             # Validate unstaged changes
 ## How it works
 
 ```mermaid
-flowchart LR
-    A["AI agent\nedits files"] --> B["git commit"]
-    B --> C["Fault pre-commit hook"]
-    C --> D["Parse changed files"]
-    D --> E["Run 12 analyzers\nin parallel"]
-    E --> F{Issues?}
-    F -- Yes --> G["Block commit\nshow what to fix"]
-    F -- No --> H["Commit proceeds"]
+flowchart TB
+    subgraph input ["  Input  "]
+        A["🤖 AI Agent\nClaude Code · aider · Cursor"]
+        B["📂 git commit"]
+    end
+
+    subgraph fault ["  Fault  "]
+        C["🔗 Pre-commit Hook"]
+        D["📄 Parse Changed Files"]
+        subgraph analyzers ["  12 Analyzers · Parallel Execution  "]
+            direction LR
+            E1["Imports"] ~~~ E2["Consistency"] ~~~ E3["References"] ~~~ E4["Tests"]
+            E5["Patterns"] ~~~ E6["Security"] ~~~ E7["Hallucination"] ~~~ E8["+ 5 more"]
+        end
+    end
+
+    subgraph output ["  Result  "]
+        G["🚫 Block Commit\nShow what to fix"]
+        H["✅ Commit Proceeds"]
+    end
+
+    A --> B --> C --> D --> analyzers
+    analyzers -- "Issues found" --> G
+    analyzers -- "All clear" --> H
+
+    style input fill:#1e1e2e,stroke:#f43f5e,stroke-width:1px,color:#e2e8f4
+    style fault fill:#0e1017,stroke:#f43f5e,stroke-width:2px,color:#e2e8f4
+    style analyzers fill:#1a1a2e,stroke:#fb7185,stroke-width:1px,color:#e2e8f4
+    style output fill:#1e1e2e,stroke:#f43f5e,stroke-width:1px,color:#e2e8f4
+    style A fill:#2a2a3e,stroke:#f43f5e,color:#e2e8f4
+    style B fill:#2a2a3e,stroke:#f43f5e,color:#e2e8f4
+    style C fill:#f43f5e,stroke:#e11d48,color:#fff
+    style D fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style G fill:#e11d48,stroke:#be123c,color:#fff
+    style H fill:#059669,stroke:#047857,color:#fff
+    style E1 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E2 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E3 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E4 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E5 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E6 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E7 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
+    style E8 fill:#2a2a3e,stroke:#fb7185,color:#e2e8f4
 ```
 
 ### Analyzers
