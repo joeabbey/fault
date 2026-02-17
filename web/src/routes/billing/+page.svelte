@@ -16,14 +16,15 @@
 			name: 'Free',
 			price: '$0',
 			period: '',
-			description: 'All static analyzers. Unlimited local use.',
+			description: 'All static analyzers. Unlimited local use. No account required.',
 			features: [
-				'7 analyzers (imports, consistency, references, tests, patterns, security, hallucination)',
-				'Go, TypeScript, Python, Java, Rust',
+				'15 analyzers including concurrency, resource leaks, migration safety',
+				'42 languages with full cross-file analysis',
+				'32 manifest formats for dependency validation',
 				'Terminal, JSON, SARIF output',
 				'Auto-fix engine',
 				'Watch mode',
-				'Pre-commit hook',
+				'Pre-commit hook & GitHub PR comments',
 				'Works offline'
 			]
 		},
@@ -32,13 +33,14 @@
 			name: 'Pro',
 			price: '$15',
 			period: '/mo',
-			description: 'LLM-powered analysis for deeper validation.',
-			recommended: true,
+			description: 'LLM-powered analysis and compliance reporting.',
 			features: [
 				'Everything in Free',
-				'1,000 LLM calls/month',
 				'Confidence scoring per file',
-				'Spec comparison',
+				'Spec comparison (changes vs requirements)',
+				'CWE-mapped SARIF output for security compliance',
+				'Custom suppression rules with expiry dates',
+				'Historical trend analysis dashboard',
 				'Priority support'
 			]
 		},
@@ -47,12 +49,13 @@
 			name: 'Team',
 			price: '$30',
 			period: '/user/mo',
-			description: 'Shared rules and visibility across your team.',
+			description: 'Shared rules, compliance, and visibility across your team.',
 			features: [
 				'Everything in Pro',
-				'Unlimited LLM calls',
-				'Shared analyzer configurations',
-				'Team dashboard',
+				'Organization-wide shared baselines',
+				'OWASP Top 10 & CWE Top 25 compliance packs',
+				'Webhook notifications (Slack, Discord, HTTP)',
+				'Team dashboard with change audit trail',
 				'Custom analyzer rules',
 				'SSO integration'
 			]
@@ -80,6 +83,14 @@
 			checkingOut = null;
 		}
 	}
+
+	const planOrder = ['free', 'pro', 'team'];
+	const recommendedPlan = $derived.by(() => {
+		if (!subscription) return 'pro';
+		const currentIdx = planOrder.indexOf(subscription.plan);
+		const nextIdx = currentIdx + 1;
+		return nextIdx < planOrder.length ? planOrder[nextIdx] : null;
+	});
 
 	async function handlePortal() {
 		openingPortal = true;
@@ -159,11 +170,11 @@
 			{#each plans as plan}
 				<div
 					class="rounded-xl p-6 relative"
-					style="background: #0e1017; border: {plan.recommended ? '2px solid #f43f5e' : '1px solid rgba(244,63,94,0.06)'}; transition: border-color 0.2s;"
-					onmouseenter={(e) => { if (!plan.recommended) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)'; }}
-					onmouseleave={(e) => { if (!plan.recommended) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+					style="background: #0e1017; border: {recommendedPlan === plan.id ? '2px solid #f43f5e' : '1px solid rgba(244,63,94,0.06)'}; transition: border-color 0.2s;"
+					onmouseenter={(e) => { if (recommendedPlan !== plan.id) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)'; }}
+					onmouseleave={(e) => { if (recommendedPlan !== plan.id) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
 				>
-					{#if plan.recommended}
+					{#if recommendedPlan === plan.id}
 						<div class="absolute -top-3 left-1/2 -translate-x-1/2">
 							<span
 								class="px-3 py-1 rounded-full text-xs font-semibold font-mono"
@@ -214,9 +225,9 @@
 						{:else}
 							<button
 								class="w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-								style="background: {plan.recommended ? '#f43f5e' : '#151821'}; color: {plan.recommended ? '#fff' : '#e2e8f4'}; border: {plan.recommended ? 'none' : '1px solid rgba(244,63,94,0.06)'};"
-								onmouseenter={(e) => e.currentTarget.style.background = plan.recommended ? '#e11d48' : 'rgba(244,63,94,0.04)'}
-								onmouseleave={(e) => e.currentTarget.style.background = plan.recommended ? '#f43f5e' : '#151821'}
+								style="background: {recommendedPlan === plan.id ? '#f43f5e' : '#151821'}; color: {recommendedPlan === plan.id ? '#fff' : '#e2e8f4'}; border: {recommendedPlan === plan.id ? 'none' : '1px solid rgba(244,63,94,0.06)'};"
+								onmouseenter={(e) => e.currentTarget.style.background = recommendedPlan === plan.id ? '#e11d48' : 'rgba(244,63,94,0.04)'}
+								onmouseleave={(e) => e.currentTarget.style.background = recommendedPlan === plan.id ? '#f43f5e' : '#151821'}
 								onclick={() => handleCheckout(plan.id)}
 								disabled={checkingOut === plan.id}
 							>
