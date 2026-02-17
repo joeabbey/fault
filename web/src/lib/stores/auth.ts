@@ -6,6 +6,7 @@ export interface AuthUser {
 	name: string;
 	picture_url: string;
 	plan: string;
+	has_api_key: boolean;
 }
 
 interface AuthState {

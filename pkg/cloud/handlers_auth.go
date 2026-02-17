@@ -193,6 +193,7 @@ func (ah *AuthHandlers) HandleAuthMe(w http.ResponseWriter, r *http.Request) {
 						"name":        user.Name,
 						"picture_url": user.PictureURL,
 						"plan":        user.Plan,
+						"has_api_key": user.APIKeyHash != "",
 					},
 				})
 				return

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { api } from '$lib/api/client';
-	import { currentEmail } from '$lib/stores/auth';
+	import { currentUser, currentEmail } from '$lib/stores/auth';
 	import { Spinner } from '@jabbey/atlas';
 
 	let rotating = $state(false);
@@ -8,6 +8,21 @@
 	let newKey = $state<string | null>(null);
 	let copied = $state(false);
 	let confirmRotate = $state(false);
+
+	const hasKey = $derived($currentUser?.has_api_key || newKey !== null);
+
+	async function handleCreate() {
+		rotating = true;
+		error = null;
+		try {
+			const response = await api.rotateKey();
+			newKey = response.api_key;
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Failed to create key';
+		} finally {
+			rotating = false;
+		}
+	}
 
 	async function handleRotate() {
 		if (!confirmRotate) {
@@ -80,7 +95,7 @@
 		>
 			<h2 class="text-lg font-semibold mb-2 font-display" style="color: #e2e8f4;">New API Key</h2>
 			<p class="text-sm mb-4" style="color: #64748b;">
-				Save this key now — it won't be shown again. Your old key has been invalidated.
+				Save this key now — it won't be shown again.{#if hasKey} Your old key has been invalidated.{/if}
 			</p>
 			<div
 				class="rounded-lg p-4 mb-4"
@@ -100,51 +115,71 @@
 		</div>
 	{/if}
 
-	<!-- Rotate Key -->
+	<!-- Create or Rotate Key -->
 	<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
-		<h2 class="text-sm font-medium mb-2" style="color: #e2e8f4;">Rotate Key</h2>
-		<p class="text-sm mb-4" style="color: #64748b;">
-			Generate a new API key. Your current key will be immediately invalidated.
-			Update your configuration files and environment variables after rotating.
-		</p>
+		{#if hasKey}
+			<h2 class="text-sm font-medium mb-2" style="color: #e2e8f4;">Rotate Key</h2>
+			<p class="text-sm mb-4" style="color: #64748b;">
+				Generate a new API key. Your current key will be immediately invalidated.
+				Update your configuration files and environment variables after rotating.
+			</p>
 
-		{#if confirmRotate}
-			<div
-				class="mb-4 px-4 py-3 rounded-lg text-sm"
-				style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.12); color: #fbbf24;"
-			>
-				Are you sure? Your current key will stop working immediately.
-			</div>
-			<div class="flex gap-3">
-				<button
-					class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-					style="background: #f43f5e; color: #fff; border: none;"
-					onmouseenter={(e) => e.currentTarget.style.background = '#e11d48'}
-					onmouseleave={(e) => e.currentTarget.style.background = '#f43f5e'}
-					onclick={handleRotate}
-					disabled={rotating}
+			{#if confirmRotate}
+				<div
+					class="mb-4 px-4 py-3 rounded-lg text-sm"
+					style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.12); color: #fbbf24;"
 				>
-					{rotating ? 'Rotating...' : 'Yes, Rotate Key'}
-				</button>
+					Are you sure? Your current key will stop working immediately.
+				</div>
+				<div class="flex gap-3">
+					<button
+						class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+						style="background: #f43f5e; color: #fff; border: none;"
+						onmouseenter={(e) => e.currentTarget.style.background = '#e11d48'}
+						onmouseleave={(e) => e.currentTarget.style.background = '#f43f5e'}
+						onclick={handleRotate}
+						disabled={rotating}
+					>
+						{rotating ? 'Rotating...' : 'Yes, Rotate Key'}
+					</button>
+					<button
+						class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+						style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
+						onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
+						onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+						onclick={cancelRotate}
+					>
+						Cancel
+					</button>
+				</div>
+			{:else}
 				<button
 					class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
 					style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
 					onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
 					onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
-					onclick={cancelRotate}
+					onclick={handleRotate}
 				>
-					Cancel
+					Rotate API Key
 				</button>
-			</div>
+			{/if}
 		{:else}
+			<h2 class="text-sm font-medium mb-2" style="color: #e2e8f4;">Create Key</h2>
+			<p class="text-sm mb-4" style="color: #64748b;">
+				Generate an API key to authenticate the Fault CLI and other integrations.
+			</p>
 			<button
-				class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
-				style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
-				onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
-				onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
-				onclick={handleRotate}
+				class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+				style="background: #f43f5e; color: #fff; border: none;"
+				onmouseenter={(e) => e.currentTarget.style.background = '#e11d48'}
+				onmouseleave={(e) => e.currentTarget.style.background = '#f43f5e'}
+				onclick={handleCreate}
+				disabled={rotating}
 			>
-				Rotate API Key
+				{#if rotating}
+					<Spinner size="sm" />
+				{/if}
+				Create API Key
 			</button>
 		{/if}
 	</div>
