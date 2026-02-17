@@ -1,93 +1,74 @@
 # Language Support
 
-Fault supports **42 programming languages** with language-specific parsing, analysis, and auto-fix capabilities.
+Fault supports **42 programming languages**. Every language gets parsing, import/export analysis, and anti-pattern detection. Languages with deeper support also get auto-fix and language-specific security rules.
 
-## Support tiers
+## All languages
 
-### Full support
+| Language | Imports | Exports | Symbols | Security rules | Auto-fix |
+|----------|:--:|:--:|:--:|:--:|:--:|
+| **Go** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **TypeScript / JavaScript** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Python** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Java | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| Rust | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| Ruby | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| Kotlin | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| C# | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| PHP | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| Swift | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| C | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| C++ | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| Objective-C | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Dart | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Scala | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| R | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Elixir | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Lua | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Perl | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| PowerShell | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Groovy | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Bash / Shell | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| SQL | :white_check_mark: | | | | |
+| Zig | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Nim | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Crystal | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| V | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| D | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Haskell | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Clojure | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Erlang | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| F# | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| OCaml | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Julia | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Fortran | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Solidity | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Terraform | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Protobuf | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Visual Basic | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| COBOL | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Ada | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
+| Pascal | :white_check_mark: | :white_check_mark: | :white_check_mark: | | |
 
-Full parser, all analyzer rules, and auto-fix capabilities.
-
-| Language | Imports | Exports | Symbols | Auto-fix |
-|----------|:--:|:--:|:--:|:--:|
-| Go | **Yes** | **Yes** | **Yes** | **Yes** |
-| TypeScript / JavaScript | **Yes** | **Yes** | **Yes** | **Yes** |
-| Python | **Yes** | **Yes** | **Yes** | **Yes** |
-
-### Standard support
-
-Full parser and analyzer rules, no auto-fix yet.
-
-| Language | Imports | Exports | Symbols | Auto-fix |
-|----------|:--:|:--:|:--:|:--:|
-| Java | **Yes** | **Yes** | **Yes** | |
-| Rust | **Yes** | **Yes** | **Yes** | |
-| Ruby | **Yes** | **Yes** | **Yes** | |
-| Kotlin | **Yes** | **Yes** | **Yes** | |
-| C# | **Yes** | **Yes** | **Yes** | |
-| PHP | **Yes** | **Yes** | **Yes** | |
-| Swift | **Yes** | **Yes** | **Yes** | |
-| C | **Yes** | **Yes** | **Yes** | |
-| C++ | **Yes** | **Yes** | **Yes** | |
-
-### Extended support
-
-Parser with import/export analysis and common anti-pattern detection.
-
-| Language | | Language | | Language |
-|----------|--|----------|--|----------|
-| Objective-C | | Dart | | Scala |
-| R | | Elixir | | Lua |
-| Perl | | PowerShell | | Groovy |
-| Bash / Shell | | SQL | | |
-
-### Modern & systems
-
-| Language | | Language | | Language |
-|----------|--|----------|--|----------|
-| Zig | | Nim | | Crystal |
-| V | | D | | |
-
-### Functional
-
-| Language | | Language | | Language |
-|----------|--|----------|--|----------|
-| Haskell | | Clojure | | Erlang |
-| F# | | OCaml | | |
-
-### Domain-specific
-
-| Language | | Language | | Language |
-|----------|--|----------|--|----------|
-| Julia | | Fortran | | Solidity |
-| Terraform | | Protobuf | | |
-
-### Legacy
-
-| Language | | Language | | Language |
-|----------|--|----------|--|----------|
-| Visual Basic | | COBOL | | Ada |
-| Pascal | | | | |
+> **Bold** languages have full support including auto-fix. All languages get the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
 
 ---
 
-## Full support details
+## Language details
 
 ### Go
 
-**Parser capabilities:**
+**Parser:**
 - `import` blocks (single and grouped)
 - Function, method, struct, interface, type declarations
 - Exported vs unexported symbols (capitalization)
 - Package names
 
-**Analyzer rules:**
-- Broken imports (cross-file references)
-- `fmt.Println` / `print` debug statements
+**Security rules:**
 - SQL injection via `db.Query` / `fmt.Sprintf`
 - Path traversal via `os.Open` with unsanitized paths
 - Hardcoded secrets
 - Insecure crypto (MD5, SHA1)
+- `fmt.Println` / `print` debug statements
 - TODO/placeholder detection
 - Unreachable code after return/panic
 
@@ -98,7 +79,7 @@ Parser with import/export analysis and common anti-pattern detection.
 
 ### TypeScript / JavaScript
 
-**Parser capabilities:**
+**Parser:**
 - ES module imports (`import { } from`, `import default`, `import *`, `import type`)
 - CommonJS require (`const x = require()`)
 - Dynamic imports (`import()`)
@@ -109,20 +90,16 @@ Parser with import/export analysis and common anti-pattern detection.
 - Generic interfaces (`interface Foo<T>`)
 - Type-only re-exports (`export type { Foo } from`)
 
-**Analyzer rules:**
-- Broken imports (cross-file references)
-- `console.log` debug statements
-- `any` type usage (warns to use `unknown`)
-- Non-null assertion abuse (`!.`)
-- Empty interfaces (suggests `Record<string, never>`)
-- `@ts-ignore` / `@ts-nocheck` directives
-- Triple-slash directives (should be imports)
+**Security rules:**
 - `dangerouslySetInnerHTML` / `innerHTML` XSS
 - `eval()`, `new Function()`, `document.write()` code execution
 - `setTimeout`/`setInterval` with string arguments
 - SQL injection via template literals
 - Hardcoded secrets
 - Insecure crypto (Math.random, MD5, SHA1)
+- `any` type usage, non-null assertion abuse
+- `@ts-ignore` / `@ts-nocheck` directives
+- `console.log` debug statements
 
 **Auto-fix:**
 - Replace `any` with `unknown`
@@ -134,22 +111,21 @@ Parser with import/export analysis and common anti-pattern detection.
 
 ### Python
 
-**Parser capabilities:**
+**Parser:**
 - `import module` and `from module import name` statements
 - Relative imports (`from . import`, `from ..pkg import`)
 - Function and class declarations
 - Decorated functions/classes
 - Global variable assignments
 
-**Analyzer rules:**
-- Broken imports (cross-file references)
-- `print()` debug statements
-- `raise NotImplementedError` placeholders
-- Standalone `pass` statements
+**Security rules:**
 - SQL injection via f-strings and %-formatting
 - Path traversal via `open()` with request params
 - Hardcoded secrets
 - Insecure crypto (hashlib.md5, hashlib.sha1)
+- `print()` debug statements
+- `raise NotImplementedError` placeholders
+- Standalone `pass` statements
 
 **Auto-fix:**
 - Remove debug prints
