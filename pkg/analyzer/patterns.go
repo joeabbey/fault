@@ -340,12 +340,25 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bstd::cerr\b`), "cpp-debug-print"},
 	{regexp.MustCompile(`\bfprintf\s*\(\s*stderr\s*,`), "c-debug-print"},
 	// Elixir
-	{regexp.MustCompile(`\bIO\.puts\b`), "anti-debug-print"},
-	{regexp.MustCompile(`\bIO\.inspect\b`), "anti-debug-print"},
-	{regexp.MustCompile(`\bdbg\(`), "anti-debug-macro"},
+	{regexp.MustCompile(`\bIO\.puts\b`), "elixir-debug-print"},
+	{regexp.MustCompile(`\bIO\.inspect\b`), "elixir-debug-print"},
+	// Lua
+	{regexp.MustCompile(`\bio\.write\(`), "lua-debug-print"},
+	// Objective-C
+	{regexp.MustCompile(`\bNSLog\s*\(`), "objc-debug-print"},
+	// Dart
+	{regexp.MustCompile(`\bdebugPrint\s*\(`), "dart-debug-print"},
+	// Bash
+	{regexp.MustCompile(`\becho\s+"debug`), "bash-debug-print"},
+	{regexp.MustCompile(`\bset\s+-x\b`), "bash-debug-print"},
+	// Perl
+	{regexp.MustCompile(`\bwarn\s+`), "perl-debug-print"},
+	// PowerShell
+	{regexp.MustCompile(`\bWrite-Debug\b`), "powershell-debug-print"},
 	// R
-	{regexp.MustCompile(`\bcat\(`), "anti-debug-print"},
-	{regexp.MustCompile(`\bbrowser\(\)`), "anti-debugger"},
+	{regexp.MustCompile(`\bcat\(`), "r-debug-print"},
+	{regexp.MustCompile(`\bmessage\(`), "r-debug-print"},
+	{regexp.MustCompile(`\bbrowser\(\)`), "r-debug-print"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for

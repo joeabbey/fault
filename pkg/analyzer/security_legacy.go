@@ -80,6 +80,8 @@ type cobolSecurityRule struct {
 var cobolSecurityRules = []cobolSecurityRule{
 	{regexp.MustCompile(`(?i)\bCALL\s+['"]SYSTEM['"]\s+USING`), nil, "security/cobol-system-call", SeverityError, "CALL 'SYSTEM' executes OS commands", "Avoid CALL 'SYSTEM' with untrusted input"},
 	{regexp.MustCompile(`(?i)\bACCEPT\s+\w+\s+FROM\s+ENVIRONMENT`), nil, "security/cobol-env-access", SeverityWarning, "ACCEPT FROM ENVIRONMENT reads env variables", "Validate environment variable values"},
+	{regexp.MustCompile(`(?i)\b(STRING|UNSTRING)\b`), []*regexp.Regexp{regexp.MustCompile(`(?i)\bON\s+OVERFLOW\b`)}, "security/cobol-string-overflow", SeverityWarning, "STRING/UNSTRING without ON OVERFLOW may silently truncate", "Add ON OVERFLOW clause to handle overflow conditions"},
+	{regexp.MustCompile(`(?i)\bREDEFINES\b`), nil, "security/cobol-redefines-mismatch", SeverityWarning, "REDEFINES on different-length fields can cause data corruption", "Ensure REDEFINES fields have matching lengths"},
 }
 
 func checkCobolSecurity(fileDiff git.FileDiff) []Issue {

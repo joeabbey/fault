@@ -283,6 +283,26 @@ func detectLanguage(path string) string {
 		return "c"
 	case ".cpp", ".cc", ".cxx", ".hpp":
 		return "cpp"
+	case ".pl", ".pm":
+		return "perl"
+	case ".ps1", ".psm1":
+		return "powershell"
+	case ".groovy":
+		return "groovy"
+	case ".scala", ".sc":
+		return "scala"
+	case ".r", ".R":
+		return "r"
+	case ".m", ".mm":
+		return "objc"
+	case ".dart":
+		return "dart"
+	case ".sh", ".bash":
+		return "bash"
+	case ".ex", ".exs":
+		return "elixir"
+	case ".lua":
+		return "lua"
 	default:
 		return ""
 	}

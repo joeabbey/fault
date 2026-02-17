@@ -53,7 +53,7 @@ func checkPowershellPatterns(fileDiff git.FileDiff) []Issue {
 				continue
 			}
 			if psWriteHost.MatchString(line.Content) {
-				issues = append(issues, Issue{ID: "patterns/powershell-write-host", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Write-Host bypasses the pipeline", Suggestion: "Use Write-Output or Write-Verbose for pipeline-compatible output"})
+				issues = append(issues, Issue{ID: "patterns/powershell-write-host", FixID: "powershell-debug-print", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Write-Host bypasses the pipeline", Suggestion: "Use Write-Output or Write-Verbose for pipeline-compatible output"})
 			}
 			if psGlobalVar.MatchString(line.Content) {
 				issues = append(issues, Issue{ID: "patterns/powershell-global-var", Severity: SeverityWarning, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Global variable usage creates hidden dependencies", Suggestion: "Use parameters and return values instead of global state"})
@@ -81,7 +81,7 @@ func checkGroovyPatterns(fileDiff git.FileDiff) []Issue {
 				continue
 			}
 			if groovyPrintln.MatchString(line.Content) {
-				issues = append(issues, Issue{ID: "patterns/groovy-println", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "println used for output", Suggestion: "Use a logging framework (SLF4J/Logback) instead of println"})
+				issues = append(issues, Issue{ID: "patterns/groovy-println", FixID: "groovy-debug-print", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "println used for output", Suggestion: "Use a logging framework (SLF4J/Logback) instead of println"})
 			}
 			if groovyDynamicGet.MatchString(line.Content) {
 				issues = append(issues, Issue{ID: "patterns/groovy-reflection", Severity: SeverityWarning, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Reflection via getClass() can bypass security", Suggestion: "Use instanceof checks or typed references instead"})

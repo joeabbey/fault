@@ -144,6 +144,123 @@ var terraformSecurityRules = []terraformSecurityRule{
 	{regexp.MustCompile(`encrypted\s*=\s*false`), nil, "security/terraform-unencrypted", SeverityWarning, "Resource encryption is disabled", "Enable encryption for data at rest"},
 }
 
+// --- Fortran security ---
+
+type fortranSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var fortranSecurityRules = []fortranSecurityRule{
+	{regexp.MustCompile(`(?i)\bCALL\s+SYSTEM\s*\(`), nil, "security/fortran-command-injection", SeverityError, "CALL SYSTEM executes OS commands", "Avoid CALL SYSTEM with untrusted input"},
+	{regexp.MustCompile(`(?i)\bEQUIVALENCE\s*\(`), nil, "security/fortran-equivalence", SeverityWarning, "EQUIVALENCE allows memory aliasing abuse", "Use explicit type conversions instead of EQUIVALENCE"},
+	{regexp.MustCompile(`(?i)\bFORMAT\s*\(.*\bA\b`), nil, "security/fortran-format-injection", SeverityWarning, "FORMAT with character input may allow format string injection", "Validate user-controlled data before FORMAT"},
+	{regexp.MustCompile(`(?i)\bOPEN\s*\(.*FILE\s*=\s*['"][^'"]+['"]\s*`), nil, "security/fortran-hardcoded-path", SeverityWarning, "Hardcoded file path in OPEN statement", "Use variables or configuration for file paths"},
+}
+
+func checkFortranSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+			trimmed := strings.TrimSpace(line.Content)
+			if strings.HasPrefix(trimmed, "!") {
+				continue
+			}
+			for _, rule := range fortranSecurityRules {
+				if !rule.pattern.MatchString(line.Content) {
+					continue
+				}
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(line.Content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+	return issues
+}
+
+// --- Protobuf security ---
+
+type protobufSecurityRule struct {
+	pattern    *regexp.Regexp
+	exclusions []*regexp.Regexp
+	id         string
+	severity   Severity
+	message    string
+	suggestion string
+}
+
+var protobufSecurityRules = []protobufSecurityRule{
+	{regexp.MustCompile(`option\s+java_package\s*=\s*".*\.(internal|impl)\b`), nil, "security/protobuf-internal-package", SeverityWarning, "java_package references internal package", "Avoid exposing internal packages in protobuf definitions"},
+	{regexp.MustCompile(`\bservice\s+\w+\s*\{`), []*regexp.Regexp{regexp.MustCompile(`(?i)(auth|authenticated|interceptor)`)}, "security/protobuf-unauthenticated-service", SeverityWarning, "Service defined without authentication annotation", "Add authentication interceptor or annotation to service"},
+	{regexp.MustCompile(`\bgoogle\.protobuf\.Any\b`), nil, "security/protobuf-any-type", SeverityWarning, "google.protobuf.Any allows arbitrary types (type confusion risk)", "Use specific message types instead of Any when possible"},
+}
+
+func checkProtobufSecurity(fileDiff git.FileDiff) []Issue {
+	issues := make([]Issue, 0)
+	for _, hunk := range fileDiff.Hunks {
+		for _, line := range hunk.Lines {
+			if line.Type != "added" {
+				continue
+			}
+			trimmed := strings.TrimSpace(line.Content)
+			if strings.HasPrefix(trimmed, "//") {
+				continue
+			}
+			for _, rule := range protobufSecurityRules {
+				if !rule.pattern.MatchString(line.Content) {
+					continue
+				}
+				excluded := false
+				for _, excl := range rule.exclusions {
+					if excl.MatchString(line.Content) {
+						excluded = true
+						break
+					}
+				}
+				if excluded {
+					continue
+				}
+				issues = append(issues, Issue{
+					ID:         rule.id,
+					Severity:   rule.severity,
+					Category:   "security",
+					File:       fileDiff.Path,
+					Line:       line.NewNum,
+					Message:    rule.message,
+					Suggestion: rule.suggestion,
+				})
+				break
+			}
+		}
+	}
+	return issues
+}
+
 func checkTerraformSecurity(fileDiff git.FileDiff) []Issue {
 	issues := make([]Issue, 0)
 	for _, hunk := range fileDiff.Hunks {

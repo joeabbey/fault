@@ -1,6 +1,6 @@
 # Language Support
 
-Fault supports **42 programming languages**. Every language gets parsing, import/export analysis, anti-pattern detection, and security rules. The **12 most popular languages** also get auto-fix support for debug statements, hardcoded secrets, and language-specific issues.
+Fault supports **42 programming languages**. Every language gets parsing, import/export analysis, anti-pattern detection, and security rules. **22 languages** also get auto-fix support for debug statements, hardcoded secrets, and language-specific issues.
 
 ## All languages
 
@@ -18,16 +18,16 @@ Fault supports **42 programming languages**. Every language gets parsing, import
 | **Swift** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | **C** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | **C++** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Objective-C | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Dart | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Scala | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| R | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Elixir | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Lua | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Perl | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| PowerShell | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Groovy | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Bash / Shell | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| **Objective-C** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Dart** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Scala** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **R** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Elixir** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Lua** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Perl** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **PowerShell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Groovy** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Bash / Shell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | SQL | :white_check_mark: | | | :white_check_mark: | |
 | Zig | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
 | Nim | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
@@ -49,7 +49,7 @@ Fault supports **42 programming languages**. Every language gets parsing, import
 | Ada | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
 | Pascal | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
 
-> **Bold** languages have full support including auto-fix (12 languages). All 42 languages get security rules and the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
+> **Bold** languages have full support including auto-fix (22 languages). All 42 languages get security rules and the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
 
 ---
 
@@ -192,6 +192,66 @@ Fault supports **42 programming languages**. Every language gets parsing, import
 - Remove `println!` / `eprintln!` / `dbg!` debug macros
 - Remove `todo!()` / `unimplemented!()` placeholder macros
 - Replace hardcoded secrets with `std::env::var("...")`
+
+### Objective-C
+
+**Auto-fix:**
+- Remove `NSLog()` debug output
+- Replace hardcoded secrets with `[[NSProcessInfo processInfo] environment][@"..."]`
+
+### Dart
+
+**Auto-fix:**
+- Remove `print()` / `debugPrint()` debug output
+- Replace hardcoded secrets with `Platform.environment['...']`
+
+### Scala
+
+**Auto-fix:**
+- Remove `println` / `System.out.println` debug output
+- Replace hardcoded secrets with `sys.env.getOrElse("...", "")`
+
+### R
+
+**Auto-fix:**
+- Remove `cat()` / `print()` / `message()` debug output
+- Replace hardcoded secrets with `Sys.getenv("...")`
+
+### Elixir
+
+**Auto-fix:**
+- Remove `IO.inspect` / `IO.puts` debug output
+- Replace hardcoded secrets with `System.get_env("...")`
+
+### Lua
+
+**Auto-fix:**
+- Remove `print()` debug output
+- Replace hardcoded secrets with `os.getenv("...")`
+
+### Perl
+
+**Auto-fix:**
+- Remove `warn` / `print STDERR` debug output
+- Replace hardcoded secrets with `$ENV{...}`
+
+### PowerShell
+
+**Auto-fix:**
+- Remove `Write-Host` / `Write-Debug` debug output
+- Replace hardcoded secrets with `$env:...`
+
+### Groovy
+
+**Auto-fix:**
+- Remove `println` / `System.out.println` debug output
+- Replace hardcoded secrets with `System.getenv("...")`
+
+### Bash / Shell
+
+**Auto-fix:**
+- Remove `echo "debug` / `set -x` debug output
+- Replace hardcoded secrets with `"${...}"`
 
 ---
 

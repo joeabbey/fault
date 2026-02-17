@@ -205,6 +205,12 @@ func (a *SecurityAnalyzer) Analyze(ctx *AnalysisContext) ([]Issue, error) {
 		if ext == ".tf" {
 			issues = append(issues, checkTerraformSecurity(fileDiff)...)
 		}
+		if ext == ".f" || ext == ".f90" || ext == ".f95" || ext == ".for" {
+			issues = append(issues, checkFortranSecurity(fileDiff)...)
+		}
+		if ext == ".proto" {
+			issues = append(issues, checkProtobufSecurity(fileDiff)...)
+		}
 
 		// Legacy languages
 		if ext == ".vb" || ext == ".vbs" {

@@ -82,6 +82,26 @@ func (f *SecurityFixer) fixHardcodedSecret(issue analyzer.Issue, line string, la
 		newLine = replaceSecretCpp(line, envName)
 	case "rust":
 		newLine = replaceSecretRust(line, envName)
+	case "perl":
+		newLine = f.replaceSecretPerl(line, envName)
+	case "powershell":
+		newLine = f.replaceSecretPowerShell(line, envName)
+	case "groovy":
+		newLine = f.replaceSecretGroovy(line, envName)
+	case "scala":
+		newLine = f.replaceSecretScala(line, envName)
+	case "r":
+		newLine = f.replaceSecretR(line, envName)
+	case "objc":
+		newLine = f.replaceSecretObjC(line, envName)
+	case "dart":
+		newLine = f.replaceSecretDart(line, envName)
+	case "bash":
+		newLine = f.replaceSecretBash(line, envName)
+	case "elixir":
+		newLine = f.replaceSecretElixir(line, envName)
+	case "lua":
+		newLine = f.replaceSecretLua(line, envName)
 	default:
 		return nil
 	}
@@ -263,4 +283,69 @@ func replaceSecretCpp(line, envName string) string {
 func replaceSecretRust(line, envName string) string {
 	re := regexp.MustCompile(`"[^"]{8,}"`)
 	return re.ReplaceAllString(line, `std::env::var("`+envName+`").unwrap_or_default()`)
+}
+
+// replaceSecretPerl replaces a hardcoded string value with $ENV{KEY} in Perl.
+func (f *SecurityFixer) replaceSecretPerl(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `$ENV{`+envName+`}`)
+}
+
+// replaceSecretPowerShell replaces a hardcoded string value with $env:KEY in PowerShell.
+func (f *SecurityFixer) replaceSecretPowerShell(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `$env:`+envName)
+}
+
+// replaceSecretGroovy replaces a hardcoded string value with System.getenv("KEY") in Groovy.
+func (f *SecurityFixer) replaceSecretGroovy(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `System.getenv("`+envName+`")`)
+}
+
+// replaceSecretScala replaces a hardcoded string value with sys.env.getOrElse("KEY", "") in Scala.
+func (f *SecurityFixer) replaceSecretScala(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `sys.env.getOrElse("`+envName+`", "")`)
+}
+
+// replaceSecretR replaces a hardcoded string value with Sys.getenv("KEY") in R.
+func (f *SecurityFixer) replaceSecretR(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `Sys.getenv("`+envName+`")`)
+}
+
+// replaceSecretObjC replaces a hardcoded string value with [[NSProcessInfo processInfo] environment] in Objective-C.
+func (f *SecurityFixer) replaceSecretObjC(line, envName string) string {
+	re := regexp.MustCompile(`@"[^"]{8,}"`)
+	result := re.ReplaceAllString(line, `[[[NSProcessInfo processInfo] environment] objectForKey:@"`+envName+`"]`)
+	if result == line {
+		re2 := regexp.MustCompile(`"[^"]{8,}"`)
+		result = re2.ReplaceAllString(line, `[[[NSProcessInfo processInfo] environment] objectForKey:@"`+envName+`"]`)
+	}
+	return result
+}
+
+// replaceSecretDart replaces a hardcoded string value with Platform.environment[] in Dart.
+func (f *SecurityFixer) replaceSecretDart(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `Platform.environment['`+envName+`'] ?? ''`)
+}
+
+// replaceSecretBash replaces a hardcoded string value with an env var reference in Bash.
+func (f *SecurityFixer) replaceSecretBash(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `"${`+envName+`}"`)
+}
+
+// replaceSecretElixir replaces a hardcoded string value with System.get_env() in Elixir.
+func (f *SecurityFixer) replaceSecretElixir(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `System.get_env("`+envName+`")`)
+}
+
+// replaceSecretLua replaces a hardcoded string value with os.getenv() in Lua.
+func (f *SecurityFixer) replaceSecretLua(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `os.getenv("`+envName+`")`)
 }
