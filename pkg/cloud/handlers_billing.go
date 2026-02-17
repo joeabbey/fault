@@ -106,11 +106,12 @@ func (bh *BillingHandlers) HandleCheckout(w http.ResponseWriter, r *http.Request
 	cancelURL := bh.appURL + "/billing/cancel"
 
 	sess, err := bh.stripeClient.CreateCheckoutSession(magmastripe.CheckoutParams{
-		CustomerID: cust.ID,
-		PriceID:    priceID,
-		Quantity:   1,
-		SuccessURL: successURL,
-		CancelURL:  cancelURL,
+		CustomerID:          cust.ID,
+		PriceID:             priceID,
+		Quantity:            1,
+		SuccessURL:          successURL,
+		CancelURL:           cancelURL,
+		AllowPromotionCodes: true,
 		Metadata: map[string]string{
 			"fault_user_id": user.ID,
 			"plan":          req.Plan,
