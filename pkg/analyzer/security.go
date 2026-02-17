@@ -711,6 +711,7 @@ type javaSecurityRule struct {
 	pattern    *regexp.Regexp
 	exclusions []*regexp.Regexp
 	id         string
+	fixID      string
 	message    string
 	suggestion string
 }
@@ -746,6 +747,7 @@ var javaSecurityRules = []javaSecurityRule{
 			regexp.MustCompile(`(?i)(test|example|dummy|fake|mock|sample|placeholder|changeme)`),
 		},
 		id:         "security/hardcoded-secret",
+		fixID:      "sec-hardcoded-secret",
 		message:    "Hardcoded credential detected in Java code",
 		suggestion: "Use environment variables or a secrets manager instead of hardcoding credentials",
 	},
@@ -785,6 +787,7 @@ func checkJavaSecurity(fileDiff git.FileDiff) []Issue {
 
 				issues = append(issues, Issue{
 					ID:         rule.id,
+					FixID:      rule.fixID,
 					Severity:   SeverityError,
 					Category:   "security",
 					File:       fileDiff.Path,
@@ -806,6 +809,7 @@ type rustSecurityRule struct {
 	pattern    *regexp.Regexp
 	exclusions []*regexp.Regexp
 	id         string
+	fixID      string
 	severity   Severity
 	message    string
 	suggestion string
@@ -843,6 +847,7 @@ var rustSecurityRules = []rustSecurityRule{
 			regexp.MustCompile(`std::env::var\(`),
 		},
 		id:         "security/rust-hardcoded-secret",
+		fixID:      "sec-hardcoded-secret",
 		severity:   SeverityError,
 		message:    "Possible hardcoded secret in Rust code",
 		suggestion: "Use environment variables (std::env::var) or a config file instead of hardcoding secrets",
@@ -887,6 +892,7 @@ func checkRustSecurity(fileDiff git.FileDiff) []Issue {
 
 				issues = append(issues, Issue{
 					ID:         rule.id,
+					FixID:      rule.fixID,
 					Severity:   rule.severity,
 					Category:   "security",
 					File:       fileDiff.Path,
@@ -1501,6 +1507,7 @@ type kotlinSecurityRule struct {
 	pattern    *regexp.Regexp
 	exclusions []*regexp.Regexp
 	id         string
+	fixID      string
 	message    string
 	suggestion string
 }
@@ -1547,6 +1554,7 @@ var kotlinSecurityRules = []kotlinSecurityRule{
 			regexp.MustCompile(`(?i)(test|example|dummy|fake|mock|sample|placeholder|changeme)`),
 		},
 		id:         "security/hardcoded-secret",
+		fixID:      "sec-hardcoded-secret",
 		message:    "Hardcoded credential detected in Kotlin code",
 		suggestion: "Use environment variables or a secrets manager instead of hardcoding credentials",
 	},
@@ -1586,6 +1594,7 @@ func checkKotlinSecurity(fileDiff git.FileDiff) []Issue {
 
 				issues = append(issues, Issue{
 					ID:         rule.id,
+					FixID:      rule.fixID,
 					Severity:   SeverityError,
 					Category:   "security",
 					File:       fileDiff.Path,

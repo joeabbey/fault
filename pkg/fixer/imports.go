@@ -267,8 +267,22 @@ func detectLanguage(path string) string {
 		return "python"
 	case ".java":
 		return "java"
+	case ".kt", ".kts":
+		return "kotlin"
 	case ".rs":
 		return "rust"
+	case ".rb":
+		return "ruby"
+	case ".php":
+		return "php"
+	case ".cs":
+		return "csharp"
+	case ".swift":
+		return "swift"
+	case ".c", ".h":
+		return "c"
+	case ".cpp", ".cc", ".cxx", ".hpp":
+		return "cpp"
 	default:
 		return ""
 	}

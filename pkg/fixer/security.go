@@ -64,6 +64,24 @@ func (f *SecurityFixer) fixHardcodedSecret(issue analyzer.Issue, line string, la
 		newLine = replaceSecretTS(line, envName)
 	case "python":
 		newLine = replaceSecretPython(line, envName)
+	case "java":
+		newLine = replaceSecretJava(line, envName)
+	case "kotlin":
+		newLine = replaceSecretKotlin(line, envName)
+	case "ruby":
+		newLine = replaceSecretRuby(line, envName)
+	case "php":
+		newLine = replaceSecretPHP(line, envName)
+	case "csharp":
+		newLine = replaceSecretCSharp(line, envName)
+	case "swift":
+		newLine = replaceSecretSwift(line, envName)
+	case "c":
+		newLine = replaceSecretC(line, envName)
+	case "cpp":
+		newLine = replaceSecretCpp(line, envName)
+	case "rust":
+		newLine = replaceSecretRust(line, envName)
 	default:
 		return nil
 	}
@@ -191,4 +209,58 @@ func replaceSecretTS(line, envName string) string {
 func replaceSecretPython(line, envName string) string {
 	re := regexp.MustCompile(`["'][^"']{8,}["']`)
 	return re.ReplaceAllString(line, `os.environ.get("`+envName+`")`)
+}
+
+// replaceSecretJava replaces a hardcoded string value with System.getenv() in Java.
+func replaceSecretJava(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `System.getenv("`+envName+`")`)
+}
+
+// replaceSecretKotlin replaces a hardcoded string value with System.getenv() in Kotlin.
+func replaceSecretKotlin(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `System.getenv("`+envName+`")`)
+}
+
+// replaceSecretRuby replaces a hardcoded string value with ENV[] in Ruby.
+func replaceSecretRuby(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `ENV["`+envName+`"]`)
+}
+
+// replaceSecretPHP replaces a hardcoded string value with getenv() in PHP.
+func replaceSecretPHP(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `getenv('`+envName+`')`)
+}
+
+// replaceSecretCSharp replaces a hardcoded string value with Environment.GetEnvironmentVariable() in C#.
+func replaceSecretCSharp(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `Environment.GetEnvironmentVariable("`+envName+`")`)
+}
+
+// replaceSecretSwift replaces a hardcoded string value with ProcessInfo.processInfo.environment[] in Swift.
+func replaceSecretSwift(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `ProcessInfo.processInfo.environment["`+envName+`"]`)
+}
+
+// replaceSecretC replaces a hardcoded string value with getenv() in C.
+func replaceSecretC(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `getenv("`+envName+`")`)
+}
+
+// replaceSecretCpp replaces a hardcoded string value with std::getenv() in C++.
+func replaceSecretCpp(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `std::getenv("`+envName+`")`)
+}
+
+// replaceSecretRust replaces a hardcoded string value with std::env::var().unwrap_or_default() in Rust.
+func replaceSecretRust(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `std::env::var("`+envName+`").unwrap_or_default()`)
 }

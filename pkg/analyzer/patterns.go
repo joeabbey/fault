@@ -317,27 +317,28 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\beprintln!\(`), "anti-debug-macro"},
 	{regexp.MustCompile(`\bdbg!\(`), "anti-debug-macro"},
 	// Ruby
-	{regexp.MustCompile(`\bputs\s+`), "anti-debug-print"},
-	{regexp.MustCompile(`\b(?:^|\s)p\s+[^=]`), "anti-debug-print"},
-	{regexp.MustCompile(`\bpp\s+`), "anti-debug-print"},
-	{regexp.MustCompile(`\bbinding\.pry\b`), "anti-debugger"},
-	{regexp.MustCompile(`\bbyebug\b`), "anti-debugger"},
-	{regexp.MustCompile(`\bdebugger\b`), "anti-debugger"},
+	{regexp.MustCompile(`\bputs\s+`), "ruby-debug-print"},
+	{regexp.MustCompile(`\b(?:^|\s)p\s+[^=]`), "ruby-debug-print"},
+	{regexp.MustCompile(`\bpp\s+`), "ruby-debug-print"},
+	{regexp.MustCompile(`\bbinding\.pry\b`), "ruby-debugger"},
+	{regexp.MustCompile(`\bbyebug\b`), "ruby-debugger"},
+	{regexp.MustCompile(`\bdebugger\b`), "ruby-debugger"},
 	// Kotlin
-	{regexp.MustCompile(`\bprintln\(`), "anti-kotlin-println"},
+	{regexp.MustCompile(`\bprintln\(`), "kotlin-debug-print"},
 	// C#
-	{regexp.MustCompile(`\bConsole\.Write(Line)?\(`), "anti-console-write"},
+	{regexp.MustCompile(`\bConsole\.Write(Line)?\(`), "csharp-debug-print"},
 	// PHP
-	{regexp.MustCompile(`\bvar_dump\(`), "anti-debug-print"},
-	{regexp.MustCompile(`\bprint_r\(`), "anti-debug-print"},
-	{regexp.MustCompile(`\bdd\(`), "anti-debug-print"},
+	{regexp.MustCompile(`\bvar_dump\(`), "php-debug-print"},
+	{regexp.MustCompile(`\bprint_r\(`), "php-debug-print"},
+	{regexp.MustCompile(`\bdd\(`), "php-debug-dd"},
 	// Swift / Dart
-	{regexp.MustCompile(`\bdebugPrint\(`), "anti-debug-print"},
-	// C/C++
-	{regexp.MustCompile(`\bprintf\(`), "anti-debug-print"},
-	{regexp.MustCompile(`\bstd::cout\b`), "anti-debug-print"},
-	{regexp.MustCompile(`\bstd::cerr\b`), "anti-debug-print"},
-	{regexp.MustCompile(`\bfprintf\s*\(\s*stderr\s*,`), "anti-debug-print"},
+	{regexp.MustCompile(`\bdebugPrint\(`), "swift-debug-verbose"},
+	// C
+	{regexp.MustCompile(`\bprintf\(`), "c-debug-print"},
+	// C++
+	{regexp.MustCompile(`\bstd::cout\b`), "cpp-debug-print"},
+	{regexp.MustCompile(`\bstd::cerr\b`), "cpp-debug-print"},
+	{regexp.MustCompile(`\bfprintf\s*\(\s*stderr\s*,`), "c-debug-print"},
 	// Elixir
 	{regexp.MustCompile(`\bIO\.puts\b`), "anti-debug-print"},
 	{regexp.MustCompile(`\bIO\.inspect\b`), "anti-debug-print"},
