@@ -43,8 +43,11 @@ analyzers:
   references: true
   tests: true
   patterns: true
+  security: true
+  hallucination: true
 llm:
   enabled: false
+  api_url: "https://fault.jabbey.io"
   spec_file: ""
 ignore:
   - "vendor/"
@@ -57,11 +60,12 @@ ignore:
 
 | Option | Values | Description |
 |--------|--------|-------------|
-| `languages` | `go`, `typescript`, `python` | Languages to analyze |
+| `languages` | `go`, `typescript`, `python`, [42 total](./languages.md) | Languages to analyze |
 | `block_on` | `error`, `warning` | Minimum severity to block commits |
 | `analyzers.*` | `true`, `false` | Enable/disable individual analyzers |
 | `ignore` | glob patterns | Files and directories to skip |
 | `llm.enabled` | `true`, `false` | Enable LLM-powered analysis (requires `FAULT_API_KEY`) |
+| `llm.api_url` | URL | Fault Cloud API base URL (default: `https://fault.jabbey.io`) |
 | `llm.spec_file` | file path | Spec file for LLM comparison |
 
 Fault searches for `.fault.yaml` starting from the current directory and walking up to the filesystem root. If no config is found, defaults are used.
@@ -246,7 +250,7 @@ ignore:
 
 ## Analyzers
 
-Fault runs five analyzers, each targeting a different class of structural error:
+Fault runs 12 analyzers in parallel, each targeting a different class of structural error:
 
 ### imports
 
@@ -266,7 +270,35 @@ Identifies changed functions that lack corresponding test updates. This is a war
 
 ### patterns
 
-Catches common anti-patterns in AI-generated code: TODO/FIXME placeholders left behind, hardcoded credentials, debug statements (`console.log`, `fmt.Println` used as debugging), and commented-out code blocks.
+Catches common anti-patterns in AI-generated code: TODO/FIXME placeholders left behind, debug statements (`console.log`, `fmt.Println` used as debugging), and commented-out code blocks.
+
+### security
+
+Detects hardcoded credentials, SQL injection via string concatenation, path traversal vulnerabilities, insecure crypto usage, and other security anti-patterns.
+
+### hallucination
+
+Identifies calls to APIs, functions, or modules that don't exist in your codebase -- a common artifact of AI-generated code.
+
+### complexity
+
+Flags excessive cyclomatic complexity in changed functions.
+
+### concurrency
+
+Detects race conditions, deadlock patterns, and unsafe shared state access.
+
+### resource
+
+Catches unclosed file handles, leaked database connections, and missing cleanup.
+
+### migration
+
+Identifies schema changes without corresponding migration files.
+
+### doc-drift
+
+Flags code changes that invalidate existing documentation.
 
 ## LLM-powered analysis (Pro)
 

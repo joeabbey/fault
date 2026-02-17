@@ -1,18 +1,79 @@
 # Language Support
 
-Fault supports 5 programming languages with language-specific parsing, analysis, and auto-fix capabilities.
+Fault supports **42 programming languages** with language-specific parsing, analysis, and auto-fix capabilities.
 
-## Supported Languages
+## Support tiers
 
-| Language | Parser | Imports | Exports | Symbols | Analyzer Rules | Auto-fix |
-|----------|--------|---------|---------|---------|----------------|----------|
-| Go | Yes | Yes | Yes | Yes | Full | Yes |
-| TypeScript/JavaScript | Yes | Yes | Yes | Yes | Full | Yes |
-| Python | Yes | Yes | Yes | Yes | Full | Yes |
-| Java | Yes | Yes | Yes | Yes | Partial | No |
-| Rust | Yes | Yes | Yes | Yes | Partial | No |
+### Full support
 
-## Go
+Full parser, all analyzer rules, and auto-fix capabilities.
+
+| Language | Imports | Exports | Symbols | Auto-fix |
+|----------|:--:|:--:|:--:|:--:|
+| Go | **Yes** | **Yes** | **Yes** | **Yes** |
+| TypeScript / JavaScript | **Yes** | **Yes** | **Yes** | **Yes** |
+| Python | **Yes** | **Yes** | **Yes** | **Yes** |
+
+### Standard support
+
+Full parser and analyzer rules, no auto-fix yet.
+
+| Language | Imports | Exports | Symbols | Auto-fix |
+|----------|:--:|:--:|:--:|:--:|
+| Java | **Yes** | **Yes** | **Yes** | |
+| Rust | **Yes** | **Yes** | **Yes** | |
+| Ruby | **Yes** | **Yes** | **Yes** | |
+| Kotlin | **Yes** | **Yes** | **Yes** | |
+| C# | **Yes** | **Yes** | **Yes** | |
+| PHP | **Yes** | **Yes** | **Yes** | |
+| Swift | **Yes** | **Yes** | **Yes** | |
+| C | **Yes** | **Yes** | **Yes** | |
+| C++ | **Yes** | **Yes** | **Yes** | |
+
+### Extended support
+
+Parser with import/export analysis and common anti-pattern detection.
+
+| Language | | Language | | Language |
+|----------|--|----------|--|----------|
+| Objective-C | | Dart | | Scala |
+| R | | Elixir | | Lua |
+| Perl | | PowerShell | | Groovy |
+| Bash / Shell | | SQL | | |
+
+### Modern & systems
+
+| Language | | Language | | Language |
+|----------|--|----------|--|----------|
+| Zig | | Nim | | Crystal |
+| V | | D | | |
+
+### Functional
+
+| Language | | Language | | Language |
+|----------|--|----------|--|----------|
+| Haskell | | Clojure | | Erlang |
+| F# | | OCaml | | |
+
+### Domain-specific
+
+| Language | | Language | | Language |
+|----------|--|----------|--|----------|
+| Julia | | Fortran | | Solidity |
+| Terraform | | Protobuf | | |
+
+### Legacy
+
+| Language | | Language | | Language |
+|----------|--|----------|--|----------|
+| Visual Basic | | COBOL | | Ada |
+| Pascal | | | | |
+
+---
+
+## Full support details
+
+### Go
 
 **Parser capabilities:**
 - `import` blocks (single and grouped)
@@ -35,7 +96,7 @@ Fault supports 5 programming languages with language-specific parsing, analysis,
 - Replace hardcoded secrets with `os.Getenv()`
 - Fix broken import paths
 
-## TypeScript / JavaScript
+### TypeScript / JavaScript
 
 **Parser capabilities:**
 - ES module imports (`import { } from`, `import default`, `import *`, `import type`)
@@ -71,7 +132,7 @@ Fault supports 5 programming languages with language-specific parsing, analysis,
 - Replace `Math.random()` with `crypto.randomUUID()`
 - Remove `console.log` statements
 
-## Python
+### Python
 
 **Parser capabilities:**
 - `import module` and `from module import name` statements
@@ -94,52 +155,9 @@ Fault supports 5 programming languages with language-specific parsing, analysis,
 - Remove debug prints
 - Replace hardcoded secrets with `os.environ.get()`
 
-## Java
+---
 
-**Parser capabilities:**
-- Package declarations
-- Import statements (including static imports)
-- Class, interface, enum, record, and annotation declarations
-- Method declarations with modifiers and generics
-- Field declarations
-- Constructor declarations
-- Nested class detection
-
-**Analyzer rules:**
-- Broken imports (cross-file references)
-- SQL injection via string concatenation in JDBC
-- Hardcoded secrets
-- `System.out.println` debug statements
-
-**Known limitations:**
-- No auto-fix support yet
-- Generic type parameters in complex nested declarations may not be fully parsed
-- Annotation processing is limited to declaration detection
-
-## Rust
-
-**Parser capabilities:**
-- `use` statements (single, grouped, glob)
-- `mod` declarations
-- Function declarations (`fn`, `pub fn`, `async fn`)
-- Struct, enum, trait, impl declarations
-- Type aliases
-- Const and static declarations
-- Macro definitions (`macro_rules!`)
-- Attribute macros (`#[derive]`, `#[cfg]`)
-
-**Analyzer rules:**
-- Broken imports (cross-file references)
-- Hardcoded secrets
-- `println!` / `dbg!` debug macros
-- `unsafe` block detection
-
-**Known limitations:**
-- No auto-fix support yet
-- Complex macro invocations may not be fully parsed
-- Trait impl method signatures are detected but not fully resolved
-
-## Adding Language Support
+## Adding language support
 
 To add a new language to Fault:
 
