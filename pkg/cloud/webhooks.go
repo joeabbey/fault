@@ -35,8 +35,14 @@ func NewFaultWebhookCallbacks(store Store, prices map[string]string, logger *slo
 func (cb *FaultWebhookCallbacks) OnSubscriptionCreated(ctx context.Context, sub *stripe.Subscription) error {
 	userID := sub.Metadata["fault_user_id"]
 	if userID == "" {
-		cb.logger.Warn("subscription created without fault_user_id metadata", "stripe_sub_id", sub.ID)
-		return nil
+		// Checkout session metadata isn't copied to subscription — look up by customer ID
+		user, _ := cb.store.GetUserByStripeCustomerID(ctx, sub.Customer.ID)
+		if user != nil {
+			userID = user.ID
+		} else {
+			cb.logger.Warn("subscription created but can't find user", "stripe_sub_id", sub.ID)
+			return nil
+		}
 	}
 
 	plan := cb.planFromSubscription(sub)
