@@ -3,3 +3,198 @@
 
 /* Class-based dark mode for Tailwind v4 (must be after tailwindcss import) */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Signal-noir theme override
+ * Matches landing page: rose brand, near-black bg, Bricolage + Manrope fonts
+ */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600&display=swap');
+
+@theme {
+  /* Override primary from teal to rose */
+  --color-primary-50: oklch(0.97 0.01 15);
+  --color-primary-100: oklch(0.94 0.03 15);
+  --color-primary-200: oklch(0.88 0.06 15);
+  --color-primary-300: oklch(0.79 0.11 15);
+  --color-primary-400: oklch(0.70 0.16 10);
+  --color-primary-500: oklch(0.62 0.21 15);
+  --color-primary-600: oklch(0.55 0.22 15);
+  --color-primary-700: oklch(0.48 0.19 15);
+  --color-primary-800: oklch(0.40 0.15 15);
+  --color-primary-900: oklch(0.33 0.12 15);
+  --color-primary-950: oklch(0.22 0.08 15);
+
+  /* Typography: match landing page */
+  --font-sans: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+/* ===== Signal-Noir Dark Mode ===== */
+.dark {
+  --color-background: #07080c;
+  --color-foreground: #e2e8f4;
+  --color-muted: #64748b;
+  --color-muted-foreground: #475569;
+  --color-border: rgba(244, 63, 94, 0.06);
+  --color-ring: #f43f5e;
+
+  --color-card: #0e1017;
+  --color-card-foreground: #e2e8f4;
+  --color-popover: #0e1017;
+  --color-popover-foreground: #e2e8f4;
+  --color-input: rgba(244, 63, 94, 0.06);
+  --color-accent: #151821;
+  --color-accent-foreground: #e2e8f4;
+}
+
+/* ===== Signal-Noir Light Mode (keep it dark — Fault is dark-only) ===== */
+:root {
+  --color-background: #07080c;
+  --color-foreground: #e2e8f4;
+  --color-muted: #64748b;
+  --color-muted-foreground: #475569;
+  --color-border: rgba(244, 63, 94, 0.06);
+  --color-ring: #f43f5e;
+
+  --color-card: #0e1017;
+  --color-card-foreground: #e2e8f4;
+  --color-popover: #0e1017;
+  --color-popover-foreground: #e2e8f4;
+  --color-input: rgba(244, 63, 94, 0.06);
+  --color-accent: #151821;
+  --color-accent-foreground: #e2e8f4;
+}
+
+/* ===== Dot grid texture (matches landing page) ===== */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(rgba(244, 63, 94, 0.04) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===== Sidebar styling ===== */
+
+/* Sidebar background — slightly raised surface */
+aside {
+  background: #0a0c12 !important;
+  border-color: rgba(244, 63, 94, 0.06) !important;
+}
+
+/* Active nav item — rose glow */
+aside a[class*="bg-primary"] {
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: #fb7185 !important;
+}
+
+/* Nav hover — subtle rose tint */
+aside a:hover {
+  background: rgba(244, 63, 94, 0.04) !important;
+}
+
+/* Sidebar borders — match landing page */
+aside div[class*="border-t"],
+aside div[class*="border-b"] {
+  border-color: rgba(244, 63, 94, 0.06) !important;
+}
+
+/* ===== Card styling — glass surface with rose border on hover ===== */
+[class*="bg-card"] {
+  border: 1px solid rgba(244, 63, 94, 0.06);
+  transition: border-color 0.2s ease;
+}
+
+[class*="bg-card"]:hover {
+  border-color: rgba(244, 63, 94, 0.12);
+}
+
+/* ===== Stat cards — rose accent glow ===== */
+[class*="StatCard"] {
+  position: relative;
+}
+
+/* ===== Progress bar — rose color ===== */
+.bg-primary-500 {
+  background: #f43f5e !important;
+}
+
+/* ===== Buttons ===== */
+
+/* Primary button — solid rose */
+button[class*="bg-primary"],
+a[class*="bg-primary"] {
+  background: #f43f5e !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+button[class*="bg-primary"]:hover,
+a[class*="bg-primary"]:hover {
+  background: #e11d48 !important;
+}
+
+/* ===== Badge — rose tint ===== */
+[class*="bg-primary-100"],
+[class*="bg-primary-50"] {
+  background: rgba(244, 63, 94, 0.08) !important;
+}
+
+[class*="text-primary-600"],
+[class*="text-primary-700"],
+[class*="text-primary-500"] {
+  color: #fb7185 !important;
+}
+
+/* ===== Dropdown / Popover ===== */
+[class*="bg-popover"] {
+  background: #0e1017 !important;
+  border: 1px solid rgba(244, 63, 94, 0.08) !important;
+}
+
+/* ===== Code blocks — match terminal aesthetic ===== */
+code, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.bg-accent {
+  background: #0a0c12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 8px !important;
+}
+
+/* ===== Ring on focused/recommended cards ===== */
+.ring-2.ring-primary-500 {
+  --tw-ring-color: #f43f5e !important;
+}
+
+/* ===== Scrollbar styling ===== */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(244, 63, 94, 0.12);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(244, 63, 94, 0.24);
+}
+
+/* ===== Checkbox marks in pricing — rose ===== */
+.text-primary-500 svg,
+svg.text-primary-500 {
+  color: #fb7185 !important;
+}

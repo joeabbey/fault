@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { api } from '$lib/api/client';
 	import type { SubscriptionResponse } from '$lib/api/types';
-	import { Card, Badge, Button, Spinner, Alert } from '@jabbey/atlas';
+	import { Spinner } from '@jabbey/atlas';
 
 	let subscription = $state<SubscriptionResponse | null>(null);
 	let loading = $state(true);
@@ -63,7 +63,6 @@
 		try {
 			subscription = await api.billing.subscription();
 		} catch (e) {
-			// billing might not be enabled — show plans anyway
 			subscription = { plan: 'free', status: 'active', llm_calls: 0, llm_limit: 50, llm_remaining: 50 };
 		} finally {
 			loading = false;
@@ -100,7 +99,9 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-foreground font-display">Billing</h1>
+	<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		Billing
+	</h1>
 
 	{#if loading}
 		<div class="flex items-center justify-center py-12">
@@ -108,57 +109,84 @@
 		</div>
 	{:else}
 		{#if error}
-			<Alert variant="error">{error}</Alert>
+			<div
+				class="px-4 py-3 rounded-lg text-sm"
+				style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.15); color: #fb7185;"
+			>
+				{error}
+			</div>
 		{/if}
 
 		<!-- Current plan -->
 		{#if subscription}
-			<Card class="p-6">
+			<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
 				<div class="flex items-center justify-between">
 					<div>
-						<h2 class="text-sm font-medium text-muted">Current Plan</h2>
+						<h2 class="text-sm font-medium" style="color: #64748b;">Current Plan</h2>
 						<div class="flex items-center gap-3 mt-1">
-							<span class="text-xl font-bold text-foreground capitalize">{subscription.plan}</span>
-							<Badge variant={subscription.status === 'active' ? 'success' : 'warning'}>
+							<span class="text-xl font-bold capitalize font-display" style="color: #e2e8f4;">
+								{subscription.plan}
+							</span>
+							<span
+								class="px-2 py-0.5 rounded-full text-xs font-semibold font-mono"
+								style="background: {subscription.status === 'active' ? 'rgba(52,211,153,0.08)' : 'rgba(251,191,36,0.08)'}; color: {subscription.status === 'active' ? '#34d399' : '#fbbf24'}; border: 1px solid {subscription.status === 'active' ? 'rgba(52,211,153,0.15)' : 'rgba(251,191,36,0.15)'};"
+							>
 								{subscription.status}
-							</Badge>
+							</span>
 						</div>
 					</div>
 					{#if subscription.plan !== 'free'}
-						<Button variant="secondary" onclick={handlePortal} disabled={openingPortal}>
+						<button
+							class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+							style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
+							onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
+							onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+							onclick={handlePortal}
+							disabled={openingPortal}
+						>
 							{#if openingPortal}
-								<Spinner size="sm" class="mr-2" />
+								<Spinner size="sm" />
 							{/if}
 							Manage Subscription
-						</Button>
+						</button>
 					{/if}
 				</div>
-			</Card>
+			</div>
 		{/if}
 
 		<!-- Plans -->
-		<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 			{#each plans as plan}
-				<Card class="p-6 relative {plan.recommended ? 'ring-2 ring-primary-500' : ''}">
+				<div
+					class="rounded-xl p-6 relative"
+					style="background: #0e1017; border: {plan.recommended ? '2px solid #f43f5e' : '1px solid rgba(244,63,94,0.06)'}; transition: border-color 0.2s;"
+					onmouseenter={(e) => { if (!plan.recommended) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)'; }}
+					onmouseleave={(e) => { if (!plan.recommended) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+				>
 					{#if plan.recommended}
 						<div class="absolute -top-3 left-1/2 -translate-x-1/2">
-							<Badge variant="primary">Recommended</Badge>
+							<span
+								class="px-3 py-1 rounded-full text-xs font-semibold font-mono"
+								style="background: #f43f5e; color: #fff;"
+							>
+								Recommended
+							</span>
 						</div>
 					{/if}
 
-					<h3 class="text-lg font-bold text-foreground font-display">{plan.name}</h3>
+					<h3 class="text-lg font-bold font-display" style="color: #e2e8f4;">{plan.name}</h3>
 					<div class="mt-2">
-						<span class="text-3xl font-bold text-foreground font-display">{plan.price}</span>
+						<span class="text-3xl font-bold font-display" style="color: #e2e8f4;">{plan.price}</span>
 						{#if plan.period}
-							<span class="text-muted">{plan.period}</span>
+							<span style="color: #64748b;">{plan.period}</span>
 						{/if}
 					</div>
-					<p class="mt-2 text-sm text-muted">{plan.description}</p>
+					<p class="mt-2 text-sm" style="color: #64748b;">{plan.description}</p>
 
 					<ul class="mt-6 space-y-2">
 						{#each plan.features as feature}
-							<li class="flex items-start gap-2 text-sm text-foreground">
-								<svg class="h-4 w-4 text-primary-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+							<li class="flex items-start gap-2 text-sm" style="color: #e2e8f4;">
+								<svg class="h-4 w-4 mt-0.5 flex-shrink-0" style="color: #fb7185;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 								</svg>
 								{feature}
@@ -168,24 +196,38 @@
 
 					<div class="mt-6">
 						{#if subscription?.plan === plan.id}
-							<Button variant="secondary" disabled class="w-full">Current Plan</Button>
+							<button
+								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default"
+								style="background: #151821; color: #64748b; border: 1px solid rgba(244,63,94,0.06);"
+								disabled
+							>
+								Current Plan
+							</button>
 						{:else if plan.id === 'free'}
-							<Button variant="secondary" disabled class="w-full">Included</Button>
+							<button
+								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default"
+								style="background: #151821; color: #64748b; border: 1px solid rgba(244,63,94,0.06);"
+								disabled
+							>
+								Included
+							</button>
 						{:else}
-							<Button
-								variant={plan.recommended ? 'primary' : 'secondary'}
-								class="w-full"
+							<button
+								class="w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+								style="background: {plan.recommended ? '#f43f5e' : '#151821'}; color: {plan.recommended ? '#fff' : '#e2e8f4'}; border: {plan.recommended ? 'none' : '1px solid rgba(244,63,94,0.06)'};"
+								onmouseenter={(e) => e.currentTarget.style.background = plan.recommended ? '#e11d48' : 'rgba(244,63,94,0.04)'}
+								onmouseleave={(e) => e.currentTarget.style.background = plan.recommended ? '#f43f5e' : '#151821'}
 								onclick={() => handleCheckout(plan.id)}
 								disabled={checkingOut === plan.id}
 							>
 								{#if checkingOut === plan.id}
-									<Spinner size="sm" class="mr-2" />
+									<Spinner size="sm" />
 								{/if}
 								Upgrade to {plan.name}
-							</Button>
+							</button>
 						{/if}
 					</div>
-				</Card>
+				</div>
 			{/each}
 		</div>
 	{/if}

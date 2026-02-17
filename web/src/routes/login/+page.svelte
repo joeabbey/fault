@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { Card, Button, Alert } from '@jabbey/atlas';
 
-	// Check for error from OAuth callback
 	const errorParam = $derived($page.url.searchParams.get('error'));
 
 	const errorMessages: Record<string, string> = {
@@ -24,25 +22,48 @@
 	<title>Sign In - Fault</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center bg-background px-4">
-	<div class="w-full max-w-sm">
-		<div class="text-center mb-8">
-			<div class="flex items-center justify-center gap-1.5 mb-2">
-				<span class="text-3xl font-bold text-primary-500 font-display">//</span>
-				<span class="text-3xl font-bold text-foreground font-display">Fault</span>
+<div class="min-h-screen flex items-center justify-center px-4" style="background: #07080c;">
+	<!-- Dot grid inherited from body::before -->
+
+	<div class="w-full max-w-sm relative z-10">
+		<!-- Logo -->
+		<div class="text-center mb-10">
+			<div class="flex items-center justify-center gap-2 mb-3">
+				<span
+					class="inline-flex items-center justify-center w-9 h-9 rounded-md text-sm font-bold font-mono"
+					style="background: #f43f5e; color: #07080c; letter-spacing: -1px;"
+				>
+					//
+				</span>
+				<span class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+					Fault
+				</span>
 			</div>
-			<p class="text-muted text-sm">Validate AI agent code changes</p>
+			<p style="color: #64748b; font-size: 14px;">Validate AI agent code changes</p>
 		</div>
 
 		{#if errorParam}
-			<Alert variant="error" class="mb-4">
+			<div
+				class="mb-4 px-4 py-3 rounded-lg text-sm"
+				style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.15); color: #fb7185;"
+			>
 				{errorMessages[errorParam] || 'Authentication failed. Please try again.'}
-			</Alert>
+			</div>
 		{/if}
 
-		<Card class="p-6">
-			<Button variant="primary" onclick={handleLogin} class="w-full">
-				<svg class="h-5 w-5 mr-2" viewBox="0 0 24 24">
+		<!-- Sign-in card -->
+		<div
+			class="rounded-xl p-6"
+			style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
+		>
+			<button
+				onclick={handleLogin}
+				class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+				style="background: #f43f5e; color: #fff; border: none;"
+				onmouseenter={(e) => e.currentTarget.style.background = '#e11d48'}
+				onmouseleave={(e) => e.currentTarget.style.background = '#f43f5e'}
+			>
+				<svg class="h-5 w-5" viewBox="0 0 24 24">
 					<path
 						fill="currentColor"
 						d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
@@ -61,12 +82,14 @@
 					/>
 				</svg>
 				Sign in with Google
-			</Button>
-			<p class="text-center text-xs text-muted mt-4">Free tier includes 50 LLM calls/month</p>
-		</Card>
+			</button>
+			<p class="text-center text-xs mt-4" style="color: #334155;">
+				Free tier includes 50 LLM calls/month
+			</p>
+		</div>
 
-		<p class="text-center text-xs text-muted mt-6">
-			<a href="https://fault.jabbey.io" class="text-primary-500 hover:underline">Learn more</a>
+		<p class="text-center text-xs mt-6" style="color: #334155;">
+			<a href="https://fault.jabbey.io" style="color: #fb7185;" class="hover:underline">Learn more</a>
 			about Fault
 		</p>
 	</div>

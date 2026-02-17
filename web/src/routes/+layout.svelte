@@ -11,7 +11,6 @@
 	let { children: pageContent } = $props();
 
 	const publicRoutes = ['/login'];
-	let darkMode = $state(false);
 	let sidebarCollapsed = $state(false);
 
 	const activeNavId = $derived.by(() => {
@@ -61,17 +60,7 @@
 	];
 
 	onMount(() => {
-		// Initialize auth from cookie session
 		auth.init();
-
-		// Initialize dark mode
-		const stored = localStorage.getItem('darkMode');
-		if (stored !== null) {
-			darkMode = stored === 'true';
-		} else {
-			darkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
-		}
-		applyDarkMode(darkMode);
 
 		// Sidebar collapsed state
 		const storedCollapsed = localStorage.getItem('sidebarCollapsed');
@@ -105,22 +94,6 @@
 		}
 	});
 
-	function applyDarkMode(isDark: boolean) {
-		if (isDark) {
-			document.documentElement.classList.add('dark');
-		} else {
-			document.documentElement.classList.remove('dark');
-		}
-	}
-
-	function toggleDarkMode() {
-		darkMode = !darkMode;
-		if (browser) {
-			localStorage.setItem('darkMode', String(darkMode));
-		}
-		applyDarkMode(darkMode);
-	}
-
 	function handleUserMenuSelect(itemId: string) {
 		if (itemId === 'logout') {
 			auth.logout();
@@ -136,59 +109,41 @@
 {:else if $isAuthenticated}
 	<DashboardLayout {navItems} {activeNavId} bind:collapsed={sidebarCollapsed}>
 		{#snippet logo()}
-			{#if sidebarCollapsed}
-				<span class="text-lg font-bold text-primary-500 font-display">//</span>
-			{:else}
-				<div class="flex items-center gap-1.5">
-					<span class="text-lg font-bold text-primary-500 font-display">//</span>
-					<span class="text-lg font-bold text-foreground font-display">Fault</span>
-				</div>
-			{/if}
+			<a href="/" class="flex items-center gap-2 no-underline">
+				<span
+					class="inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-bold tracking-tighter font-mono"
+					style="background: #f43f5e; color: #07080c; letter-spacing: -1px;"
+				>
+					//
+				</span>
+				{#if !sidebarCollapsed}
+					<span class="text-lg font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+						Fault
+					</span>
+				{/if}
+			</a>
 		{/snippet}
 
 		{#snippet userMenu()}
 			<div class="space-y-1">
-				<!-- Dark mode toggle -->
-				<button
-					onclick={toggleDarkMode}
-					class="w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm text-muted hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-colors"
-					aria-label="Toggle dark mode"
-				>
-					{#if darkMode}
-						<svg class="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								fill-rule="evenodd"
-								d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
-								clip-rule="evenodd"
-							/>
-						</svg>
-					{:else}
-						<svg class="h-5 w-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-							<path
-								d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
-							/>
-						</svg>
-					{/if}
-					{#if !sidebarCollapsed}
-						<span>{darkMode ? 'Light mode' : 'Dark mode'}</span>
-					{/if}
-				</button>
-
-				<!-- User info -->
 				{#if $currentEmail}
 					<Dropdown items={userMenuItems} align="start" onselect={handleUserMenuSelect}>
 						{#snippet trigger()}
 							<div
-								class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary-50 dark:hover:bg-secondary-800 transition-colors cursor-pointer"
+								class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer"
+								style="color: #64748b;"
+								onmouseenter={(e) => e.currentTarget.style.background = 'rgba(244,63,94,0.04)'}
+								onmouseleave={(e) => e.currentTarget.style.background = 'transparent'}
 							>
 								<div
-									class="h-8 w-8 rounded-full bg-primary-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
+									class="h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0"
+									style="background: rgba(244,63,94,0.12); color: #fb7185;"
 								>
 									{$currentEmail.charAt(0).toUpperCase()}
 								</div>
 								{#if !sidebarCollapsed}
 									<div class="flex-1 min-w-0">
-										<p class="text-sm font-medium text-foreground truncate">
+										<p class="text-sm font-medium truncate" style="color: #e2e8f4;">
 											{$currentEmail}
 										</p>
 									</div>

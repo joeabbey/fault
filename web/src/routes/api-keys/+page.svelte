@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api/client';
 	import { currentEmail } from '$lib/stores/auth';
-	import { Card, Button, Badge, Alert } from '@jabbey/atlas';
+	import { Spinner } from '@jabbey/atlas';
 
 	let rotating = $state(false);
 	let error = $state<string | null>(null);
@@ -48,85 +48,130 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold text-foreground font-display">API Keys</h1>
+	<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		API Keys
+	</h1>
 
 	{#if error}
-		<Alert variant="error">{error}</Alert>
+		<div
+			class="px-4 py-3 rounded-lg text-sm"
+			style="background: rgba(244,63,94,0.08); border: 1px solid rgba(244,63,94,0.15); color: #fb7185;"
+		>
+			{error}
+		</div>
 	{/if}
 
 	<!-- Account Info -->
-	<Card class="p-6">
-		<h2 class="text-sm font-medium text-muted mb-1">Account</h2>
+	<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+		<h2 class="text-sm font-medium mb-1" style="color: #64748b;">Account</h2>
 		{#if $currentEmail}
-			<p class="text-sm text-foreground">{$currentEmail}</p>
+			<p class="text-sm" style="color: #e2e8f4;">{$currentEmail}</p>
 		{/if}
-		<p class="mt-2 text-xs text-muted">
+		<p class="mt-2 text-xs" style="color: #334155;">
 			API keys authenticate CLI tools. Use the dashboard with Google sign-in.
 		</p>
-	</Card>
+	</div>
 
 	<!-- New Key Display -->
 	{#if newKey}
-		<Card class="p-6 ring-2 ring-primary-500">
-			<h2 class="text-lg font-semibold text-foreground mb-2">New API Key</h2>
-			<p class="text-sm text-muted mb-4">
+		<div
+			class="rounded-xl p-6"
+			style="background: #0e1017; border: 2px solid #f43f5e;"
+		>
+			<h2 class="text-lg font-semibold mb-2 font-display" style="color: #e2e8f4;">New API Key</h2>
+			<p class="text-sm mb-4" style="color: #64748b;">
 				Save this key now — it won't be shown again. Your old key has been invalidated.
 			</p>
-			<div class="bg-accent rounded-lg p-4 mb-4">
-				<code class="text-sm text-foreground break-all font-mono">{newKey}</code>
+			<div
+				class="rounded-lg p-4 mb-4"
+				style="background: #0a0c12; border: 1px solid rgba(255,255,255,0.04);"
+			>
+				<code class="text-sm break-all font-mono" style="color: #fb7185;">{newKey}</code>
 			</div>
-			<Button variant="secondary" onclick={copyKey}>
+			<button
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+				style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
+				onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
+				onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+				onclick={copyKey}
+			>
 				{copied ? 'Copied!' : 'Copy Key'}
-			</Button>
-		</Card>
+			</button>
+		</div>
 	{/if}
 
 	<!-- Rotate Key -->
-	<Card class="p-6">
-		<h2 class="text-sm font-medium text-foreground mb-2">Rotate Key</h2>
-		<p class="text-sm text-muted mb-4">
+	<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+		<h2 class="text-sm font-medium mb-2" style="color: #e2e8f4;">Rotate Key</h2>
+		<p class="text-sm mb-4" style="color: #64748b;">
 			Generate a new API key. Your current key will be immediately invalidated.
 			Update your configuration files and environment variables after rotating.
 		</p>
 
 		{#if confirmRotate}
-			<Alert variant="warning" class="mb-4">
+			<div
+				class="mb-4 px-4 py-3 rounded-lg text-sm"
+				style="background: rgba(251,191,36,0.06); border: 1px solid rgba(251,191,36,0.12); color: #fbbf24;"
+			>
 				Are you sure? Your current key will stop working immediately.
-			</Alert>
+			</div>
 			<div class="flex gap-3">
-				<Button variant="destructive" onclick={handleRotate} disabled={rotating}>
+				<button
+					class="px-4 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer"
+					style="background: #f43f5e; color: #fff; border: none;"
+					onmouseenter={(e) => e.currentTarget.style.background = '#e11d48'}
+					onmouseleave={(e) => e.currentTarget.style.background = '#f43f5e'}
+					onclick={handleRotate}
+					disabled={rotating}
+				>
 					{rotating ? 'Rotating...' : 'Yes, Rotate Key'}
-				</Button>
-				<Button variant="secondary" onclick={cancelRotate}>
+				</button>
+				<button
+					class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+					style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
+					onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
+					onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+					onclick={cancelRotate}
+				>
 					Cancel
-				</Button>
+				</button>
 			</div>
 		{:else}
-			<Button variant="secondary" onclick={handleRotate}>
+			<button
+				class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
+				style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
+				onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
+				onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+				onclick={handleRotate}
+			>
 				Rotate API Key
-			</Button>
+			</button>
 		{/if}
-	</Card>
+	</div>
 
 	<!-- Usage in CLI -->
-	<Card class="p-6">
-		<h2 class="text-sm font-medium text-foreground mb-2">Using Your API Key</h2>
-		<p class="text-sm text-muted mb-4">
+	<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+		<h2 class="text-sm font-medium mb-2" style="color: #e2e8f4;">Using Your API Key</h2>
+		<p class="text-sm mb-4" style="color: #64748b;">
 			Set your API key in your environment or Fault config file:
 		</p>
-		<div class="bg-accent rounded-lg p-4 space-y-2">
-			<code class="text-sm text-foreground font-mono block">
-				<span class="text-muted"># Environment variable</span>
+		<div
+			class="rounded-lg p-4 space-y-2"
+			style="background: #0a0c12; border: 1px solid rgba(255,255,255,0.04);"
+		>
+			<code class="text-sm font-mono block" style="color: #334155;">
+				# Environment variable
 			</code>
-			<code class="text-sm text-primary-600 dark:text-primary-400 font-mono block">
+			<code class="text-sm font-mono block" style="color: #fb7185;">
 				export FAULT_API_KEY=fk_your_key_here
 			</code>
-			<code class="text-sm text-foreground font-mono block mt-3">
-				<span class="text-muted"># Or in .fault.toml</span>
+			<div class="pt-2"></div>
+			<code class="text-sm font-mono block" style="color: #334155;">
+				# Or in .fault.toml
 			</code>
-			<code class="text-sm text-primary-600 dark:text-primary-400 font-mono block">
+			<code class="text-sm font-mono block" style="color: #fb7185;">
 				api_key = "fk_your_key_here"
 			</code>
 		</div>
-	</Card>
+	</div>
 </div>
