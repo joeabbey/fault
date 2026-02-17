@@ -6,11 +6,18 @@ on:
   pull_request:
     branches: [main, master]
 
+permissions:
+  security-events: write
+  pull-requests: write
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-go@v5
         with:
@@ -43,3 +50,20 @@ jobs:
         env:
           GONOSUMCHECK: github.com/joeabbey/magma
         run: go build -o fault-cloud ./cmd/fault-cloud
+
+      - name: Run Fault on itself
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
+        run: |
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            ./fault check --branch "$GITHUB_BASE_REF" --format github
+          else
+            ./fault check --format sarif || true
+          fi
+
+      - name: Upload SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        if: always() && hashFiles('fault-results.sarif') != ''
+        with:
+          sarif_file: fault-results.sarif
+          category: fault
