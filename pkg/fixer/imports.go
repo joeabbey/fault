@@ -303,6 +303,46 @@ func detectLanguage(path string) string {
 		return "elixir"
 	case ".lua":
 		return "lua"
+	case ".zig":
+		return "zig"
+	case ".nim":
+		return "nim"
+	case ".cr":
+		return "crystal"
+	case ".v":
+		return "vlang"
+	case ".d":
+		return "dlang"
+	case ".hs", ".lhs":
+		return "haskell"
+	case ".clj", ".cljs", ".cljc":
+		return "clojure"
+	case ".erl", ".hrl":
+		return "erlang"
+	case ".fs", ".fsx", ".fsi":
+		return "fsharp"
+	case ".ml", ".mli":
+		return "ocaml"
+	case ".jl":
+		return "julia"
+	case ".sol":
+		return "solidity"
+	case ".tf":
+		return "terraform"
+	case ".f", ".f90", ".f95", ".for":
+		return "fortran"
+	case ".proto":
+		return "protobuf"
+	case ".vb", ".vbs":
+		return "visualbasic"
+	case ".cob", ".cbl":
+		return "cobol"
+	case ".adb", ".ads":
+		return "ada"
+	case ".pas", ".pp", ".dpr", ".lpr":
+		return "pascal"
+	case ".sql":
+		return "sql"
 	default:
 		return ""
 	}

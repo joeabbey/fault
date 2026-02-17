@@ -359,6 +359,40 @@ var consolePatterns = []consoleRule{
 	{regexp.MustCompile(`\bcat\(`), "r-debug-print"},
 	{regexp.MustCompile(`\bmessage\(`), "r-debug-print"},
 	{regexp.MustCompile(`\bbrowser\(\)`), "r-debug-print"},
+	// Nim
+	{regexp.MustCompile(`\becho\s+`), "nim-debug-print"},
+	// V
+	{regexp.MustCompile(`\bdump\(`), "vlang-debug-print"},
+	// D
+	{regexp.MustCompile(`\bwriteln\(`), "dlang-debug-print"},
+	{regexp.MustCompile(`\bwritefln\(`), "dlang-debug-print"},
+	// Clojure
+	{regexp.MustCompile(`\(prn\s`), "clojure-debug-print"},
+	// Erlang
+	{regexp.MustCompile(`\bio:format\(`), "erlang-debug-print"},
+	// OCaml
+	{regexp.MustCompile(`\bprint_endline\b`), "ocaml-debug-print"},
+	{regexp.MustCompile(`\bPrintf\.printf\b`), "ocaml-debug-print"},
+	// Julia
+	{regexp.MustCompile(`\b@show\b`), "julia-debug-print"},
+	// Solidity (Hardhat)
+	{regexp.MustCompile(`\bconsole\.log\(`), "solidity-debug-print"},
+	// Fortran
+	{regexp.MustCompile(`(?i)\bWRITE\s*\(\s*\*\s*,`), "fortran-debug-print"},
+	{regexp.MustCompile(`(?i)\bPRINT\s*\*\s*,`), "fortran-debug-print"},
+	// Visual Basic
+	{regexp.MustCompile(`(?i)\bConsole\.WriteLine\(`), "vb-debug-print"},
+	{regexp.MustCompile(`(?i)\bDebug\.Print\b`), "vb-debug-print"},
+	// COBOL
+	{regexp.MustCompile(`(?i)\bDISPLAY\s+`), "cobol-debug-print"},
+	// Ada
+	{regexp.MustCompile(`\bPut_Line\s*\(`), "ada-debug-print"},
+	{regexp.MustCompile(`\bAda\.Text_IO\.Put_Line\b`), "ada-debug-print"},
+	// Pascal
+	{regexp.MustCompile(`(?i)\bWriteLn\s*\(`), "pascal-debug-print"},
+	// SQL
+	{regexp.MustCompile(`(?i)\bPRINT\s+`), "sql-debug-print"},
+	{regexp.MustCompile(`(?i)\bRAISE\s+NOTICE\b`), "sql-debug-print"},
 }
 
 // isCLIEntryPoint returns true for files that legitimately use print/Println for

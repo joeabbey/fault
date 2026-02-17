@@ -102,6 +102,28 @@ func (f *SecurityFixer) fixHardcodedSecret(issue analyzer.Issue, line string, la
 		newLine = f.replaceSecretElixir(line, envName)
 	case "lua":
 		newLine = f.replaceSecretLua(line, envName)
+	case "nim":
+		newLine = f.replaceSecretNim(line, envName)
+	case "crystal":
+		newLine = f.replaceSecretCrystal(line, envName)
+	case "vlang":
+		newLine = f.replaceSecretVlang(line, envName)
+	case "dlang":
+		newLine = f.replaceSecretDlang(line, envName)
+	case "clojure":
+		newLine = f.replaceSecretClojure(line, envName)
+	case "erlang":
+		newLine = f.replaceSecretErlang(line, envName)
+	case "fsharp":
+		newLine = f.replaceSecretFSharp(line, envName)
+	case "ocaml":
+		newLine = f.replaceSecretOCaml(line, envName)
+	case "julia":
+		newLine = f.replaceSecretJulia(line, envName)
+	case "visualbasic":
+		newLine = f.replaceSecretVisualBasic(line, envName)
+	case "pascal":
+		newLine = f.replaceSecretPascal(line, envName)
 	default:
 		return nil
 	}
@@ -348,4 +370,70 @@ func (f *SecurityFixer) replaceSecretElixir(line, envName string) string {
 func (f *SecurityFixer) replaceSecretLua(line, envName string) string {
 	re := regexp.MustCompile(`"[^"]{8,}"`)
 	return re.ReplaceAllString(line, `os.getenv("`+envName+`")`)
+}
+
+// replaceSecretNim replaces a hardcoded string value with os.getEnv() in Nim.
+func (f *SecurityFixer) replaceSecretNim(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `os.getEnv("`+envName+`")`)
+}
+
+// replaceSecretCrystal replaces a hardcoded string value with ENV[] in Crystal.
+func (f *SecurityFixer) replaceSecretCrystal(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `ENV["`+envName+`"]`)
+}
+
+// replaceSecretVlang replaces a hardcoded string value with os.getenv() in V.
+func (f *SecurityFixer) replaceSecretVlang(line, envName string) string {
+	re := regexp.MustCompile(`["'][^"']{8,}["']`)
+	return re.ReplaceAllString(line, `os.getenv("`+envName+`")`)
+}
+
+// replaceSecretDlang replaces a hardcoded string value with environment.get() in D.
+func (f *SecurityFixer) replaceSecretDlang(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `environment.get("`+envName+`", "")`)
+}
+
+// replaceSecretClojure replaces a hardcoded string value with System/getenv in Clojure.
+func (f *SecurityFixer) replaceSecretClojure(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `(System/getenv "`+envName+`")`)
+}
+
+// replaceSecretErlang replaces a hardcoded string value with os:getenv() in Erlang.
+func (f *SecurityFixer) replaceSecretErlang(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `os:getenv("`+envName+`")`)
+}
+
+// replaceSecretFSharp replaces a hardcoded string value with Environment.GetEnvironmentVariable() in F#.
+func (f *SecurityFixer) replaceSecretFSharp(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `System.Environment.GetEnvironmentVariable("`+envName+`")`)
+}
+
+// replaceSecretOCaml replaces a hardcoded string value with Sys.getenv in OCaml.
+func (f *SecurityFixer) replaceSecretOCaml(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `Sys.getenv "`+envName+`"`)
+}
+
+// replaceSecretJulia replaces a hardcoded string value with ENV[] in Julia.
+func (f *SecurityFixer) replaceSecretJulia(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `ENV["`+envName+`"]`)
+}
+
+// replaceSecretVisualBasic replaces a hardcoded string value with Environment.GetEnvironmentVariable() in VB.
+func (f *SecurityFixer) replaceSecretVisualBasic(line, envName string) string {
+	re := regexp.MustCompile(`"[^"]{8,}"`)
+	return re.ReplaceAllString(line, `Environment.GetEnvironmentVariable("`+envName+`")`)
+}
+
+// replaceSecretPascal replaces a hardcoded string value with GetEnvironmentVariable() in Pascal.
+func (f *SecurityFixer) replaceSecretPascal(line, envName string) string {
+	re := regexp.MustCompile(`'[^']{8,}'`)
+	return re.ReplaceAllString(line, `GetEnvironmentVariable('`+envName+`')`)
 }

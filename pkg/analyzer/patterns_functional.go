@@ -28,7 +28,7 @@ func checkHaskellPatterns(fileDiff git.FileDiff) []Issue {
 				issues = append(issues, Issue{ID: "patterns/haskell-partial-function", Severity: SeverityWarning, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "head/tail are partial functions that crash on empty lists", Suggestion: "Use pattern matching or safe alternatives like listToMaybe"})
 			}
 			if haskellDebugTrace.MatchString(line.Content) {
-				issues = append(issues, Issue{ID: "patterns/haskell-debug-trace", Severity: SeverityWarning, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Debug.Trace left in code", Suggestion: "Remove Debug.Trace calls before production"})
+				issues = append(issues, Issue{ID: "patterns/haskell-debug-trace", FixID: "haskell-debug-trace", Severity: SeverityWarning, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Debug.Trace left in code", Suggestion: "Remove Debug.Trace calls before production"})
 			}
 		}
 	}
@@ -100,7 +100,7 @@ func checkFsharpPatterns(fileDiff git.FileDiff) []Issue {
 				issues = append(issues, Issue{ID: "patterns/fsharp-mutable", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "Mutable binding reduces referential transparency", Suggestion: "Prefer immutable values; use ref cells or agents if mutation is needed"})
 			}
 			if fsharpPrintfn.MatchString(line.Content) {
-				issues = append(issues, Issue{ID: "patterns/fsharp-printfn", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "printfn used for output — consider using a logging framework", Suggestion: "Use a structured logging library instead of printfn in production"})
+				issues = append(issues, Issue{ID: "patterns/fsharp-printfn", FixID: "fsharp-debug-print", Severity: SeverityInfo, Category: "patterns", File: fileDiff.Path, Line: line.NewNum, Message: "printfn used for output — consider using a logging framework", Suggestion: "Use a structured logging library instead of printfn in production"})
 			}
 		}
 	}

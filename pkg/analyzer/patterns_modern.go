@@ -47,7 +47,7 @@ func checkZigAntiPatterns(fileDiff git.FileDiff) []Issue {
 			}
 			if zigDebugPrint.MatchString(content) {
 				issues = append(issues, Issue{
-					ID: "patterns/zig-debug-print", Severity: SeverityWarning, Category: "patterns",
+					ID: "patterns/zig-debug-print", FixID: "zig-debug-print", Severity: SeverityWarning, Category: "patterns",
 					File: fileDiff.Path, Line: line.NewNum,
 					Message:    "std.debug.print left in code — likely a debugging artifact",
 					Suggestion: "Use std.log for production logging or remove debug prints",
@@ -119,7 +119,7 @@ func checkCrystalAntiPatterns(fileDiff git.FileDiff) []Issue {
 				// Only flag standalone pp calls, not pp! macro
 				if strings.HasPrefix(trimmed, "pp ") || trimmed == "pp" {
 					issues = append(issues, Issue{
-						ID: "patterns/crystal-debug-print", Severity: SeverityWarning, Category: "patterns",
+						ID: "patterns/crystal-debug-print", FixID: "crystal-debug-print", Severity: SeverityWarning, Category: "patterns",
 						File: fileDiff.Path, Line: line.NewNum,
 						Message:    "pp debug call left in code",
 						Suggestion: "Remove pp calls before committing; use Log for production logging",

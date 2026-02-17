@@ -1,6 +1,6 @@
 # Language Support
 
-Fault supports **42 programming languages**. Every language gets parsing, import/export analysis, anti-pattern detection, and security rules. **22 languages** also get auto-fix support for debug statements, hardcoded secrets, and language-specific issues.
+Fault supports **42 programming languages** with full analysis and auto-fix across every language. Every language gets parsing, import/export analysis, anti-pattern detection, security rules, and auto-fix support for debug statements, hardcoded secrets, and language-specific issues.
 
 ## All languages
 
@@ -28,28 +28,28 @@ Fault supports **42 programming languages**. Every language gets parsing, import
 | **PowerShell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | **Groovy** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | **Bash / Shell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| SQL | :white_check_mark: | | | :white_check_mark: | |
-| Zig | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Nim | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Crystal | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| V | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| D | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Haskell | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Clojure | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Erlang | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| F# | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| OCaml | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Julia | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Fortran | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Solidity | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Terraform | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Protobuf | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Visual Basic | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| COBOL | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Ada | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
-| Pascal | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | |
+| **Zig** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Nim** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Crystal** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **V** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **D** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Haskell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Clojure** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Erlang** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **F#** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **OCaml** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Julia** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Fortran** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Solidity** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Terraform** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Protobuf** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Visual Basic** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **COBOL** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Ada** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **Pascal** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| **SQL** | :white_check_mark: | | | :white_check_mark: | :white_check_mark: |
 
-> **Bold** languages have full support including auto-fix (22 languages). All 42 languages get security rules and the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
+> All 42 languages get full support including auto-fix, security rules, and the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
 
 ---
 
@@ -252,6 +252,117 @@ Fault supports **42 programming languages**. Every language gets parsing, import
 **Auto-fix:**
 - Remove `echo "debug` / `set -x` debug output
 - Replace hardcoded secrets with `"${...}"`
+
+### Zig
+
+**Auto-fix:**
+- Remove `std.debug.print` debug output
+
+### Nim
+
+**Auto-fix:**
+- Remove `echo` debug output
+- Replace hardcoded secrets with `os.getEnv("...")`
+
+### Crystal
+
+**Auto-fix:**
+- Remove `pp` / `puts` debug output
+- Replace hardcoded secrets with `ENV["..."]`
+
+### V
+
+**Auto-fix:**
+- Remove `println` / `dump` debug output
+- Replace hardcoded secrets with `os.getenv("...")`
+
+### D
+
+**Auto-fix:**
+- Remove `writeln` / `writefln` debug output
+- Replace hardcoded secrets with `environment.get("...")`
+
+### Haskell
+
+**Auto-fix:**
+- Remove `Debug.Trace` / `trace` debug calls
+
+### Clojure
+
+**Auto-fix:**
+- Remove `println` / `prn` debug output
+- Replace hardcoded secrets with `(System/getenv "...")`
+
+### Erlang
+
+**Auto-fix:**
+- Remove `io:format` debug output
+- Replace hardcoded secrets with `os:getenv("...")`
+
+### F\#
+
+**Auto-fix:**
+- Remove `printfn` debug output
+- Replace hardcoded secrets with `System.Environment.GetEnvironmentVariable("...")`
+
+### OCaml
+
+**Auto-fix:**
+- Remove `print_endline` / `Printf.printf` debug output
+- Replace hardcoded secrets with `Sys.getenv "..."`
+
+### Julia
+
+**Auto-fix:**
+- Remove `println` / `@show` debug output
+- Replace hardcoded secrets with `ENV["..."]`
+
+### Solidity
+
+**Auto-fix:**
+- Remove `console.log` (Hardhat) debug output
+
+### Terraform
+
+**Auto-fix:**
+- Remove debug output patterns
+
+### Fortran
+
+**Auto-fix:**
+- Remove `WRITE(*,*)` / `PRINT *,` debug output
+
+### Protobuf
+
+**Auto-fix:**
+- Pattern-based issue fixes via shared analyzers
+
+### Visual Basic
+
+**Auto-fix:**
+- Remove `Console.WriteLine` / `Debug.Print` debug output
+- Replace hardcoded secrets with `Environment.GetEnvironmentVariable("...")`
+
+### COBOL
+
+**Auto-fix:**
+- Remove `DISPLAY` debug output
+
+### Ada
+
+**Auto-fix:**
+- Remove `Put_Line` debug output
+
+### Pascal
+
+**Auto-fix:**
+- Remove `WriteLn` debug output
+- Replace hardcoded secrets with `GetEnvironmentVariable('...')`
+
+### SQL
+
+**Auto-fix:**
+- Remove `PRINT` (T-SQL) / `RAISE NOTICE` (PostgreSQL) debug output
 
 ---
 
