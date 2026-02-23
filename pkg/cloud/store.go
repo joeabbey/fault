@@ -37,6 +37,9 @@ var webhooksSQL string
 //go:embed migrations/000008_org_configs.up.sql
 var orgConfigsSQL string
 
+//go:embed migrations/000009_org_idp.up.sql
+var orgIDPSQL string
+
 // User represents an authenticated API user.
 type User struct {
 	ID               string    `json:"id"`
@@ -90,6 +93,18 @@ type Organization struct {
 	Plan      string    `json:"plan"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// OrgIDPConfig represents an organization's OIDC identity provider configuration.
+type OrgIDPConfig struct {
+	ID           string    `json:"id"`
+	OrgID        string    `json:"org_id"`
+	Provider     string    `json:"provider"`
+	ClientID     string    `json:"client_id"`
+	ClientSecret string    `json:"-"`
+	DiscoveryURL string    `json:"discovery_url"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
 
 // OrgMember represents a user's membership in an organization.
@@ -148,6 +163,11 @@ type Store interface {
 	// Org config methods
 	GetOrgConfig(ctx context.Context, orgID string) (*OrgConfig, error)
 	SaveOrgConfig(ctx context.Context, cfg *OrgConfig) error
+
+	// Org IDP config methods
+	GetOrgIDPConfig(ctx context.Context, orgID string) (*OrgIDPConfig, error)
+	SaveOrgIDPConfig(ctx context.Context, cfg *OrgIDPConfig) error
+	DeleteOrgIDPConfig(ctx context.Context, orgID string) error
 
 	// Audit log methods
 	InsertAuditEntry(ctx context.Context, entry *AuditEntry) error
@@ -225,6 +245,10 @@ func (s *PostgresStore) Migrate(ctx context.Context) error {
 	_, err = s.pool.Exec(ctx, orgConfigsSQL)
 	if err != nil {
 		return fmt.Errorf("running org configs migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, orgIDPSQL)
+	if err != nil {
+		return fmt.Errorf("running org IDP migration: %w", err)
 	}
 	return nil
 }

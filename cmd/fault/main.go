@@ -66,13 +66,14 @@ func checkCmd() *cobra.Command {
 		useBaseline bool
 		compact     bool
 		specFile    string
+		compliance  string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCheck(staged, unstaged, branch, noColor, format, useBaseline, compact, specFile)
+			return runCheck(staged, unstaged, branch, noColor, format, useBaseline, compact, specFile, compliance)
 		},
 	}
 
@@ -84,11 +85,12 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
 	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
 	cmd.Flags().StringVar(&specFile, "spec", "", "Path to .fault-spec.yaml for requirements validation")
+	cmd.Flags().StringVar(&compliance, "compliance", "", "Compliance pack to check (e.g., owasp-top-10-2021, cwe-top-25-2023)")
 
 	return cmd
 }
 
-func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool, compact bool, specFile string) error {
+func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool, compact bool, specFile string, compliance string) error {
 	// 1. Load config
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -158,6 +160,19 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		analyzer.NewDeadCodeAnalyzer(),
 		analyzer.NewSpecAnalyzer(),
 	}
+
+	// Register custom rule analyzer if configured
+	if len(cfg.CustomRules) > 0 {
+		rules := make([]analyzer.CustomRuleConfig, len(cfg.CustomRules))
+		for i, r := range cfg.CustomRules {
+			rules[i] = analyzer.CustomRuleConfig{
+				ID: r.ID, Pattern: r.Pattern, Files: r.Files,
+				Severity: r.Severity, Message: r.Message,
+			}
+		}
+		analyzers = append(analyzers, analyzer.NewCustomRuleAnalyzer(rules))
+	}
+
 	runner := analyzer.NewRunner(cfg, analyzers)
 
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -184,12 +199,31 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		}
 	}
 
+	// 8c. Compliance checking
+	complianceFailed := false
+	compliancePacks := collectCompliancePacks(compliance, cfg)
+	for _, packID := range compliancePacks {
+		compResult, err := analyzer.CheckCompliance(packID, result.Issues)
+		if err != nil {
+			log.Printf("warning: compliance check failed for %s: %v", packID, err)
+			continue
+		}
+		printComplianceResult(compResult)
+		if !compResult.Compliant && cfg.Compliance.FailOnViolation {
+			complianceFailed = true
+		}
+	}
+
 	// 9. Report results
 	rep := selectReporter(format, noColor, compact)
 	if tr, ok := rep.(*reporter.TerminalReporter); ok && diff != nil {
 		tr.SetDiff(diff)
 	}
 	exitCode := rep.Report(result, cfg.BlockOn)
+
+	if complianceFailed && exitCode == 0 {
+		exitCode = 1
+	}
 
 	if exitCode != 0 {
 		os.Exit(exitCode)
@@ -678,11 +712,24 @@ func baselineCmd() *cobra.Command {
 				analyzer.NewResourceAnalyzer(),
 				analyzer.NewMigrationAnalyzer(),
 				analyzer.NewDocDriftAnalyzer(),
-			analyzer.NewErrorHandlingAnalyzer(),
-			analyzer.NewDepGraphAnalyzer(),
-			analyzer.NewDeadCodeAnalyzer(),
-			analyzer.NewSpecAnalyzer(),
+				analyzer.NewErrorHandlingAnalyzer(),
+				analyzer.NewDepGraphAnalyzer(),
+				analyzer.NewDeadCodeAnalyzer(),
+				analyzer.NewSpecAnalyzer(),
 			}
+
+			// Register custom rule analyzer if configured
+			if len(cfg.CustomRules) > 0 {
+				rules := make([]analyzer.CustomRuleConfig, len(cfg.CustomRules))
+				for i, r := range cfg.CustomRules {
+					rules[i] = analyzer.CustomRuleConfig{
+						ID: r.ID, Pattern: r.Pattern, Files: r.Files,
+						Severity: r.Severity, Message: r.Message,
+					}
+				}
+				analyzers = append(analyzers, analyzer.NewCustomRuleAnalyzer(rules))
+			}
+
 			runner := analyzer.NewRunner(cfg, analyzers)
 
 			result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -797,6 +844,19 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 		analyzer.NewDeadCodeAnalyzer(),
 		analyzer.NewSpecAnalyzer(),
 	}
+
+	// Register custom rule analyzer if configured
+	if len(cfg.CustomRules) > 0 {
+		rules := make([]analyzer.CustomRuleConfig, len(cfg.CustomRules))
+		for i, r := range cfg.CustomRules {
+			rules[i] = analyzer.CustomRuleConfig{
+				ID: r.ID, Pattern: r.Pattern, Files: r.Files,
+				Severity: r.Severity, Message: r.Message,
+			}
+		}
+		analyzers = append(analyzers, analyzer.NewCustomRuleAnalyzer(rules))
+	}
+
 	runner := analyzer.NewRunner(cfg, analyzers)
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
 	fileLines := loadFileLines(repoRoot, result.Issues)
@@ -1049,6 +1109,18 @@ func runWatch(noColor bool) error {
 		analyzer.NewSpecAnalyzer(),
 	}
 
+	// Register custom rule analyzer if configured
+	if len(cfg.CustomRules) > 0 {
+		rules := make([]analyzer.CustomRuleConfig, len(cfg.CustomRules))
+		for i, r := range cfg.CustomRules {
+			rules[i] = analyzer.CustomRuleConfig{
+				ID: r.ID, Pattern: r.Pattern, Files: r.Files,
+				Severity: r.Severity, Message: r.Message,
+			}
+		}
+		analyzers = append(analyzers, analyzer.NewCustomRuleAnalyzer(rules))
+	}
+
 	// 6. Parse watch config
 	pollInterval := 500 * time.Millisecond
 	debounce := 200 * time.Millisecond
@@ -1221,6 +1293,19 @@ func runAudit(from, to string, commits int, since string, noColor bool, format s
 		analyzer.NewDeadCodeAnalyzer(),
 		analyzer.NewSpecAnalyzer(),
 	}
+
+	// Register custom rule analyzer if configured
+	if len(cfg.CustomRules) > 0 {
+		rules := make([]analyzer.CustomRuleConfig, len(cfg.CustomRules))
+		for i, r := range cfg.CustomRules {
+			rules[i] = analyzer.CustomRuleConfig{
+				ID: r.ID, Pattern: r.Pattern, Files: r.Files,
+				Severity: r.Severity, Message: r.Message,
+			}
+		}
+		analyzers = append(analyzers, analyzer.NewCustomRuleAnalyzer(rules))
+	}
+
 	runner := analyzer.NewRunner(cfg, analyzers)
 
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -1390,4 +1475,41 @@ func runConfigPull(orgSlug string) error {
 
 	fmt.Printf("Team config saved to %s\n", teamConfigPath)
 	return nil
+}
+
+// collectCompliancePacks gathers active compliance pack IDs from flag and config.
+func collectCompliancePacks(flagValue string, cfg *config.Config) []string {
+	seen := make(map[string]bool)
+	packs := make([]string, 0)
+
+	// Flag value takes priority
+	if flagValue != "" {
+		seen[flagValue] = true
+		packs = append(packs, flagValue)
+	}
+
+	// Add packs from config
+	for _, p := range cfg.Compliance.Packs {
+		if !seen[p] {
+			seen[p] = true
+			packs = append(packs, p)
+		}
+	}
+
+	return packs
+}
+
+// printComplianceResult prints a compliance check summary to stdout.
+func printComplianceResult(result *analyzer.ComplianceResult) {
+	if result.Compliant {
+		fmt.Printf("Compliance [%s]: PASS (%d/%d CWEs clean)\n",
+			result.PackName, result.TotalCWEs, result.TotalCWEs)
+		return
+	}
+
+	fmt.Printf("Compliance [%s]: FAIL (%d/%d CWEs violated)\n",
+		result.PackName, result.ViolatedCWEs, result.TotalCWEs)
+	for _, v := range result.Violations {
+		fmt.Printf("  %s: %s (%d occurrences)\n", v.CWEID, v.IssueID, v.Count)
+	}
 }

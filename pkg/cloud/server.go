@@ -103,6 +103,7 @@ type Server struct {
 	logger          *slog.Logger
 	handlers        *Handlers
 	authHandlers    *AuthHandlers
+	oidcHandlers    *OIDCHandlers
 	limitsEngine    *limits.Engine
 	billingHandlers *BillingHandlers
 	mux             *http.ServeMux
@@ -148,6 +149,12 @@ func NewServer(cfg Config, store Store) *Server {
 		logger.Info("google OAuth enabled")
 	} else {
 		logger.Info("google OAuth disabled (GOOGLE_CLIENT_ID or JWT_SECRET not set)")
+	}
+
+	// Set up OIDC SSO handlers if JWT secret is configured
+	if cfg.JWTSecret != "" {
+		s.oidcHandlers = NewOIDCHandlers(store, logger, cfg.JWTSecret, cfg.AppURL, cfg.CookieDomain, cfg.CookieSecure)
+		logger.Info("OIDC SSO enabled")
 	}
 
 	// Set up Stripe billing if configured
@@ -216,6 +223,15 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config", s.handlers.HandleGetOrgConfig)
 	s.mux.HandleFunc("PUT /api/v1/orgs/{slug}/config", s.handlers.HandleSaveOrgConfig)
 	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config/pull", s.handlers.HandlePullOrgConfig)
+
+	// OIDC SSO routes
+	if s.oidcHandlers != nil {
+		s.mux.HandleFunc("GET /api/auth/oidc/{slug}/login", s.oidcHandlers.HandleOIDCLogin)
+		s.mux.HandleFunc("GET /api/auth/oidc/{slug}/callback", s.oidcHandlers.HandleOIDCCallback)
+	}
+	s.mux.HandleFunc("PUT /api/v1/orgs/{slug}/idp", s.handlers.HandleSaveOIDCConfig)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/idp", s.handlers.HandleGetOIDCConfig)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/idp", s.handlers.HandleDeleteOIDCConfig)
 
 	// Auth routes (only if Google OAuth is configured)
 	if s.authHandlers != nil {

@@ -251,6 +251,18 @@ func (m *mockStore) DeleteWebhook(_ context.Context, orgID, webhookID string) er
 	return nil
 }
 
+func (m *mockStore) GetOrgIDPConfig(_ context.Context, orgID string) (*OrgIDPConfig, error) {
+	return nil, nil
+}
+
+func (m *mockStore) SaveOrgIDPConfig(_ context.Context, cfg *OrgIDPConfig) error {
+	return nil
+}
+
+func (m *mockStore) DeleteOrgIDPConfig(_ context.Context, orgID string) error {
+	return nil
+}
+
 func (m *mockStore) InsertAuditEntry(_ context.Context, entry *AuditEntry) error {
 	return nil
 }

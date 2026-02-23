@@ -13,13 +13,30 @@ const ConfigFileName = ".fault.yaml"
 
 // Config represents the fault configuration file.
 type Config struct {
-	Version   int              `yaml:"version" json:"version"`
-	Languages []string         `yaml:"languages" json:"languages"`
-	BlockOn   string           `yaml:"block_on" json:"block_on"`
-	Analyzers AnalyzersConfig  `yaml:"analyzers" json:"analyzers"`
-	LLM       LLMConfig        `yaml:"llm" json:"llm"`
-	Watch     WatchConfig      `yaml:"watch" json:"watch"`
-	Ignore    []string         `yaml:"ignore" json:"ignore"`
+	Version    int              `yaml:"version" json:"version"`
+	Languages  []string         `yaml:"languages" json:"languages"`
+	BlockOn    string           `yaml:"block_on" json:"block_on"`
+	Analyzers  AnalyzersConfig  `yaml:"analyzers" json:"analyzers"`
+	LLM        LLMConfig        `yaml:"llm" json:"llm"`
+	Watch      WatchConfig      `yaml:"watch" json:"watch"`
+	Ignore     []string         `yaml:"ignore" json:"ignore"`
+	Compliance ComplianceConfig `yaml:"compliance" json:"compliance"`
+	CustomRules []CustomRule    `yaml:"custom_rules" json:"custom_rules"`
+}
+
+// ComplianceConfig controls compliance pack checking.
+type ComplianceConfig struct {
+	Packs           []string `yaml:"packs" json:"packs"`
+	FailOnViolation bool     `yaml:"fail_on_violation" json:"fail_on_violation"`
+}
+
+// CustomRule defines a user-provided regex-based analysis rule.
+type CustomRule struct {
+	ID       string `yaml:"id" json:"id"`
+	Pattern  string `yaml:"pattern" json:"pattern"`
+	Files    string `yaml:"files" json:"files"`       // glob pattern
+	Severity string `yaml:"severity" json:"severity"` // error, warning, info
+	Message  string `yaml:"message" json:"message"`
 }
 
 // AnalyzersConfig controls which analyzers are enabled.

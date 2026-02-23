@@ -249,3 +249,50 @@ func (s *PostgresStore) SaveOrgConfig(ctx context.Context, cfg *OrgConfig) error
 	}
 	return nil
 }
+
+// GetOrgIDPConfig retrieves the OIDC IdP configuration for an organization.
+func (s *PostgresStore) GetOrgIDPConfig(ctx context.Context, orgID string) (*OrgIDPConfig, error) {
+	var c OrgIDPConfig
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, org_id, provider, client_id, client_secret, discovery_url, created_at, updated_at
+		 FROM org_idp_configs WHERE org_id = $1`, orgID,
+	).Scan(&c.ID, &c.OrgID, &c.Provider, &c.ClientID, &c.ClientSecret, &c.DiscoveryURL, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		return nil, nil // not found
+	}
+	return &c, nil
+}
+
+// SaveOrgIDPConfig upserts an OIDC IdP configuration for an organization.
+func (s *PostgresStore) SaveOrgIDPConfig(ctx context.Context, cfg *OrgIDPConfig) error {
+	if cfg.ID == "" {
+		cfg.ID = uuid.New().String()
+	}
+	now := time.Now()
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO org_idp_configs (id, org_id, provider, client_id, client_secret, discovery_url, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $7)
+		 ON CONFLICT (org_id) DO UPDATE SET
+		   provider = EXCLUDED.provider,
+		   client_id = EXCLUDED.client_id,
+		   client_secret = EXCLUDED.client_secret,
+		   discovery_url = EXCLUDED.discovery_url,
+		   updated_at = $7`,
+		cfg.ID, cfg.OrgID, cfg.Provider, cfg.ClientID, cfg.ClientSecret, cfg.DiscoveryURL, now,
+	)
+	if err != nil {
+		return fmt.Errorf("saving org IDP config: %w", err)
+	}
+	return nil
+}
+
+// DeleteOrgIDPConfig removes the OIDC IdP configuration for an organization.
+func (s *PostgresStore) DeleteOrgIDPConfig(ctx context.Context, orgID string) error {
+	_, err := s.pool.Exec(ctx,
+		`DELETE FROM org_idp_configs WHERE org_id = $1`, orgID,
+	)
+	if err != nil {
+		return fmt.Errorf("deleting org IDP config: %w", err)
+	}
+	return nil
+}
