@@ -47,8 +47,9 @@ type Issue struct {
 
 // Confidence represents how confident the analysis is.
 type Confidence struct {
-	Score   float64 `json:"score"`
-	Factors []string `json:"factors,omitempty"`
+	Score   float64            `json:"score"`
+	Factors []string           `json:"factors,omitempty"`
+	PerFile map[string]float64 `json:"per_file,omitempty"`
 }
 
 // Analyzer is the interface all analyzers must implement.

@@ -151,6 +151,48 @@
 			</div>
 		</div>
 
+		<!-- Confidence Score -->
+		{#if run.confidence_score != null}
+			<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+				<h3 class="text-sm font-medium uppercase tracking-wider mb-4" style="color: #64748b;">
+					Confidence Score
+				</h3>
+				<div class="flex items-center gap-4 mb-4">
+					<div class="flex-1 h-2 rounded-full overflow-hidden" style="background: #1e293b;">
+						<div
+							class="h-full rounded-full transition-all"
+							style="width: {(run.confidence_score * 100).toFixed(0)}%; background: {run.confidence_score >= 0.8 ? '#34d399' : run.confidence_score >= 0.5 ? '#fbbf24' : '#f43f5e'};"
+						></div>
+					</div>
+					<span class="text-lg font-bold font-mono" style="color: {run.confidence_score >= 0.8 ? '#34d399' : run.confidence_score >= 0.5 ? '#fbbf24' : '#f43f5e'};">
+						{(run.confidence_score * 100).toFixed(0)}%
+					</span>
+				</div>
+
+				{#if run.metadata?.confidence_per_file && Object.keys(run.metadata.confidence_per_file).length > 0}
+					<div class="space-y-2">
+						<p class="text-xs font-medium uppercase tracking-wider" style="color: #64748b;">Per-File Confidence</p>
+						{#each Object.entries(run.metadata.confidence_per_file) as [file, score]}
+							<div class="flex items-center gap-3">
+								<span class="text-xs font-mono truncate flex-1" style="color: #94a3b8;" title={file}>
+									{file}
+								</span>
+								<div class="w-24 h-1.5 rounded-full overflow-hidden" style="background: #1e293b;">
+									<div
+										class="h-full rounded-full"
+										style="width: {((score as number) * 100).toFixed(0)}%; background: {(score as number) >= 0.8 ? '#34d399' : (score as number) >= 0.5 ? '#fbbf24' : '#f43f5e'};"
+									></div>
+								</div>
+								<span class="text-xs font-mono w-10 text-right" style="color: {(score as number) >= 0.8 ? '#34d399' : (score as number) >= 0.5 ? '#fbbf24' : '#f43f5e'};">
+									{((score as number) * 100).toFixed(0)}%
+								</span>
+							</div>
+						{/each}
+					</div>
+				{/if}
+			</div>
+		{/if}
+
 		<!-- Issues by Category -->
 		{#if run.issues && run.issues.length > 0}
 			{#each [...groupedIssues] as [category, issues]}

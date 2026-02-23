@@ -66,9 +66,10 @@ type analyzeConfidenceRequest struct {
 }
 
 type analyzeSpecRequest struct {
-	Diff     string `json:"diff"`
-	Spec     string `json:"spec"`
-	Language string `json:"language,omitempty"`
+	Diff      string `json:"diff"`
+	Spec      string `json:"spec"`
+	Language  string `json:"language,omitempty"`
+	SpecTitle string `json:"spec_title,omitempty"`
 }
 
 type analyzeResponse struct {
@@ -124,7 +125,7 @@ func (c *Client) AnalyzeSpec(ctx context.Context, spec string, diffSummary strin
 }
 
 // AnalyzeSpecStructured sends a structured per-requirement spec comparison request.
-func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, diffSummary string) (*llm.StructuredSpecResult, error) {
+func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, diffSummary string, specTitle ...string) (*llm.StructuredSpecResult, error) {
 	if strings.TrimSpace(specYAML) == "" {
 		return nil, fmt.Errorf("spec is empty")
 	}
@@ -132,11 +133,16 @@ func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, dif
 		return nil, fmt.Errorf("diff is empty")
 	}
 
-	var resp analyzeResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/analyze/spec/structured", analyzeSpecRequest{
+	req := analyzeSpecRequest{
 		Diff: diffSummary,
 		Spec: specYAML,
-	}, &resp); err != nil {
+	}
+	if len(specTitle) > 0 {
+		req.SpecTitle = specTitle[0]
+	}
+
+	var resp analyzeResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/analyze/spec/structured", req, &resp); err != nil {
 		return nil, err
 	}
 
@@ -149,15 +155,16 @@ func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, dif
 
 // RunUpload contains the data sent to the Fault Cloud when uploading an audit run.
 type RunUpload struct {
-	RepoURL         string                `json:"repo_url"`
-	Branch          string                `json:"branch"`
-	CommitSHA       string                `json:"commit_sha"`
-	CommitRange     string                `json:"commit_range"`
-	Duration        time.Duration         `json:"duration_ms"`
-	FilesChanged    int                   `json:"files_changed"`
-	Issues          []analyzer.Issue      `json:"issues"`
-	ConfidenceScore *analyzer.Confidence  `json:"confidence_score,omitempty"`
-	Summary         string                `json:"summary"`
+	RepoURL         string           `json:"repo_url"`
+	Branch          string           `json:"branch"`
+	CommitSHA       string           `json:"commit_sha"`
+	CommitRange     string           `json:"commit_range"`
+	Duration        time.Duration    `json:"duration_ms"`
+	FilesChanged    int              `json:"files_changed"`
+	Issues          []analyzer.Issue `json:"issues"`
+	ConfidenceScore *float64         `json:"confidence_score,omitempty"`
+	Summary         string           `json:"summary"`
+	Metadata        map[string]any   `json:"metadata,omitempty"`
 }
 
 // UploadRun sends audit results to the Fault Cloud API.

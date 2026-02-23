@@ -211,6 +211,7 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 		result.Confidence = &analyzer.Confidence{
 			Score:   confidenceResult.Overall,
 			Factors: []string{confidenceResult.Reasoning},
+			PerFile: confidenceResult.PerFile,
 		}
 	}
 
@@ -229,7 +230,8 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 
 		// Try structured spec (YAML with requirements) first
 		if _, parseErr := spec.ParseSpec(specContent); parseErr == nil {
-			structuredResult, err := client.AnalyzeSpecStructured(ctx, string(specContent), diffSummary)
+			specTitle := filepath.Base(specPath)
+			structuredResult, err := client.AnalyzeSpecStructured(ctx, string(specContent), diffSummary, specTitle)
 			if err != nil {
 				log.Printf("warning: LLM structured spec comparison failed: %v", err)
 				return
@@ -1301,17 +1303,27 @@ func uploadAuditRun(cfg *config.Config, result *analyzer.AnalysisResult, repo *g
 	headSHA, _ := repo.HeadSHA()
 	remoteURL := repo.RemoteURL()
 
-	if err := client.UploadRun(ctx, &cloudapi.RunUpload{
-		RepoURL:         remoteURL,
-		Branch:          result.Branch,
-		CommitSHA:       headSHA,
-		CommitRange:     result.CommitRange,
-		Duration:        result.Duration,
-		FilesChanged:    result.FilesChanged,
-		Issues:          result.Issues,
-		ConfidenceScore: result.Confidence,
-		Summary:         result.Summary,
-	}); err != nil {
+	upload := &cloudapi.RunUpload{
+		RepoURL:      remoteURL,
+		Branch:       result.Branch,
+		CommitSHA:    headSHA,
+		CommitRange:  result.CommitRange,
+		Duration:     result.Duration,
+		FilesChanged: result.FilesChanged,
+		Issues:       result.Issues,
+		Summary:      result.Summary,
+	}
+
+	if result.Confidence != nil {
+		score := result.Confidence.Score
+		upload.ConfidenceScore = &score
+		upload.Metadata = map[string]any{
+			"confidence_factors":  result.Confidence.Factors,
+			"confidence_per_file": result.Confidence.PerFile,
+		}
+	}
+
+	if err := client.UploadRun(ctx, upload); err != nil {
 		log.Printf("warning: failed to upload audit run: %v", err)
 	} else {
 		fmt.Println("Audit results uploaded to Fault Cloud")
