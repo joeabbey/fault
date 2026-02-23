@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/joeabbey/fault/pkg/analyzer"
 	"github.com/joeabbey/fault/pkg/llm"
 )
 
@@ -120,6 +121,48 @@ func (c *Client) AnalyzeSpec(ctx context.Context, spec string, diffSummary strin
 		return nil, fmt.Errorf("decoding spec result: %w", err)
 	}
 	return &result, nil
+}
+
+// AnalyzeSpecStructured sends a structured per-requirement spec comparison request.
+func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, diffSummary string) (*llm.StructuredSpecResult, error) {
+	if strings.TrimSpace(specYAML) == "" {
+		return nil, fmt.Errorf("spec is empty")
+	}
+	if strings.TrimSpace(diffSummary) == "" {
+		return nil, fmt.Errorf("diff is empty")
+	}
+
+	var resp analyzeResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/analyze/spec/structured", analyzeSpecRequest{
+		Diff: diffSummary,
+		Spec: specYAML,
+	}, &resp); err != nil {
+		return nil, err
+	}
+
+	var result llm.StructuredSpecResult
+	if err := json.Unmarshal(resp.Result, &result); err != nil {
+		return nil, fmt.Errorf("decoding structured spec result: %w", err)
+	}
+	return &result, nil
+}
+
+// RunUpload contains the data sent to the Fault Cloud when uploading an audit run.
+type RunUpload struct {
+	RepoURL         string                `json:"repo_url"`
+	Branch          string                `json:"branch"`
+	CommitSHA       string                `json:"commit_sha"`
+	CommitRange     string                `json:"commit_range"`
+	Duration        time.Duration         `json:"duration_ms"`
+	FilesChanged    int                   `json:"files_changed"`
+	Issues          []analyzer.Issue      `json:"issues"`
+	ConfidenceScore *analyzer.Confidence  `json:"confidence_score,omitempty"`
+	Summary         string                `json:"summary"`
+}
+
+// UploadRun sends audit results to the Fault Cloud API.
+func (c *Client) UploadRun(ctx context.Context, run *RunUpload) error {
+	return c.doJSON(ctx, http.MethodPost, "/api/v1/runs", run, nil)
 }
 
 func (c *Client) doJSON(ctx context.Context, method string, path string, body any, out any) error {

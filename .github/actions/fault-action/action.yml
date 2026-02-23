@@ -9,8 +9,12 @@ inputs:
     description: 'Fault version to install (default: latest)'
     required: false
     default: 'latest'
+  mode:
+    description: 'Mode to run: check (pre-merge) or audit (post-merge)'
+    required: false
+    default: 'check'
   args:
-    description: 'Additional arguments to pass to fault check'
+    description: 'Additional arguments to pass to fault'
     required: false
     default: ''
   fault-api-key:
@@ -34,26 +38,30 @@ runs:
         curl -sSf https://fault.jabbey.io/install.sh | sh
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-    - name: Run Fault Check
+    - name: Run Fault
       shell: bash
       env:
         FAULT_API_KEY: ${{ inputs.fault-api-key }}
         GITHUB_TOKEN: ${{ inputs.github-token }}
       run: |
-        # Determine base branch for comparison
-        if [ -n "$GITHUB_BASE_REF" ]; then
-          BASE_REF="$GITHUB_BASE_REF"
+        if [ "${{ inputs.mode }}" = "audit" ]; then
+          # Post-merge audit mode
+          fault audit --commits 1 --format sarif --upload ${{ inputs.args }} || true
         else
-          BASE_REF="main"
-        fi
+          # Pre-merge check mode (default)
+          if [ -n "$GITHUB_BASE_REF" ]; then
+            BASE_REF="$GITHUB_BASE_REF"
+          else
+            BASE_REF="main"
+          fi
 
-        # Use github format for PR review comments, sarif otherwise
-        FORMAT="sarif"
-        if [ "${{ inputs.review-comments }}" = "true" ] && [ -n "$GITHUB_EVENT_PATH" ]; then
-          FORMAT="github"
-        fi
+          FORMAT="sarif"
+          if [ "${{ inputs.review-comments }}" = "true" ] && [ -n "$GITHUB_EVENT_PATH" ]; then
+            FORMAT="github"
+          fi
 
-        fault check --branch "$BASE_REF" --format "$FORMAT" ${{ inputs.args }} || true
+          fault check --branch "$BASE_REF" --format "$FORMAT" ${{ inputs.args }} || true
+        fi
 
     - name: Upload SARIF
       uses: github/codeql-action/upload-sarif@v3

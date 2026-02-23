@@ -113,3 +113,115 @@ func validateSpecResult(result SpecResult) SpecResult {
 
 	return result
 }
+
+// StructuredSpecResult holds per-requirement analysis from the LLM.
+type StructuredSpecResult struct {
+	Requirements []RequirementResult `json:"requirements"`
+	OverallScore float64             `json:"overall_score"`
+	Summary      string              `json:"summary"`
+}
+
+// RequirementResult is the LLM's assessment of a single requirement.
+type RequirementResult struct {
+	ID         string  `json:"id"`
+	Status     string  `json:"status"`     // "implemented", "partial", "missing"
+	Evidence   string  `json:"evidence"`
+	Confidence float64 `json:"confidence"` // 0.0-1.0
+}
+
+// CompareSpecStructured uses the LLM to do per-requirement spec validation.
+func CompareSpecStructured(ctx context.Context, client *Client, specYAML string, diffSummary string) (*StructuredSpecResult, error) {
+	if client == nil {
+		return nil, fmt.Errorf("LLM client is nil")
+	}
+
+	if specYAML == "" {
+		return nil, fmt.Errorf("spec content is empty")
+	}
+
+	if diffSummary == "" {
+		return &StructuredSpecResult{
+			Requirements: make([]RequirementResult, 0),
+			OverallScore: 0.0,
+			Summary:      "No code changes to evaluate.",
+		}, nil
+	}
+
+	userPrompt := buildStructuredSpecPrompt(specYAML, diffSummary)
+
+	systemPrompt := LoadPrompt("spec_structured")
+	if systemPrompt == "" {
+		return nil, fmt.Errorf("failed to load spec_structured prompt template")
+	}
+
+	var result StructuredSpecResult
+	if err := client.ExtractJSON(ctx, systemPrompt, userPrompt, &result); err != nil {
+		return nil, fmt.Errorf("LLM structured spec comparison failed: %w", err)
+	}
+
+	result = validateStructuredSpecResult(result)
+	return &result, nil
+}
+
+// StructuredSpecResultToIssues converts per-requirement results into analyzer Issues.
+func StructuredSpecResultToIssues(result *StructuredSpecResult) []analyzer.Issue {
+	issues := make([]analyzer.Issue, 0)
+
+	for _, req := range result.Requirements {
+		switch req.Status {
+		case "missing":
+			issues = append(issues, analyzer.Issue{
+				ID:         fmt.Sprintf("spec-llm-missing-%s", req.ID),
+				Severity:   analyzer.SeverityWarning,
+				Category:   "spec",
+				Message:    fmt.Sprintf("Requirement %s not implemented: %s", req.ID, req.Evidence),
+				Suggestion: fmt.Sprintf("Implement requirement %s (confidence: %.0f%%)", req.ID, req.Confidence*100),
+			})
+		case "partial":
+			issues = append(issues, analyzer.Issue{
+				ID:         fmt.Sprintf("spec-llm-partial-%s", req.ID),
+				Severity:   analyzer.SeverityInfo,
+				Category:   "spec",
+				Message:    fmt.Sprintf("Requirement %s partially implemented: %s", req.ID, req.Evidence),
+				Suggestion: fmt.Sprintf("Complete requirement %s (confidence: %.0f%%)", req.ID, req.Confidence*100),
+			})
+		}
+	}
+
+	return issues
+}
+
+// buildStructuredSpecPrompt constructs the user prompt for structured spec comparison.
+func buildStructuredSpecPrompt(specYAML string, diffSummary string) string {
+	var b strings.Builder
+
+	b.WriteString("## Specification (YAML)\n\n```yaml\n")
+	b.WriteString(specYAML)
+	b.WriteString("\n```\n\n")
+
+	b.WriteString("## Code Changes (Diff)\n\n")
+	b.WriteString(diffSummary)
+
+	return b.String()
+}
+
+// validateStructuredSpecResult ensures the result has valid data.
+func validateStructuredSpecResult(result StructuredSpecResult) StructuredSpecResult {
+	if result.Requirements == nil {
+		result.Requirements = make([]RequirementResult, 0)
+	}
+
+	for i := range result.Requirements {
+		result.Requirements[i].Confidence = clampScore(result.Requirements[i].Confidence)
+		switch result.Requirements[i].Status {
+		case "implemented", "partial", "missing":
+			// valid
+		default:
+			result.Requirements[i].Status = "missing"
+		}
+	}
+
+	result.OverallScore = clampScore(result.OverallScore)
+
+	return result
+}

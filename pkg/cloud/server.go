@@ -187,8 +187,18 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/v1/signup", s.handlers.HandleSignup)
 	s.mux.HandleFunc("POST /api/v1/analyze/confidence", s.handlers.HandleAnalyzeConfidence)
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
+	s.mux.HandleFunc("POST /api/v1/analyze/spec/structured", s.handlers.HandleAnalyzeSpecStructured)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
 	s.mux.HandleFunc("POST /api/v1/api-keys/rotate", s.handlers.HandleRotateKey)
+
+	// Runs routes
+	s.mux.HandleFunc("POST /api/v1/runs", s.handlers.HandleCreateRun)
+	s.mux.HandleFunc("GET /api/v1/runs", s.handlers.HandleListRuns)
+	s.mux.HandleFunc("GET /api/v1/runs/stats", s.handlers.HandleGetRunStats)
+	s.mux.HandleFunc("GET /api/v1/runs/{id}", s.handlers.HandleGetRun)
+
+	// Spec routes
+	s.mux.HandleFunc("GET /api/v1/spec/results", s.handlers.HandleListSpecResults)
 
 	// Auth routes (only if Google OAuth is configured)
 	if s.authHandlers != nil {

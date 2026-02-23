@@ -39,6 +39,7 @@ type AnalyzersConfig struct {
 	Resource      bool `yaml:"resource" json:"resource"`
 	Migration     bool `yaml:"migration" json:"migration"`
 	DocDrift      bool `yaml:"docdrift" json:"docdrift"`
+	Spec          bool `yaml:"spec" json:"spec"`
 }
 
 // LLMConfig controls LLM-assisted analysis.
@@ -85,6 +86,7 @@ func DefaultConfig() *Config {
 			Resource:      true,
 			Migration:     true,
 			DocDrift:      true,
+			Spec:          true,
 		},
 		LLM: LLMConfig{
 			Enabled:  false,

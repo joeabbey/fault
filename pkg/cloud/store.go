@@ -22,6 +22,12 @@ var billingSQL string
 //go:embed migrations/000003_google_auth.up.sql
 var googleAuthSQL string
 
+//go:embed migrations/000004_runs.up.sql
+var runsSQL string
+
+//go:embed migrations/000005_spec_results.up.sql
+var specResultsSQL string
+
 // User represents an authenticated API user.
 type User struct {
 	ID               string    `json:"id"`
@@ -84,6 +90,12 @@ type Store interface {
 	GetUsage(ctx context.Context, userID string, month string) (*MonthlyUsage, error)
 	UpsertSubscription(ctx context.Context, sub *Subscription) error
 	GetSubscriptionByUserID(ctx context.Context, userID string) (*Subscription, error)
+	CreateRun(ctx context.Context, run *Run) error
+	GetRun(ctx context.Context, userID, runID string) (*Run, error)
+	ListRuns(ctx context.Context, userID string, limit, offset int) ([]Run, error)
+	GetRunStats(ctx context.Context, userID string) (*RunStats, error)
+	SaveSpecResult(ctx context.Context, result *SpecResult) error
+	GetSpecResults(ctx context.Context, userID string, limit, offset int) ([]SpecResult, error)
 	Close()
 }
 
@@ -136,6 +148,14 @@ func (s *PostgresStore) Migrate(ctx context.Context) error {
 	_, err = s.pool.Exec(ctx, googleAuthSQL)
 	if err != nil {
 		return fmt.Errorf("running google auth migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, runsSQL)
+	if err != nil {
+		return fmt.Errorf("running runs migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, specResultsSQL)
+	if err != nil {
+		return fmt.Errorf("running spec_results migration: %w", err)
 	}
 	return nil
 }

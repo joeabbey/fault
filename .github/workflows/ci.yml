@@ -51,15 +51,18 @@ jobs:
           GONOSUMCHECK: github.com/joeabbey/magma
         run: go build -o fault-cloud ./cmd/fault-cloud
 
-      - name: Run Fault on itself
+      - name: Run Fault check (PRs)
+        if: github.event_name == 'pull_request'
         env:
           GONOSUMCHECK: github.com/joeabbey/magma
-        run: |
-          if [ -n "$GITHUB_BASE_REF" ]; then
-            ./fault check --branch "$GITHUB_BASE_REF" --format github
-          else
-            ./fault check --format sarif || true
-          fi
+        run: ./fault check --branch "$GITHUB_BASE_REF" --format github
+
+      - name: Run Fault audit (push to main)
+        if: github.event_name == 'push'
+        env:
+          GONOSUMCHECK: github.com/joeabbey/magma
+          FAULT_API_KEY: ${{ secrets.FAULT_API_KEY }}
+        run: ./fault audit --commits 1 --format sarif --upload || true
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3

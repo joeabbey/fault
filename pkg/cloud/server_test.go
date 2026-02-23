@@ -167,6 +167,30 @@ func (m *mockStore) UpdateUserProfile(_ context.Context, userID, name, pictureUR
 	return nil
 }
 
+func (m *mockStore) CreateRun(_ context.Context, run *Run) error {
+	return nil
+}
+
+func (m *mockStore) GetRun(_ context.Context, userID, runID string) (*Run, error) {
+	return nil, fmt.Errorf("not found")
+}
+
+func (m *mockStore) ListRuns(_ context.Context, userID string, limit, offset int) ([]Run, error) {
+	return make([]Run, 0), nil
+}
+
+func (m *mockStore) GetRunStats(_ context.Context, userID string) (*RunStats, error) {
+	return &RunStats{}, nil
+}
+
+func (m *mockStore) SaveSpecResult(_ context.Context, result *SpecResult) error {
+	return nil
+}
+
+func (m *mockStore) GetSpecResults(_ context.Context, userID string, limit, offset int) ([]SpecResult, error) {
+	return make([]SpecResult, 0), nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {

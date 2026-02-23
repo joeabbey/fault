@@ -266,6 +266,52 @@ func (h *Handlers) HandleAnalyzeSpec(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// HandleAnalyzeSpecStructured proxies a structured per-requirement spec comparison to the Anthropic API.
+func (h *Handlers) HandleAnalyzeSpecStructured(w http.ResponseWriter, r *http.Request) {
+	user := UserFromContext(r.Context())
+	if user == nil {
+		http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
+
+	var req AnalyzeSpecRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, `{"error":"invalid request body"}`, http.StatusBadRequest)
+		return
+	}
+
+	if req.Diff == "" || req.Spec == "" {
+		http.Error(w, `{"error":"diff and spec are required"}`, http.StatusBadRequest)
+		return
+	}
+
+	systemPrompt := llm.LoadPrompt("spec_structured")
+	if systemPrompt == "" {
+		h.logger.Error("missing spec_structured prompt template")
+		http.Error(w, `{"error":"server misconfigured"}`, http.StatusInternalServerError)
+		return
+	}
+
+	userPrompt := buildSpecUserPrompt(req.Spec, req.Diff, req.Language)
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
+	if err != nil {
+		h.logger.Error("anthropic API call failed", "error", err)
+		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
+		return
+	}
+
+	// Track usage
+	if err := h.store.IncrementUsage(r.Context(), user.ID, usage); err != nil {
+		h.logger.Error("failed to track usage", "error", err, "user_id", user.ID)
+	}
+
+	writeJSON(w, http.StatusOK, AnalyzeResponse{
+		Result:      result,
+		TokensInput: usage.TokensInput,
+		TokensOut:   usage.TokensOutput,
+	})
+}
+
 // HandleUsage returns the current month's usage for the authenticated user.
 func (h *Handlers) HandleUsage(w http.ResponseWriter, r *http.Request) {
 	user := UserFromContext(r.Context())

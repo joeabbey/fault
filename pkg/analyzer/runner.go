@@ -133,6 +133,8 @@ func (r *Runner) isAnalyzerEnabled(name string) bool {
 		return r.config.Analyzers.Migration
 	case "docdrift":
 		return r.config.Analyzers.DocDrift
+	case "spec":
+		return r.config.Analyzers.Spec
 	default:
 		// Unknown analyzers are enabled by default
 		return true

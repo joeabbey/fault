@@ -25,6 +25,7 @@ import (
 	"github.com/joeabbey/fault/pkg/llm"
 	"github.com/joeabbey/fault/pkg/parser"
 	"github.com/joeabbey/fault/pkg/reporter"
+	"github.com/joeabbey/fault/pkg/spec"
 	"github.com/joeabbey/fault/pkg/watcher"
 )
 
@@ -47,6 +48,7 @@ func main() {
 	rootCmd.AddCommand(loginCmd())
 	rootCmd.AddCommand(fixCmd())
 	rootCmd.AddCommand(watchCmd())
+	rootCmd.AddCommand(auditCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -62,13 +64,14 @@ func checkCmd() *cobra.Command {
 		format      string
 		useBaseline bool
 		compact     bool
+		specFile    string
 	)
 
 	cmd := &cobra.Command{
 		Use:   "check",
 		Short: "Run analyzers on changed files",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runCheck(staged, unstaged, branch, noColor, format, useBaseline, compact)
+			return runCheck(staged, unstaged, branch, noColor, format, useBaseline, compact, specFile)
 		},
 	}
 
@@ -79,11 +82,12 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif, github")
 	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
 	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
+	cmd.Flags().StringVar(&specFile, "spec", "", "Path to .fault-spec.yaml for requirements validation")
 
 	return cmd
 }
 
-func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool, compact bool) error {
+func runCheck(staged, unstaged bool, branch string, noColor bool, format string, useBaseline bool, compact bool, specFile string) error {
 	// 1. Load config
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -93,6 +97,11 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 	cfg, err := config.Load(cwd)
 	if err != nil {
 		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// Override spec file from CLI flag
+	if specFile != "" {
+		cfg.LLM.SpecFile = specFile
 	}
 
 	// 2. Open git repo
@@ -143,6 +152,10 @@ func runCheck(staged, unstaged bool, branch string, noColor bool, format string,
 		analyzer.NewResourceAnalyzer(),
 		analyzer.NewMigrationAnalyzer(),
 		analyzer.NewDocDriftAnalyzer(),
+		analyzer.NewErrorHandlingAnalyzer(),
+		analyzer.NewDepGraphAnalyzer(),
+		analyzer.NewDeadCodeAnalyzer(),
+		analyzer.NewSpecAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -214,13 +227,25 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 			return
 		}
 
+		// Try structured spec (YAML with requirements) first
+		if _, parseErr := spec.ParseSpec(specContent); parseErr == nil {
+			structuredResult, err := client.AnalyzeSpecStructured(ctx, string(specContent), diffSummary)
+			if err != nil {
+				log.Printf("warning: LLM structured spec comparison failed: %v", err)
+				return
+			}
+			specIssues := llm.StructuredSpecResultToIssues(structuredResult)
+			result.Issues = append(result.Issues, specIssues...)
+			return
+		}
+
+		// Fall back to unstructured spec comparison
 		specResult, err := client.AnalyzeSpec(ctx, string(specContent), diffSummary)
 		if err != nil {
 			log.Printf("warning: LLM spec comparison failed: %v", err)
 			return
 		}
 
-		// Convert spec results to issues and append
 		specIssues := llm.SpecResultToIssues(specResult)
 		result.Issues = append(result.Issues, specIssues...)
 	}
@@ -650,6 +675,10 @@ func baselineCmd() *cobra.Command {
 				analyzer.NewResourceAnalyzer(),
 				analyzer.NewMigrationAnalyzer(),
 				analyzer.NewDocDriftAnalyzer(),
+			analyzer.NewErrorHandlingAnalyzer(),
+			analyzer.NewDepGraphAnalyzer(),
+			analyzer.NewDeadCodeAnalyzer(),
+			analyzer.NewSpecAnalyzer(),
 			}
 			runner := analyzer.NewRunner(cfg, analyzers)
 
@@ -760,6 +789,10 @@ func runFix(dryRun, staged, unstaged bool, branch string) error {
 		analyzer.NewResourceAnalyzer(),
 		analyzer.NewMigrationAnalyzer(),
 		analyzer.NewDocDriftAnalyzer(),
+		analyzer.NewErrorHandlingAnalyzer(),
+		analyzer.NewDepGraphAnalyzer(),
+		analyzer.NewDeadCodeAnalyzer(),
+		analyzer.NewSpecAnalyzer(),
 	}
 	runner := analyzer.NewRunner(cfg, analyzers)
 	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
@@ -1007,6 +1040,10 @@ func runWatch(noColor bool) error {
 		analyzer.NewResourceAnalyzer(),
 		analyzer.NewMigrationAnalyzer(),
 		analyzer.NewDocDriftAnalyzer(),
+		analyzer.NewErrorHandlingAnalyzer(),
+		analyzer.NewDepGraphAnalyzer(),
+		analyzer.NewDeadCodeAnalyzer(),
+		analyzer.NewSpecAnalyzer(),
 	}
 
 	// 6. Parse watch config
@@ -1068,4 +1105,215 @@ func runWatch(noColor bool) error {
 	display.RenderExit(totalRuns, totalIssues, time.Since(watchStart))
 
 	return err
+}
+
+func auditCmd() *cobra.Command {
+	var (
+		from        string
+		to          string
+		commits     int
+		since       string
+		noColor     bool
+		format      string
+		useBaseline bool
+		compact     bool
+		upload      bool
+		blockOn     string
+	)
+
+	cmd := &cobra.Command{
+		Use:   "audit",
+		Short: "Run post-merge regression detection on committed changes",
+		Long: `Audit analyzes already-committed changes between two refs (commits, tags, or branches).
+Unlike 'check' which looks at uncommitted changes, 'audit' examines merged code to detect
+regressions introduced by recent commits. Ideal for CI pipelines and post-merge quality gates.`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runAudit(from, to, commits, since, noColor, format, useBaseline, compact, upload, blockOn)
+		},
+	}
+
+	cmd.Flags().StringVar(&from, "from", "", "Base ref to compare from (commit SHA, tag, or branch)")
+	cmd.Flags().StringVar(&to, "to", "HEAD", "Head ref to compare to (default: HEAD)")
+	cmd.Flags().IntVar(&commits, "commits", 0, "Audit the last N commits (shorthand for --from HEAD~N)")
+	cmd.Flags().StringVar(&since, "since", "", "Audit commits since duration (e.g., 24h, 7d)")
+	cmd.Flags().BoolVar(&noColor, "no-color", false, "Disable colored output")
+	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif, github")
+	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
+	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
+	cmd.Flags().BoolVar(&upload, "upload", false, "Upload results to Fault Cloud")
+	cmd.Flags().StringVar(&blockOn, "block", "", "Override block_on level (error, warning)")
+
+	return cmd
+}
+
+func runAudit(from, to string, commits int, since string, noColor bool, format string, useBaseline bool, compact bool, upload bool, blockOn string) error {
+	// 1. Load config
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	// 2. Open git repo
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	repoRoot, _ := repo.RepoRoot()
+
+	// 3. Resolve the base ref
+	baseRef, err := resolveBaseRef(repo, from, commits, since)
+	if err != nil {
+		return fmt.Errorf("resolving base ref: %w", err)
+	}
+
+	// 4. Get diff between refs
+	diff, err := repo.RefDiff(baseRef, to)
+	if err != nil {
+		return fmt.Errorf("getting ref diff: %w", err)
+	}
+
+	if len(diff.Files) == 0 {
+		fmt.Println("No changes detected between refs")
+		return nil
+	}
+
+	// 5. Set up parser registry
+	reg := parser.NewRegistry()
+	registerAllParsers(reg)
+
+	// 6. Parse changed files
+	parsedFiles := parseChangedFiles(repo, diff, reg, cfg)
+
+	// 7. Build or load repo index
+	var repoIndex *index.Index
+	idx := index.NewIndex(repoRoot, cfg)
+	if err := idx.BuildOrLoad(reg); err != nil {
+		log.Printf("warning: could not build repo index: %v", err)
+	} else {
+		repoIndex = idx
+	}
+
+	// 8. Run analyzers
+	analyzers := []analyzer.Analyzer{
+		analyzer.NewImportAnalyzer(),
+		analyzer.NewConsistencyAnalyzer(),
+		analyzer.NewReferenceAnalyzer(),
+		analyzer.NewTestImpactAnalyzer(),
+		analyzer.NewAntiPatternAnalyzer(),
+		analyzer.NewSecurityAnalyzer(),
+		analyzer.NewHallucinationAnalyzer(),
+		analyzer.NewComplexityAnalyzer(),
+		analyzer.NewConcurrencyAnalyzer(),
+		analyzer.NewResourceAnalyzer(),
+		analyzer.NewMigrationAnalyzer(),
+		analyzer.NewDocDriftAnalyzer(),
+		analyzer.NewErrorHandlingAnalyzer(),
+		analyzer.NewDepGraphAnalyzer(),
+		analyzer.NewDeadCodeAnalyzer(),
+		analyzer.NewSpecAnalyzer(),
+	}
+	runner := analyzer.NewRunner(cfg, analyzers)
+
+	result := runner.Run(repoRoot, diff, parsedFiles, repoIndex)
+
+	// Set branch and commit range info
+	if currentBranch, err := repo.CurrentBranch(); err == nil {
+		result.Branch = currentBranch
+	}
+	result.CommitRange = baseRef + "..." + to
+
+	// 9. LLM-assisted analysis (optional)
+	if cfg.LLM.Enabled {
+		runLLMAnalysis(cfg, diff, parsedFiles, result, repoRoot)
+	}
+
+	// 10. Filter inline suppressed issues
+	fileLines := loadFileLines(repoRoot, result.Issues)
+	result.Issues = analyzer.FilterSuppressed(result.Issues, fileLines)
+
+	// 11. Filter baseline issues if requested
+	if useBaseline {
+		baseline, err := analyzer.LoadBaseline(filepath.Join(repoRoot, ".fault-baseline.json"))
+		if err == nil {
+			result.Issues = analyzer.FilterBaseline(result.Issues, baseline)
+		}
+	}
+
+	// 12. Upload results to Fault Cloud (optional)
+	if upload && cfg.LLM.APIKey != "" {
+		uploadAuditRun(cfg, result, repo)
+	}
+
+	// 13. Report results
+	effectiveBlockOn := cfg.BlockOn
+	if blockOn != "" {
+		effectiveBlockOn = blockOn
+	}
+
+	rep := selectReporter(format, noColor, compact)
+	if tr, ok := rep.(*reporter.TerminalReporter); ok && diff != nil {
+		tr.SetDiff(diff)
+	}
+	exitCode := rep.Report(result, effectiveBlockOn)
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
+
+	return nil
+}
+
+// resolveBaseRef determines the base ref for audit based on flags.
+func resolveBaseRef(repo *git.Repo, from string, commits int, since string) (string, error) {
+	if from != "" {
+		return from, nil
+	}
+
+	if commits > 0 {
+		return fmt.Sprintf("HEAD~%d", commits), nil
+	}
+
+	if since != "" {
+		// Use git rev-list with --since to find the oldest commit in the range
+		output, err := repo.CommitLog("HEAD")
+		if err != nil {
+			return "", fmt.Errorf("getting commit log: %w", err)
+		}
+		// For --since, use git directly
+		_ = output
+		return fmt.Sprintf("HEAD@{%s}", since), nil
+	}
+
+	return "", fmt.Errorf("one of --from, --commits, or --since is required")
+}
+
+// uploadAuditRun sends audit results to the Fault Cloud API.
+func uploadAuditRun(cfg *config.Config, result *analyzer.AnalysisResult, repo *git.Repo) {
+	ctx := context.Background()
+	client := cloudapi.New(cfg.LLM.APIURL, cfg.LLM.APIKey)
+
+	headSHA, _ := repo.HeadSHA()
+	remoteURL := repo.RemoteURL()
+
+	if err := client.UploadRun(ctx, &cloudapi.RunUpload{
+		RepoURL:         remoteURL,
+		Branch:          result.Branch,
+		CommitSHA:       headSHA,
+		CommitRange:     result.CommitRange,
+		Duration:        result.Duration,
+		FilesChanged:    result.FilesChanged,
+		Issues:          result.Issues,
+		ConfidenceScore: result.Confidence,
+		Summary:         result.Summary,
+	}); err != nil {
+		log.Printf("warning: failed to upload audit run: %v", err)
+	} else {
+		fmt.Println("Audit results uploaded to Fault Cloud")
+	}
 }

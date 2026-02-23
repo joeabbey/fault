@@ -4,7 +4,11 @@ import type {
 	CheckoutResponse,
 	PortalResponse,
 	SubscriptionResponse,
-	ErrorResponse
+	ErrorResponse,
+	ListRunsResponse,
+	ListSpecResultsResponse,
+	Run,
+	RunStats
 } from './types';
 
 const API_BASE = '/api';
@@ -47,6 +51,26 @@ export const api = {
 
 	rotateKey(): Promise<RotateKeyResponse> {
 		return request('/v1/api-keys/rotate', { method: 'POST' });
+	},
+
+	runs: {
+		list(limit = 20, offset = 0): Promise<ListRunsResponse> {
+			return request(`/v1/runs?limit=${limit}&offset=${offset}`);
+		},
+
+		get(id: string): Promise<Run> {
+			return request(`/v1/runs/${id}`);
+		},
+
+		stats(): Promise<RunStats> {
+			return request('/v1/runs/stats');
+		}
+	},
+
+	specs: {
+		results(limit = 20, offset = 0): Promise<ListSpecResultsResponse> {
+			return request(`/v1/spec/results?limit=${limit}&offset=${offset}`);
+		}
 	},
 
 	billing: {
