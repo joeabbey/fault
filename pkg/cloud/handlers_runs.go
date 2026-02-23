@@ -109,6 +109,15 @@ func (h *Handlers) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("run created", "run_id", run.ID, "user_id", user.ID, "repo", req.RepoURL)
 
+	// Trigger webhooks for the org
+	go func() {
+		event := "run.completed"
+		if run.Errors > 0 {
+			event = "run.failed"
+		}
+		h.fireOrgWebhooks(run.OrgID, event, run)
+	}()
+
 	writeJSON(w, http.StatusCreated, CreateRunResponse{
 		ID:        run.ID,
 		CreatedAt: run.CreatedAt,

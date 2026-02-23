@@ -49,6 +49,7 @@ func main() {
 	rootCmd.AddCommand(fixCmd())
 	rootCmd.AddCommand(watchCmd())
 	rootCmd.AddCommand(auditCmd())
+	rootCmd.AddCommand(configCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -1328,4 +1329,65 @@ func uploadAuditRun(cfg *config.Config, result *analyzer.AnalysisResult, repo *g
 	} else {
 		fmt.Println("Audit results uploaded to Fault Cloud")
 	}
+}
+
+func configCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "config",
+		Short: "Manage Fault configuration",
+	}
+	cmd.AddCommand(configPullCmd())
+	return cmd
+}
+
+func configPullCmd() *cobra.Command {
+	var orgSlug string
+
+	cmd := &cobra.Command{
+		Use:   "pull",
+		Short: "Pull shared team config from Fault Cloud",
+		Long:  "Fetches the organization's shared configuration and saves it as .fault.team.yaml. This config is used as a base layer under your local .fault.yaml overrides.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runConfigPull(orgSlug)
+		},
+	}
+
+	cmd.Flags().StringVar(&orgSlug, "org", "", "Organization slug (required)")
+	cmd.MarkFlagRequired("org")
+	return cmd
+}
+
+func runConfigPull(orgSlug string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if cfg.LLM.APIKey == "" {
+		return fmt.Errorf("FAULT_API_KEY is not set")
+	}
+
+	client := cloudapi.New(cfg.LLM.APIURL, cfg.LLM.APIKey)
+	yaml, err := client.PullOrgConfig(context.Background(), orgSlug)
+	if err != nil {
+		return fmt.Errorf("pulling org config: %w", err)
+	}
+
+	if yaml == "" {
+		fmt.Println("No team config found for this organization")
+		return nil
+	}
+
+	teamConfigPath := filepath.Join(cwd, ".fault.team.yaml")
+	if err := os.WriteFile(teamConfigPath, []byte(yaml), 0644); err != nil {
+		return fmt.Errorf("writing team config: %w", err)
+	}
+
+	fmt.Printf("Team config saved to %s\n", teamConfigPath)
+	return nil
 }

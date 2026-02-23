@@ -1,6 +1,7 @@
 package cloud
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"regexp"
@@ -215,6 +216,22 @@ func (h *Handlers) HandleAddOrgMember(w http.ResponseWriter, r *http.Request) {
 
 	h.logger.Info("org member added", "org_id", org.ID, "user_id", targetUser.ID, "role", req.Role)
 
+	// Audit log
+	user := UserFromContext(r.Context())
+	if user != nil {
+		go func() {
+			details, _ := json.Marshal(map[string]interface{}{"email": req.Email, "role": req.Role})
+			_ = h.store.InsertAuditEntry(context.Background(), &AuditEntry{
+				OrgID:        org.ID,
+				UserID:       user.ID,
+				Action:       "member.added",
+				ResourceType: "member",
+				ResourceID:   targetUser.ID,
+				Details:      details,
+			})
+		}()
+	}
+
 	writeJSON(w, http.StatusCreated, map[string]string{"status": "added"})
 }
 
@@ -244,6 +261,22 @@ func (h *Handlers) HandleRemoveOrgMember(w http.ResponseWriter, r *http.Request)
 	}
 
 	h.logger.Info("org member removed", "org_id", org.ID, "user_id", userID)
+
+	// Audit log
+	user := UserFromContext(r.Context())
+	if user != nil {
+		go func() {
+			details, _ := json.Marshal(map[string]interface{}{"removed_user_id": userID})
+			_ = h.store.InsertAuditEntry(context.Background(), &AuditEntry{
+				OrgID:        org.ID,
+				UserID:       user.ID,
+				Action:       "member.removed",
+				ResourceType: "member",
+				ResourceID:   userID,
+				Details:      details,
+			})
+		}()
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"status": "removed"})
 }
@@ -305,4 +338,37 @@ func (h *Handlers) HandleGetOrgRunStats(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, stats)
+}
+
+// ListAuditResponse is returned by the audit log listing endpoint.
+type ListAuditResponse struct {
+	Entries []AuditEntry `json:"entries"`
+	Total   int          `json:"total"`
+	Limit   int          `json:"limit"`
+	Offset  int          `json:"offset"`
+}
+
+// HandleListAuditEntries returns the audit log for the organization.
+func (h *Handlers) HandleListAuditEntries(w http.ResponseWriter, r *http.Request) {
+	org, _ := h.requireOrgMembership(w, r)
+	if org == nil {
+		return
+	}
+
+	limit := parseIntParam(r, "limit", 50)
+	offset := parseIntParam(r, "offset", 0)
+
+	entries, err := h.store.ListAuditEntries(r.Context(), org.ID, limit, offset)
+	if err != nil {
+		h.logger.Error("failed to list audit entries", "error", err, "org_id", org.ID)
+		http.Error(w, `{"error":"failed to list audit entries"}`, http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, ListAuditResponse{
+		Entries: entries,
+		Total:   len(entries),
+		Limit:   limit,
+		Offset:  offset,
+	})
 }

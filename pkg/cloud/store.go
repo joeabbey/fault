@@ -31,6 +31,12 @@ var specResultsSQL string
 //go:embed migrations/000006_organizations.up.sql
 var organizationsSQL string
 
+//go:embed migrations/000007_webhooks.up.sql
+var webhooksSQL string
+
+//go:embed migrations/000008_org_configs.up.sql
+var orgConfigsSQL string
+
 // User represents an authenticated API user.
 type User struct {
 	ID               string    `json:"id"`
@@ -134,6 +140,19 @@ type Store interface {
 	ListOrgRuns(ctx context.Context, orgID string, limit, offset int) ([]Run, error)
 	GetOrgRunStats(ctx context.Context, orgID string) (*RunStats, error)
 
+	// Webhook methods
+	CreateWebhook(ctx context.Context, wh *OrgWebhook) error
+	ListWebhooks(ctx context.Context, orgID string) ([]OrgWebhook, error)
+	DeleteWebhook(ctx context.Context, orgID, webhookID string) error
+
+	// Org config methods
+	GetOrgConfig(ctx context.Context, orgID string) (*OrgConfig, error)
+	SaveOrgConfig(ctx context.Context, cfg *OrgConfig) error
+
+	// Audit log methods
+	InsertAuditEntry(ctx context.Context, entry *AuditEntry) error
+	ListAuditEntries(ctx context.Context, orgID string, limit, offset int) ([]AuditEntry, error)
+
 	Close()
 }
 
@@ -198,6 +217,14 @@ func (s *PostgresStore) Migrate(ctx context.Context) error {
 	_, err = s.pool.Exec(ctx, organizationsSQL)
 	if err != nil {
 		return fmt.Errorf("running organizations migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, webhooksSQL)
+	if err != nil {
+		return fmt.Errorf("running webhooks migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, orgConfigsSQL)
+	if err != nil {
+		return fmt.Errorf("running org configs migration: %w", err)
 	}
 	return nil
 }

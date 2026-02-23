@@ -7,6 +7,10 @@ import type {
 	ErrorResponse,
 	ListRunsResponse,
 	ListSpecResultsResponse,
+	ListAuditResponse,
+	Organization,
+	OrgDetailResponse,
+	OrgMember,
 	Run,
 	RunStats
 } from './types';
@@ -70,6 +74,32 @@ export const api = {
 	specs: {
 		results(limit = 20, offset = 0): Promise<ListSpecResultsResponse> {
 			return request(`/v1/spec/results?limit=${limit}&offset=${offset}`);
+		}
+	},
+
+	orgs: {
+		list(): Promise<Organization[]> {
+			return request('/v1/orgs');
+		},
+
+		get(slug: string): Promise<OrgDetailResponse> {
+			return request(`/v1/orgs/${slug}`);
+		},
+
+		members(slug: string): Promise<OrgMember[]> {
+			return request(`/v1/orgs/${slug}/members`);
+		},
+
+		runs(slug: string, limit = 20, offset = 0): Promise<ListRunsResponse> {
+			return request(`/v1/orgs/${slug}/runs?limit=${limit}&offset=${offset}`);
+		},
+
+		stats(slug: string): Promise<RunStats> {
+			return request(`/v1/orgs/${slug}/runs/stats`);
+		},
+
+		audit(slug: string, limit = 50, offset = 0): Promise<ListAuditResponse> {
+			return request(`/v1/orgs/${slug}/audit?limit=${limit}&offset=${offset}`);
 		}
 	},
 

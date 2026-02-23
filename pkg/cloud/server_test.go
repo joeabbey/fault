@@ -231,6 +231,34 @@ func (m *mockStore) GetOrgRunStats(_ context.Context, orgID string) (*RunStats, 
 	return &RunStats{}, nil
 }
 
+func (m *mockStore) GetOrgConfig(_ context.Context, orgID string) (*OrgConfig, error) {
+	return nil, nil
+}
+
+func (m *mockStore) SaveOrgConfig(_ context.Context, cfg *OrgConfig) error {
+	return nil
+}
+
+func (m *mockStore) CreateWebhook(_ context.Context, wh *OrgWebhook) error {
+	return nil
+}
+
+func (m *mockStore) ListWebhooks(_ context.Context, orgID string) ([]OrgWebhook, error) {
+	return make([]OrgWebhook, 0), nil
+}
+
+func (m *mockStore) DeleteWebhook(_ context.Context, orgID, webhookID string) error {
+	return nil
+}
+
+func (m *mockStore) InsertAuditEntry(_ context.Context, entry *AuditEntry) error {
+	return nil
+}
+
+func (m *mockStore) ListAuditEntries(_ context.Context, orgID string, limit, offset int) ([]AuditEntry, error) {
+	return make([]AuditEntry, 0), nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {

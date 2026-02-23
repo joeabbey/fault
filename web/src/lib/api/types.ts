@@ -111,3 +111,50 @@ export interface ListSpecResultsResponse {
 	limit: number;
 	offset: number;
 }
+
+export interface Organization {
+	id: string;
+	name: string;
+	slug: string;
+	owner_id: string;
+	plan: string;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface OrgMember {
+	id: string;
+	org_id: string;
+	user_id: string;
+	role: string;
+	created_at: string;
+	email?: string;
+	name?: string;
+}
+
+export interface AuditEntry {
+	id: string;
+	org_id: string;
+	user_id: string;
+	action: string;
+	resource_type: string;
+	resource_id: string;
+	details: Record<string, unknown>;
+	created_at: string;
+	user_email?: string;
+}
+
+export interface ListOrgsResponse {
+	organizations: Organization[];
+}
+
+export interface OrgDetailResponse extends Organization {
+	member_count: number;
+}
+
+export interface ListAuditResponse {
+	entries: AuditEntry[];
+	total: number;
+	limit: number;
+	offset: number;
+}

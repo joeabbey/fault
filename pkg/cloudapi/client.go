@@ -173,6 +173,35 @@ func (c *Client) UploadRun(ctx context.Context, run *RunUpload) error {
 	return c.doJSON(ctx, http.MethodPost, "/api/v1/runs", run, nil)
 }
 
+// PullOrgConfig fetches the org's shared config YAML.
+func (c *Client) PullOrgConfig(ctx context.Context, orgSlug string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/orgs/"+orgSlug+"/config/pull", nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("fault cloud error (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response: %w", err)
+	}
+	return string(body), nil
+}
+
 func (c *Client) doJSON(ctx context.Context, method string, path string, body any, out any) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("FAULT_API_KEY is not set")

@@ -205,3 +205,47 @@ func (s *PostgresStore) GetOrgRunStats(ctx context.Context, orgID string) (*RunS
 	}
 	return &stats, nil
 }
+
+// OrgConfig represents an organization's shared configuration.
+type OrgConfig struct {
+	ID         string    `json:"id"`
+	OrgID      string    `json:"org_id"`
+	ConfigYAML string    `json:"config_yaml"`
+	Version    int       `json:"version"`
+	UpdatedBy  string    `json:"updated_by"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+}
+
+func (s *PostgresStore) GetOrgConfig(ctx context.Context, orgID string) (*OrgConfig, error) {
+	var c OrgConfig
+	err := s.pool.QueryRow(ctx,
+		`SELECT id, org_id, config_yaml, version, updated_by, created_at, updated_at
+		 FROM org_configs WHERE org_id = $1`, orgID,
+	).Scan(&c.ID, &c.OrgID, &c.ConfigYAML, &c.Version, &c.UpdatedBy, &c.CreatedAt, &c.UpdatedAt)
+	if err != nil {
+		return nil, nil // not found
+	}
+	return &c, nil
+}
+
+func (s *PostgresStore) SaveOrgConfig(ctx context.Context, cfg *OrgConfig) error {
+	if cfg.ID == "" {
+		cfg.ID = uuid.New().String()
+	}
+	now := time.Now()
+	_, err := s.pool.Exec(ctx,
+		`INSERT INTO org_configs (id, org_id, config_yaml, version, updated_by, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5, $6, $6)
+		 ON CONFLICT (org_id) DO UPDATE SET
+		   config_yaml = EXCLUDED.config_yaml,
+		   version = org_configs.version + 1,
+		   updated_by = EXCLUDED.updated_by,
+		   updated_at = $6`,
+		cfg.ID, cfg.OrgID, cfg.ConfigYAML, cfg.Version, cfg.UpdatedBy, now,
+	)
+	if err != nil {
+		return fmt.Errorf("saving org config: %w", err)
+	}
+	return nil
+}

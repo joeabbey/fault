@@ -209,6 +209,13 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/members", s.handlers.HandleListOrgMembers)
 	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs", s.handlers.HandleListOrgRuns)
 	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs/stats", s.handlers.HandleGetOrgRunStats)
+	s.mux.HandleFunc("POST /api/v1/orgs/{slug}/webhooks", s.handlers.HandleCreateWebhook)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/webhooks", s.handlers.HandleListWebhooks)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/webhooks/{webhookId}", s.handlers.HandleDeleteWebhook)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/audit", s.handlers.HandleListAuditEntries)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config", s.handlers.HandleGetOrgConfig)
+	s.mux.HandleFunc("PUT /api/v1/orgs/{slug}/config", s.handlers.HandleSaveOrgConfig)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config/pull", s.handlers.HandlePullOrgConfig)
 
 	// Auth routes (only if Google OAuth is configured)
 	if s.authHandlers != nil {

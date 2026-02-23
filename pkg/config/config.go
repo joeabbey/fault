@@ -117,7 +117,21 @@ func Load(startDir string) (*Config, error) {
 		return cfg, nil
 	}
 
-	return LoadFromFile(configPath)
+	cfg, err := LoadFromFile(configPath)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load team config as base layer if it exists
+	teamConfigPath := filepath.Join(startDir, ".fault.team.yaml")
+	if _, err := os.Stat(teamConfigPath); err == nil {
+		teamCfg, err := loadTeamConfig(teamConfigPath)
+		if err == nil {
+			cfg = mergeConfigs(teamCfg, cfg) // team is base, local overrides
+		}
+	}
+
+	return cfg, nil
 }
 
 // LoadFromFile loads config from a specific file path.
@@ -275,4 +289,67 @@ func splitPath(path string) []string {
 		dir = d[:len(d)-1] // remove trailing slash
 	}
 	return parts
+}
+
+// loadTeamConfig loads a .fault.team.yaml file.
+func loadTeamConfig(path string) (*Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return nil, err
+	}
+	return &cfg, nil
+}
+
+// mergeConfigs merges a base config with an override config.
+// Override values take precedence when non-zero.
+func mergeConfigs(base, override *Config) *Config {
+	result := *base
+
+	// Override version if set
+	if override.Version != 0 {
+		result.Version = override.Version
+	}
+
+	// Override languages if set
+	if len(override.Languages) > 0 {
+		result.Languages = override.Languages
+	}
+
+	// Override block_on if set
+	if override.BlockOn != "" {
+		result.BlockOn = override.BlockOn
+	}
+
+	// Override analyzers (any explicitly set overrides)
+	result.Analyzers = override.Analyzers
+
+	// Override LLM config
+	if override.LLM.Enabled {
+		result.LLM.Enabled = true
+	}
+	if override.LLM.APIURL != "" {
+		result.LLM.APIURL = override.LLM.APIURL
+	}
+	if override.LLM.SpecFile != "" {
+		result.LLM.SpecFile = override.LLM.SpecFile
+	}
+
+	// Override watch config
+	if override.Watch.PollInterval != "" {
+		result.Watch.PollInterval = override.Watch.PollInterval
+	}
+	if override.Watch.Debounce != "" {
+		result.Watch.Debounce = override.Watch.Debounce
+	}
+
+	// Override ignore patterns if set
+	if len(override.Ignore) > 0 {
+		result.Ignore = override.Ignore
+	}
+
+	return &result
 }
