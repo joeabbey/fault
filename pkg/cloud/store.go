@@ -28,6 +28,9 @@ var runsSQL string
 //go:embed migrations/000005_spec_results.up.sql
 var specResultsSQL string
 
+//go:embed migrations/000006_organizations.up.sql
+var organizationsSQL string
+
 // User represents an authenticated API user.
 type User struct {
 	ID               string    `json:"id"`
@@ -72,6 +75,28 @@ type Usage struct {
 	TokensOutput int64
 }
 
+// Organization represents a team organization.
+type Organization struct {
+	ID        string    `json:"id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
+	OwnerID   string    `json:"owner_id"`
+	Plan      string    `json:"plan"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// OrgMember represents a user's membership in an organization.
+type OrgMember struct {
+	ID        string    `json:"id"`
+	OrgID     string    `json:"org_id"`
+	UserID    string    `json:"user_id"`
+	Role      string    `json:"role"` // owner, admin, member
+	CreatedAt time.Time `json:"created_at"`
+	Email     string    `json:"email,omitempty"` // populated from join
+	Name      string    `json:"name,omitempty"`  // populated from join
+}
+
 // Store defines the interface for cloud data access.
 type Store interface {
 	GetUserByAPIKeyHash(ctx context.Context, hash string) (*User, error)
@@ -96,6 +121,19 @@ type Store interface {
 	GetRunStats(ctx context.Context, userID string) (*RunStats, error)
 	SaveSpecResult(ctx context.Context, result *SpecResult) error
 	GetSpecResults(ctx context.Context, userID string, limit, offset int) ([]SpecResult, error)
+
+	// Organization methods
+	CreateOrganization(ctx context.Context, org *Organization) error
+	GetOrganization(ctx context.Context, orgID string) (*Organization, error)
+	GetOrganizationBySlug(ctx context.Context, slug string) (*Organization, error)
+	ListUserOrganizations(ctx context.Context, userID string) ([]Organization, error)
+	AddOrgMember(ctx context.Context, orgID, userID, role string) error
+	RemoveOrgMember(ctx context.Context, orgID, userID string) error
+	ListOrgMembers(ctx context.Context, orgID string) ([]OrgMember, error)
+	GetOrgMembership(ctx context.Context, orgID, userID string) (*OrgMember, error)
+	ListOrgRuns(ctx context.Context, orgID string, limit, offset int) ([]Run, error)
+	GetOrgRunStats(ctx context.Context, orgID string) (*RunStats, error)
+
 	Close()
 }
 
@@ -156,6 +194,10 @@ func (s *PostgresStore) Migrate(ctx context.Context) error {
 	_, err = s.pool.Exec(ctx, specResultsSQL)
 	if err != nil {
 		return fmt.Errorf("running spec_results migration: %w", err)
+	}
+	_, err = s.pool.Exec(ctx, organizationsSQL)
+	if err != nil {
+		return fmt.Errorf("running organizations migration: %w", err)
 	}
 	return nil
 }

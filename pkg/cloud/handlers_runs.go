@@ -27,6 +27,7 @@ type CreateRunRequest struct {
 	ConfidenceScore *float64        `json:"confidence_score,omitempty"`
 	Summary         string          `json:"summary"`
 	Metadata        json.RawMessage `json:"metadata,omitempty"`
+	OrgID           string          `json:"org_id,omitempty"`
 }
 
 // CreateRunResponse is returned after creating a run.
@@ -67,10 +68,20 @@ func (h *Handlers) HandleCreateRun(w http.ResponseWriter, r *http.Request) {
 		req.Mode = "audit"
 	}
 
+	// Auto-tag with org if user belongs to one
+	orgID := req.OrgID
+	if orgID == "" {
+		orgs, err := h.store.ListUserOrganizations(r.Context(), user.ID)
+		if err == nil && len(orgs) > 0 {
+			orgID = orgs[0].ID
+		}
+	}
+
 	now := time.Now()
 	run := &Run{
 		ID:              uuid.New().String(),
 		UserID:          user.ID,
+		OrgID:           orgID,
 		RepoURL:         req.RepoURL,
 		Branch:          req.Branch,
 		CommitSHA:       req.CommitSHA,

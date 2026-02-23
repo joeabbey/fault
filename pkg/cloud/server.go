@@ -200,6 +200,16 @@ func (s *Server) registerRoutes() {
 	// Spec routes
 	s.mux.HandleFunc("GET /api/v1/spec/results", s.handlers.HandleListSpecResults)
 
+	// Organization routes
+	s.mux.HandleFunc("POST /api/v1/orgs", s.handlers.HandleCreateOrg)
+	s.mux.HandleFunc("GET /api/v1/orgs", s.handlers.HandleListOrgs)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}", s.handlers.HandleGetOrg)
+	s.mux.HandleFunc("POST /api/v1/orgs/{slug}/members", s.handlers.HandleAddOrgMember)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/members/{userId}", s.handlers.HandleRemoveOrgMember)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/members", s.handlers.HandleListOrgMembers)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs", s.handlers.HandleListOrgRuns)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs/stats", s.handlers.HandleGetOrgRunStats)
+
 	// Auth routes (only if Google OAuth is configured)
 	if s.authHandlers != nil {
 		s.mux.HandleFunc("GET /api/auth/google/login", s.authHandlers.HandleGoogleLogin)

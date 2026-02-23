@@ -13,6 +13,7 @@ import (
 type Run struct {
 	ID              string          `json:"id"`
 	UserID          string          `json:"user_id"`
+	OrgID           string          `json:"org_id,omitempty"`
 	RepoURL         string          `json:"repo_url"`
 	Branch          string          `json:"branch"`
 	CommitSHA       string          `json:"commit_sha"`
@@ -60,11 +61,11 @@ func (s *PostgresStore) CreateRun(ctx context.Context, run *Run) error {
 	}
 
 	_, err := s.pool.Exec(ctx,
-		`INSERT INTO runs (id, user_id, repo_url, branch, commit_sha, commit_range, mode,
+		`INSERT INTO runs (id, user_id, org_id, repo_url, branch, commit_sha, commit_range, mode,
 		                    timestamp, duration_ms, files_changed, errors, warnings, infos,
 		                    total_issues, issues, confidence_score, summary, metadata, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-		run.ID, run.UserID, run.RepoURL, run.Branch, run.CommitSHA, run.CommitRange,
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+		run.ID, run.UserID, nullIfEmpty(run.OrgID), run.RepoURL, run.Branch, run.CommitSHA, run.CommitRange,
 		run.Mode, run.Timestamp, run.DurationMs, run.FilesChanged,
 		run.Errors, run.Warnings, run.Infos, run.TotalIssues,
 		run.Issues, run.ConfidenceScore, run.Summary, run.Metadata, run.CreatedAt,
@@ -79,11 +80,11 @@ func (s *PostgresStore) CreateRun(ctx context.Context, run *Run) error {
 func (s *PostgresStore) GetRun(ctx context.Context, userID, runID string) (*Run, error) {
 	var r Run
 	err := s.pool.QueryRow(ctx,
-		`SELECT id, user_id, repo_url, branch, commit_sha, commit_range, mode,
+		`SELECT id, user_id, COALESCE(org_id, ''), repo_url, branch, commit_sha, commit_range, mode,
 		        timestamp, duration_ms, files_changed, errors, warnings, infos,
 		        total_issues, issues, confidence_score, summary, metadata, created_at
 		 FROM runs WHERE id = $1 AND user_id = $2`, runID, userID,
-	).Scan(&r.ID, &r.UserID, &r.RepoURL, &r.Branch, &r.CommitSHA, &r.CommitRange,
+	).Scan(&r.ID, &r.UserID, &r.OrgID, &r.RepoURL, &r.Branch, &r.CommitSHA, &r.CommitRange,
 		&r.Mode, &r.Timestamp, &r.DurationMs, &r.FilesChanged,
 		&r.Errors, &r.Warnings, &r.Infos, &r.TotalIssues,
 		&r.Issues, &r.ConfidenceScore, &r.Summary, &r.Metadata, &r.CreatedAt)
@@ -103,7 +104,7 @@ func (s *PostgresStore) ListRuns(ctx context.Context, userID string, limit, offs
 	}
 
 	rows, err := s.pool.Query(ctx,
-		`SELECT id, user_id, repo_url, branch, commit_sha, commit_range, mode,
+		`SELECT id, user_id, COALESCE(org_id, ''), repo_url, branch, commit_sha, commit_range, mode,
 		        timestamp, duration_ms, files_changed, errors, warnings, infos,
 		        total_issues, issues, confidence_score, summary, metadata, created_at
 		 FROM runs WHERE user_id = $1
@@ -118,7 +119,7 @@ func (s *PostgresStore) ListRuns(ctx context.Context, userID string, limit, offs
 	runs := make([]Run, 0)
 	for rows.Next() {
 		var r Run
-		if err := rows.Scan(&r.ID, &r.UserID, &r.RepoURL, &r.Branch, &r.CommitSHA, &r.CommitRange,
+		if err := rows.Scan(&r.ID, &r.UserID, &r.OrgID, &r.RepoURL, &r.Branch, &r.CommitSHA, &r.CommitRange,
 			&r.Mode, &r.Timestamp, &r.DurationMs, &r.FilesChanged,
 			&r.Errors, &r.Warnings, &r.Infos, &r.TotalIssues,
 			&r.Issues, &r.ConfidenceScore, &r.Summary, &r.Metadata, &r.CreatedAt); err != nil {
@@ -127,6 +128,14 @@ func (s *PostgresStore) ListRuns(ctx context.Context, userID string, limit, offs
 		runs = append(runs, r)
 	}
 	return runs, nil
+}
+
+// nullIfEmpty returns nil for empty strings (for nullable DB columns).
+func nullIfEmpty(s string) interface{} {
+	if s == "" {
+		return nil
+	}
+	return s
 }
 
 // GetRunStats returns aggregate statistics for a user's runs.

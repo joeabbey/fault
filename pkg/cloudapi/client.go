@@ -165,6 +165,7 @@ type RunUpload struct {
 	ConfidenceScore *float64         `json:"confidence_score,omitempty"`
 	Summary         string           `json:"summary"`
 	Metadata        map[string]any   `json:"metadata,omitempty"`
+	OrgID           string           `json:"org_id,omitempty"`
 }
 
 // UploadRun sends audit results to the Fault Cloud API.
