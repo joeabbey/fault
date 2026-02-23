@@ -302,6 +302,160 @@ func TestSARIFReporterIssueWithNoFile(t *testing.T) {
 	}
 }
 
+func TestSARIFReporterCWEMapping(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewSARIFReporterWithWriter(&buf)
+
+	result := &analyzer.AnalysisResult{
+		RepoPath:     "/test/repo",
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				ID:       "security-sql-injection",
+				Severity: analyzer.SeverityError,
+				Category: "security",
+				File:     "db/query.go",
+				Line:     42,
+				Message:  "Possible SQL injection",
+			},
+			{
+				ID:       "security-xss",
+				Severity: analyzer.SeverityError,
+				Category: "security",
+				File:     "web/handler.go",
+				Line:     15,
+				Message:  "Potential XSS vulnerability",
+			},
+			{
+				ID:       "patterns/console-debug",
+				Severity: analyzer.SeverityInfo,
+				Category: "patterns",
+				File:     "app.ts",
+				Line:     10,
+				Message:  "Debug output left in code",
+			},
+		},
+		Duration:  time.Millisecond,
+		Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	r.Report(result, "error")
+
+	var sarif sarifLog
+	if err := json.Unmarshal(buf.Bytes(), &sarif); err != nil {
+		t.Fatalf("invalid JSON: %v\nOutput: %s", err, buf.String())
+	}
+
+	run := sarif.Runs[0]
+
+	// Should have 3 rules (one per unique issue ID).
+	if len(run.Tool.Driver.Rules) != 3 {
+		t.Fatalf("expected 3 rules, got %d", len(run.Tool.Driver.Rules))
+	}
+
+	// Find the sql-injection rule and verify CWE relationship.
+	var sqlRule *sarifRule
+	for i := range run.Tool.Driver.Rules {
+		if run.Tool.Driver.Rules[i].ID == "fault/security-sql-injection" {
+			sqlRule = &run.Tool.Driver.Rules[i]
+			break
+		}
+	}
+	if sqlRule == nil {
+		t.Fatal("expected to find rule fault/security-sql-injection")
+	}
+	if sqlRule.HelpURI != "https://cwe.mitre.org/data/definitions/89.html" {
+		t.Errorf("expected helpUri for CWE-89, got %q", sqlRule.HelpURI)
+	}
+	if len(sqlRule.Relationships) != 1 {
+		t.Fatalf("expected 1 relationship, got %d", len(sqlRule.Relationships))
+	}
+	if sqlRule.Relationships[0].Target.ID != "CWE-89" {
+		t.Errorf("expected relationship target CWE-89, got %q", sqlRule.Relationships[0].Target.ID)
+	}
+	if sqlRule.Relationships[0].Target.ToolComponent.Name != "CWE" {
+		t.Errorf("expected toolComponent name CWE, got %q", sqlRule.Relationships[0].Target.ToolComponent.Name)
+	}
+
+	// The non-security rule should have no relationships.
+	var patternRule *sarifRule
+	for i := range run.Tool.Driver.Rules {
+		if run.Tool.Driver.Rules[i].ID == "fault/patterns/console-debug" {
+			patternRule = &run.Tool.Driver.Rules[i]
+			break
+		}
+	}
+	if patternRule == nil {
+		t.Fatal("expected to find rule fault/patterns/console-debug")
+	}
+	if len(patternRule.Relationships) != 0 {
+		t.Errorf("expected 0 relationships for non-CWE rule, got %d", len(patternRule.Relationships))
+	}
+
+	// Taxonomy should exist with 2 CWE entries (89 and 79).
+	if len(run.Taxonomies) != 1 {
+		t.Fatalf("expected 1 taxonomy, got %d", len(run.Taxonomies))
+	}
+	taxonomy := run.Taxonomies[0]
+	if taxonomy.Name != "CWE" {
+		t.Errorf("expected taxonomy name CWE, got %q", taxonomy.Name)
+	}
+	if len(taxonomy.Taxa) != 2 {
+		t.Fatalf("expected 2 taxa, got %d", len(taxonomy.Taxa))
+	}
+	// Taxa should be sorted by ID.
+	if taxonomy.Taxa[0].ID != "CWE-79" {
+		t.Errorf("expected first taxon CWE-79, got %q", taxonomy.Taxa[0].ID)
+	}
+	if taxonomy.Taxa[1].ID != "CWE-89" {
+		t.Errorf("expected second taxon CWE-89, got %q", taxonomy.Taxa[1].ID)
+	}
+}
+
+func TestSARIFReporterNoTaxonomyWithoutCWE(t *testing.T) {
+	var buf bytes.Buffer
+	r := NewSARIFReporterWithWriter(&buf)
+
+	result := &analyzer.AnalysisResult{
+		RepoPath:     "/test/repo",
+		FilesChanged: 1,
+		Issues: []analyzer.Issue{
+			{
+				ID:       "patterns/console-debug",
+				Severity: analyzer.SeverityInfo,
+				Category: "patterns",
+				File:     "app.ts",
+				Line:     10,
+				Message:  "Debug output left in code",
+			},
+		},
+		Duration:  time.Millisecond,
+		Timestamp: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+	}
+
+	r.Report(result, "error")
+
+	var sarif sarifLog
+	if err := json.Unmarshal(buf.Bytes(), &sarif); err != nil {
+		t.Fatalf("invalid JSON: %v", err)
+	}
+
+	run := sarif.Runs[0]
+
+	// Should have 1 rule with no CWE relationships.
+	if len(run.Tool.Driver.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(run.Tool.Driver.Rules))
+	}
+	if len(run.Tool.Driver.Rules[0].Relationships) != 0 {
+		t.Errorf("expected 0 relationships, got %d", len(run.Tool.Driver.Rules[0].Relationships))
+	}
+
+	// No taxonomy when no CWE mappings are used.
+	if len(run.Taxonomies) != 0 {
+		t.Errorf("expected 0 taxonomies when no CWE issues, got %d", len(run.Taxonomies))
+	}
+}
+
 func TestSeverityToSARIFLevel(t *testing.T) {
 	tests := []struct {
 		severity analyzer.Severity

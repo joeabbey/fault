@@ -103,6 +103,7 @@ type Server struct {
 	logger          *slog.Logger
 	handlers        *Handlers
 	authHandlers    *AuthHandlers
+	oidcHandlers    *OIDCHandlers
 	limitsEngine    *limits.Engine
 	billingHandlers *BillingHandlers
 	mux             *http.ServeMux
@@ -148,6 +149,12 @@ func NewServer(cfg Config, store Store) *Server {
 		logger.Info("google OAuth enabled")
 	} else {
 		logger.Info("google OAuth disabled (GOOGLE_CLIENT_ID or JWT_SECRET not set)")
+	}
+
+	// Set up OIDC SSO handlers if JWT secret is configured
+	if cfg.JWTSecret != "" {
+		s.oidcHandlers = NewOIDCHandlers(store, logger, cfg.JWTSecret, cfg.AppURL, cfg.CookieDomain, cfg.CookieSecure)
+		logger.Info("OIDC SSO enabled")
 	}
 
 	// Set up Stripe billing if configured
@@ -199,6 +206,32 @@ func (s *Server) registerRoutes() {
 
 	// Spec routes
 	s.mux.HandleFunc("GET /api/v1/spec/results", s.handlers.HandleListSpecResults)
+
+	// Organization routes
+	s.mux.HandleFunc("POST /api/v1/orgs", s.handlers.HandleCreateOrg)
+	s.mux.HandleFunc("GET /api/v1/orgs", s.handlers.HandleListOrgs)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}", s.handlers.HandleGetOrg)
+	s.mux.HandleFunc("POST /api/v1/orgs/{slug}/members", s.handlers.HandleAddOrgMember)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/members/{userId}", s.handlers.HandleRemoveOrgMember)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/members", s.handlers.HandleListOrgMembers)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs", s.handlers.HandleListOrgRuns)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/runs/stats", s.handlers.HandleGetOrgRunStats)
+	s.mux.HandleFunc("POST /api/v1/orgs/{slug}/webhooks", s.handlers.HandleCreateWebhook)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/webhooks", s.handlers.HandleListWebhooks)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/webhooks/{webhookId}", s.handlers.HandleDeleteWebhook)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/audit", s.handlers.HandleListAuditEntries)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config", s.handlers.HandleGetOrgConfig)
+	s.mux.HandleFunc("PUT /api/v1/orgs/{slug}/config", s.handlers.HandleSaveOrgConfig)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/config/pull", s.handlers.HandlePullOrgConfig)
+
+	// OIDC SSO routes
+	if s.oidcHandlers != nil {
+		s.mux.HandleFunc("GET /api/auth/oidc/{slug}/login", s.oidcHandlers.HandleOIDCLogin)
+		s.mux.HandleFunc("GET /api/auth/oidc/{slug}/callback", s.oidcHandlers.HandleOIDCCallback)
+	}
+	s.mux.HandleFunc("PUT /api/v1/orgs/{slug}/idp", s.handlers.HandleSaveOIDCConfig)
+	s.mux.HandleFunc("GET /api/v1/orgs/{slug}/idp", s.handlers.HandleGetOIDCConfig)
+	s.mux.HandleFunc("DELETE /api/v1/orgs/{slug}/idp", s.handlers.HandleDeleteOIDCConfig)
 
 	// Auth routes (only if Google OAuth is configured)
 	if s.authHandlers != nil {

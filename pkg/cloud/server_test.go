@@ -191,6 +191,86 @@ func (m *mockStore) GetSpecResults(_ context.Context, userID string, limit, offs
 	return make([]SpecResult, 0), nil
 }
 
+func (m *mockStore) CreateOrganization(_ context.Context, org *Organization) error {
+	return nil
+}
+
+func (m *mockStore) GetOrganization(_ context.Context, orgID string) (*Organization, error) {
+	return nil, fmt.Errorf("not found")
+}
+
+func (m *mockStore) GetOrganizationBySlug(_ context.Context, slug string) (*Organization, error) {
+	return nil, fmt.Errorf("not found")
+}
+
+func (m *mockStore) ListUserOrganizations(_ context.Context, userID string) ([]Organization, error) {
+	return make([]Organization, 0), nil
+}
+
+func (m *mockStore) AddOrgMember(_ context.Context, orgID, userID, role string) error {
+	return nil
+}
+
+func (m *mockStore) RemoveOrgMember(_ context.Context, orgID, userID string) error {
+	return nil
+}
+
+func (m *mockStore) ListOrgMembers(_ context.Context, orgID string) ([]OrgMember, error) {
+	return make([]OrgMember, 0), nil
+}
+
+func (m *mockStore) GetOrgMembership(_ context.Context, orgID, userID string) (*OrgMember, error) {
+	return nil, nil
+}
+
+func (m *mockStore) ListOrgRuns(_ context.Context, orgID string, limit, offset int) ([]Run, error) {
+	return make([]Run, 0), nil
+}
+
+func (m *mockStore) GetOrgRunStats(_ context.Context, orgID string) (*RunStats, error) {
+	return &RunStats{}, nil
+}
+
+func (m *mockStore) GetOrgConfig(_ context.Context, orgID string) (*OrgConfig, error) {
+	return nil, nil
+}
+
+func (m *mockStore) SaveOrgConfig(_ context.Context, cfg *OrgConfig) error {
+	return nil
+}
+
+func (m *mockStore) CreateWebhook(_ context.Context, wh *OrgWebhook) error {
+	return nil
+}
+
+func (m *mockStore) ListWebhooks(_ context.Context, orgID string) ([]OrgWebhook, error) {
+	return make([]OrgWebhook, 0), nil
+}
+
+func (m *mockStore) DeleteWebhook(_ context.Context, orgID, webhookID string) error {
+	return nil
+}
+
+func (m *mockStore) GetOrgIDPConfig(_ context.Context, orgID string) (*OrgIDPConfig, error) {
+	return nil, nil
+}
+
+func (m *mockStore) SaveOrgIDPConfig(_ context.Context, cfg *OrgIDPConfig) error {
+	return nil
+}
+
+func (m *mockStore) DeleteOrgIDPConfig(_ context.Context, orgID string) error {
+	return nil
+}
+
+func (m *mockStore) InsertAuditEntry(_ context.Context, entry *AuditEntry) error {
+	return nil
+}
+
+func (m *mockStore) ListAuditEntries(_ context.Context, orgID string, limit, offset int) ([]AuditEntry, error) {
+	return make([]AuditEntry, 0), nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {

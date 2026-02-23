@@ -66,9 +66,10 @@ type analyzeConfidenceRequest struct {
 }
 
 type analyzeSpecRequest struct {
-	Diff     string `json:"diff"`
-	Spec     string `json:"spec"`
-	Language string `json:"language,omitempty"`
+	Diff      string `json:"diff"`
+	Spec      string `json:"spec"`
+	Language  string `json:"language,omitempty"`
+	SpecTitle string `json:"spec_title,omitempty"`
 }
 
 type analyzeResponse struct {
@@ -124,7 +125,7 @@ func (c *Client) AnalyzeSpec(ctx context.Context, spec string, diffSummary strin
 }
 
 // AnalyzeSpecStructured sends a structured per-requirement spec comparison request.
-func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, diffSummary string) (*llm.StructuredSpecResult, error) {
+func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, diffSummary string, specTitle ...string) (*llm.StructuredSpecResult, error) {
 	if strings.TrimSpace(specYAML) == "" {
 		return nil, fmt.Errorf("spec is empty")
 	}
@@ -132,11 +133,16 @@ func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, dif
 		return nil, fmt.Errorf("diff is empty")
 	}
 
-	var resp analyzeResponse
-	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/analyze/spec/structured", analyzeSpecRequest{
+	req := analyzeSpecRequest{
 		Diff: diffSummary,
 		Spec: specYAML,
-	}, &resp); err != nil {
+	}
+	if len(specTitle) > 0 {
+		req.SpecTitle = specTitle[0]
+	}
+
+	var resp analyzeResponse
+	if err := c.doJSON(ctx, http.MethodPost, "/api/v1/analyze/spec/structured", req, &resp); err != nil {
 		return nil, err
 	}
 
@@ -149,20 +155,51 @@ func (c *Client) AnalyzeSpecStructured(ctx context.Context, specYAML string, dif
 
 // RunUpload contains the data sent to the Fault Cloud when uploading an audit run.
 type RunUpload struct {
-	RepoURL         string                `json:"repo_url"`
-	Branch          string                `json:"branch"`
-	CommitSHA       string                `json:"commit_sha"`
-	CommitRange     string                `json:"commit_range"`
-	Duration        time.Duration         `json:"duration_ms"`
-	FilesChanged    int                   `json:"files_changed"`
-	Issues          []analyzer.Issue      `json:"issues"`
-	ConfidenceScore *analyzer.Confidence  `json:"confidence_score,omitempty"`
-	Summary         string                `json:"summary"`
+	RepoURL         string           `json:"repo_url"`
+	Branch          string           `json:"branch"`
+	CommitSHA       string           `json:"commit_sha"`
+	CommitRange     string           `json:"commit_range"`
+	Duration        time.Duration    `json:"duration_ms"`
+	FilesChanged    int              `json:"files_changed"`
+	Issues          []analyzer.Issue `json:"issues"`
+	ConfidenceScore *float64         `json:"confidence_score,omitempty"`
+	Summary         string           `json:"summary"`
+	Metadata        map[string]any   `json:"metadata,omitempty"`
+	OrgID           string           `json:"org_id,omitempty"`
 }
 
 // UploadRun sends audit results to the Fault Cloud API.
 func (c *Client) UploadRun(ctx context.Context, run *RunUpload) error {
 	return c.doJSON(ctx, http.MethodPost, "/api/v1/runs", run, nil)
+}
+
+// PullOrgConfig fetches the org's shared config YAML.
+func (c *Client) PullOrgConfig(ctx context.Context, orgSlug string) (string, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+"/api/v1/orgs/"+orgSlug+"/config/pull", nil)
+	if err != nil {
+		return "", fmt.Errorf("creating request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.apiKey)
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNoContent {
+		return "", nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("fault cloud error (HTTP %d): %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("reading response: %w", err)
+	}
+	return string(body), nil
 }
 
 func (c *Client) doJSON(ctx context.Context, method string, path string, body any, out any) error {

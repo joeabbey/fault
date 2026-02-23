@@ -2,6 +2,8 @@ package cloud
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -33,9 +35,10 @@ type AnalyzeConfidenceRequest struct {
 
 // AnalyzeSpecRequest is the payload for the spec comparison endpoint.
 type AnalyzeSpecRequest struct {
-	Diff     string `json:"diff"`
-	Spec     string `json:"spec"`
-	Language string `json:"language,omitempty"`
+	Diff      string `json:"diff"`
+	Spec      string `json:"spec"`
+	Language  string `json:"language,omitempty"`
+	SpecTitle string `json:"spec_title,omitempty"`
 }
 
 // AnalyzeResponse is returned by both analysis endpoints.
@@ -304,6 +307,50 @@ func (h *Handlers) HandleAnalyzeSpecStructured(w http.ResponseWriter, r *http.Re
 	if err := h.store.IncrementUsage(r.Context(), user.ID, usage); err != nil {
 		h.logger.Error("failed to track usage", "error", err, "user_id", user.ID)
 	}
+
+	// Save spec result to dashboard (fire-and-forget)
+	go func() {
+		var structured llm.StructuredSpecResult
+		if err := json.Unmarshal(result, &structured); err != nil {
+			h.logger.Error("failed to unmarshal structured spec result", "error", err)
+			return
+		}
+
+		specHash := sha256.Sum256([]byte(req.Spec))
+		specHashStr := hex.EncodeToString(specHash[:])
+
+		implemented, partial, missing, anchored := 0, 0, 0, 0
+		for _, r := range structured.Requirements {
+			switch r.Status {
+			case "implemented":
+				implemented++
+				anchored++
+			case "partial":
+				partial++
+				anchored++
+			case "missing":
+				missing++
+			}
+		}
+
+		resultJSON, _ := json.Marshal(structured.Requirements)
+
+		saveCtx := context.Background()
+		if err := h.store.SaveSpecResult(saveCtx, &SpecResult{
+			UserID:            user.ID,
+			SpecHash:          specHashStr,
+			SpecTitle:         req.SpecTitle,
+			TotalRequirements: len(structured.Requirements),
+			AnchoredCount:     anchored,
+			ImplementedCount:  implemented,
+			PartialCount:      partial,
+			MissingCount:      missing,
+			OverallScore:      structured.OverallScore,
+			ResultJSON:        resultJSON,
+		}); err != nil {
+			h.logger.Error("failed to save spec result", "error", err, "user_id", user.ID)
+		}
+	}()
 
 	writeJSON(w, http.StatusOK, AnalyzeResponse{
 		Result:      result,
