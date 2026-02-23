@@ -811,9 +811,9 @@ footer a:hover { color: var(--text-muted); }
   <div class="container">
     <div class="hero-inner">
       <div class="hero-text">
-        <div class="hero-version"><span class="dot"></span> v5 &mdash; 42 languages, 15 analyzers</div>
+        <div class="hero-version"><span class="dot"></span> v6 &mdash; 42 languages, 16 analyzers, post-merge audit</div>
         <h1>Catch AI&nbsp;agent mistakes <em>before</em>&nbsp;they&nbsp;ship</h1>
-        <p class="subhead">Fault validates multi-file changes from Claude Code, aider, and Cursor &mdash; broken imports, swallowed errors, hallucinated APIs, dead code. All offline.</p>
+        <p class="subhead">Fault validates AI-generated code before and after it ships &mdash; broken imports, swallowed errors, hallucinated APIs, spec drift. Pre-commit, post-merge, and CI.</p>
         <div class="install-row">
           <div class="install-block">
             <span class="prompt mono">$</span>
@@ -861,7 +861,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="stat-label">Languages</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">15</div>
+        <div class="stat-num">16</div>
         <div class="stat-label">Analyzers</div>
       </div>
       <div class="stat-item">
@@ -947,7 +947,7 @@ footer a:hover { color: var(--text-muted); }
 <section>
   <div class="container">
     <div class="section-label">Analyzers</div>
-    <h2 class="section-heading">Fifteen analyzers. Five that nobody else has.</h2>
+    <h2 class="section-heading">Sixteen analyzers. Six that nobody else has.</h2>
     <p class="section-desc">Every analyzer runs in parallel against your git diff. No network calls, no cloud dependencies.</p>
     <div class="analyzer-grid">
       <div class="analyzer-item">
@@ -1055,6 +1055,13 @@ footer a:hover { color: var(--text-muted); }
           <div class="analyzer-desc">Stale comments after signature changes</div>
         </div>
       </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F4CB;</div>
+        <div>
+          <div class="analyzer-name">spec<span class="analyzer-new-tag">v6</span></div>
+          <div class="analyzer-desc">Orphaned anchors, unanchored requirements, spec drift</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1099,13 +1106,23 @@ footer a:hover { color: var(--text-muted); }
         <p>Detects exported symbols nothing imports, circular dependencies between modules, and unused entries in your manifest files.</p>
       </div>
       <div class="feature-card">
+        <div class="badge badge-new">New in v6</div>
+        <h3>Post-merge audit</h3>
+        <p>Run <code class="mono" style="color:var(--brand-bright);font-size:13px">fault audit --commits 5</code> to scan code that already shipped. Catches regressions after merge, uploads results to the cloud dashboard with trend analytics.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge badge-new">New in v6</div>
+        <h3>Spec validation</h3>
+        <p>Define requirements in <code class="mono" style="color:var(--brand-bright);font-size:13px">.fault-spec.yaml</code>, anchor them in code with <code class="mono" style="color:var(--brand-bright);font-size:13px">// spec:REQ-001</code>. The spec analyzer tracks coverage across all 42 languages.</p>
+      </div>
+      <div class="feature-card">
         <h3>VS Code extension</h3>
         <p>See Fault findings inline as you code. The extension runs analysis on save and shows diagnostics, quick-fixes, and code actions in the editor.</p>
       </div>
       <div class="feature-card">
         <div class="badge badge-pro">Pro</div>
         <h3>AI-enhanced validation</h3>
-        <p>LLM-powered confidence scoring rates how likely each changed file is to be correct. Optional spec comparison flags deviations from requirements.</p>
+        <p>LLM-powered confidence scoring rates how likely each changed file is to be correct. Structured spec comparison analyzes each requirement individually with evidence and confidence scores.</p>
       </div>
     </div>
   </div>
@@ -1114,7 +1131,7 @@ footer a:hover { color: var(--text-muted); }
 <section>
   <div class="container">
     <div class="section-label">How it works</div>
-    <h2 class="section-heading">Three steps to validated commits</h2>
+    <h2 class="section-heading">Validation before and after merge</h2>
     <div class="steps">
       <div class="step">
         <div class="step-num">1</div>
@@ -1127,8 +1144,8 @@ footer a:hover { color: var(--text-muted); }
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-content">
-          <h3>Fault validates the diff</h3>
-          <p>When you commit, <code class="mono" style="color:var(--brand-bright)">fault check --staged</code> runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs fifteen analyzers in parallel.</p>
+          <h3>Pre-commit: Fault validates the diff</h3>
+          <p>When you commit, <code class="mono" style="color:var(--brand-bright)">fault check --staged</code> runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs sixteen analyzers in parallel.</p>
         </div>
       </div>
       <div class="step-connector"></div>
@@ -1137,6 +1154,14 @@ footer a:hover { color: var(--text-muted); }
         <div class="step-content">
           <h3>Auto-fix or commit with confidence</h3>
           <p>If Fault finds errors, the commit is blocked. Run <code class="mono" style="color:var(--brand-bright)">fault fix</code> to auto-repair what it can, or fix manually. Clean checks, clean commits.</p>
+        </div>
+      </div>
+      <div class="step-connector"></div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          <h3>Post-merge: Audit what shipped</h3>
+          <p>After merging to main, <code class="mono" style="color:var(--brand-bright)">fault audit --commits 1 --upload</code> runs in CI. Results flow to the cloud dashboard with historical trends so regressions never go unnoticed.</p>
         </div>
       </div>
     </div>
@@ -1203,6 +1228,16 @@ footer a:hover { color: var(--text-muted); }
             <td><span class="partial">Partial</span></td>
             <td><span class="check">Yes + auto-fix</span></td>
           </tr>
+          <tr>
+            <td>Post-merge regression detection</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes (fault audit)</span></td>
+          </tr>
+          <tr>
+            <td>Requirements/spec coverage tracking</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes (.fault-spec.yaml)</span></td>
+          </tr>
         </tbody>
       </table>
     </div>
@@ -1234,7 +1269,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="price">$0</div>
         <div class="price-desc">All static analyzers. Unlimited local use. No account required.</div>
         <ul>
-          <li>15 analyzers including concurrency, resource leaks, migration safety</li>
+          <li>16 analyzers including spec validation, concurrency, resource leaks</li>
           <li>42 languages with full cross-file analysis</li>
           <li>32 manifest formats for dependency validation</li>
           <li>Terminal, JSON, SARIF output</li>
@@ -1252,10 +1287,11 @@ footer a:hover { color: var(--text-muted); }
         <ul>
           <li>Everything in Free</li>
           <li>Confidence scoring per file</li>
-          <li>Spec comparison (changes vs requirements)</li>
+          <li>Structured spec comparison (per-requirement LLM analysis)</li>
+          <li>Post-merge audit with <code class="mono" style="color:var(--brand-bright);font-size:12px">fault audit --upload</code></li>
+          <li>Historical trend dashboard with issues-over-time charts</li>
+          <li>Spec compliance dashboard with coverage tracking</li>
           <li>CWE-mapped SARIF output for security compliance</li>
-          <li>Custom suppression rules with expiry dates</li>
-          <li>Historical trend analysis dashboard</li>
           <li>Priority support</li>
         </ul>
       </div>
@@ -1293,6 +1329,7 @@ footer a:hover { color: var(--text-muted); }
       <br>
       <div><span class="cmd">fault watch</span>       <span class="comment"># continuous validation</span></div>
       <div><span class="cmd">fault fix</span>         <span class="comment"># auto-fix what it can</span></div>
+      <div><span class="cmd">fault audit --commits 5</span> <span class="comment"># scan what already shipped</span></div>
     </div>
     <div class="links">
       <a href="https://github.com/joeabbey/fault/blob/master/README.md">Read the docs</a>

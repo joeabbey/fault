@@ -4,7 +4,7 @@
 
 **Headline:** Catch AI agent mistakes before they hit your codebase
 
-**Subhead:** Fault validates multi-file changes from Claude Code, aider, and Cursor -- catching broken imports, stale references, and missing tests before you commit.
+**Subhead:** Fault validates AI-generated code before and after it ships -- broken imports, swallowed errors, hallucinated APIs, spec drift. Pre-commit, post-merge, and CI.
 
 **CTA:** Get started -- it's free
 
@@ -31,11 +31,19 @@ These errors compile, pass a quick scan, and slip into your commit history. You 
 
 ### Static analysis that works offline
 
-Five analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.
+Sixteen analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes, in air-gapped environments, and in CI.
+
+### Post-merge regression detection (New in v6)
+
+Run `fault audit --commits 5` to scan code that already shipped to main. Upload results to the cloud dashboard with historical trend analytics. Runs automatically in CI after every merge.
+
+### Spec validation (New in v6)
+
+Define requirements in `.fault-spec.yaml`, anchor them in code with `// spec:REQ-001`. The spec analyzer tracks orphaned anchors, unanchored requirements, and spec drift across all 42 languages.
 
 ### Multi-language support
 
-Parses and validates Go, TypeScript, and Python. Understands imports, exports, function signatures, and cross-file references for each language.
+Parses and validates 42 languages. Understands imports, exports, function signatures, and cross-file references for each language.
 
 ### Git native
 
@@ -43,7 +51,7 @@ Installs as a pre-commit hook with `fault hook install`. Reads staged, unstaged,
 
 ### AI-enhanced validation (Pro)
 
-LLM-powered confidence scoring rates how likely each changed file is to be correct. Optional spec comparison flags when changes deviate from your requirements document.
+LLM-powered confidence scoring rates how likely each changed file is to be correct. Structured spec comparison analyzes each requirement individually with evidence and confidence scores.
 
 ---
 
@@ -94,8 +102,8 @@ Fault is designed specifically for the multi-file, cross-cutting changes that AI
 
 All static analyzers. Unlimited local use. No account required.
 
-- 5 analyzers (imports, consistency, references, tests, patterns)
-- Go, TypeScript, Python
+- 16 analyzers including spec validation, concurrency, resource leaks
+- 42 languages with full cross-file analysis
 - Terminal, JSON, SARIF output
 - Pre-commit hook
 - Works offline
@@ -106,7 +114,10 @@ LLM-powered analysis for deeper validation.
 
 - Everything in Free
 - Confidence scoring per file
-- Spec comparison (compare changes against requirements)
+- Structured spec comparison (per-requirement LLM analysis)
+- Post-merge audit with `fault audit --upload`
+- Historical trend dashboard with issues-over-time charts
+- Spec compliance dashboard with coverage tracking
 - Priority support
 
 ### Team -- $30/user/mo
