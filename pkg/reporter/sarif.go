@@ -161,7 +161,7 @@ const (
 	sarifSchemaURI = "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json"
 	sarifVersion   = "2.1.0"
 	toolName       = "fault"
-	toolVersion    = "0.1.0"
+	toolVersion    = "0.7.0"
 	toolURI        = "https://github.com/joeabbey/fault"
 )
 
