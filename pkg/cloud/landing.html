@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fault - Catch AI agent mistakes before they hit your codebase</title>
-<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — 15 analyzers across 42 languages catch broken imports, swallowed errors, dead code, and hallucinated APIs before you commit.">
+<meta name="description" content="Fault validates multi-file changes from Claude Code, aider, and Cursor — 16 analyzers plus custom rules across 42 languages catch broken imports, swallowed errors, dead code, and hallucinated APIs. Team-wide compliance packs, shared baselines, and OIDC SSO.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -861,7 +861,7 @@ footer a:hover { color: var(--text-muted); }
         <div class="stat-label">Languages</div>
       </div>
       <div class="stat-item">
-        <div class="stat-num">16</div>
+        <div class="stat-num">16+</div>
         <div class="stat-label">Analyzers</div>
       </div>
       <div class="stat-item">
@@ -947,8 +947,8 @@ footer a:hover { color: var(--text-muted); }
 <section>
   <div class="container">
     <div class="section-label">Analyzers</div>
-    <h2 class="section-heading">Sixteen analyzers. Six that nobody else has.</h2>
-    <p class="section-desc">Every analyzer runs in parallel against your git diff. No network calls, no cloud dependencies.</p>
+    <h2 class="section-heading">Sixteen analyzers, plus your own. Six that nobody else has.</h2>
+    <p class="section-desc">Every analyzer runs in parallel against your git diff. No network calls, no cloud dependencies. Add custom regex rules for team-specific conventions.</p>
     <div class="analyzer-grid">
       <div class="analyzer-item">
         <div class="analyzer-icon">&#x1F517;</div>
@@ -1062,6 +1062,13 @@ footer a:hover { color: var(--text-muted); }
           <div class="analyzer-desc">Orphaned anchors, unanchored requirements, spec drift</div>
         </div>
       </div>
+      <div class="analyzer-item">
+        <div class="analyzer-icon">&#x1F527;</div>
+        <div>
+          <div class="analyzer-name">custom<span class="analyzer-new-tag">v7</span></div>
+          <div class="analyzer-desc">Your own regex rules via <code class="mono" style="color:var(--text-dim);font-size:12px">.fault.yaml</code></div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
@@ -1073,7 +1080,7 @@ footer a:hover { color: var(--text-muted); }
     <div class="feature-grid">
       <div class="feature-card">
         <h3>Works completely offline</h3>
-        <p>All fifteen analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.</p>
+        <p>All sixteen analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.</p>
       </div>
       <div class="feature-card">
         <h3>Manifest-aware validation</h3>
@@ -1123,6 +1130,26 @@ footer a:hover { color: var(--text-muted); }
         <div class="badge badge-pro">Pro</div>
         <h3>AI-enhanced validation</h3>
         <p>LLM-powered confidence scoring rates how likely each changed file is to be correct. Structured spec comparison analyzes each requirement individually with evidence and confidence scores.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge badge-new">New in v7</div>
+        <h3>Compliance packs</h3>
+        <p>Enable <code class="mono" style="color:var(--brand-bright);font-size:13px">owasp-top-10-2021</code> or <code class="mono" style="color:var(--brand-bright);font-size:13px">cwe-top-25-2023</code> in your config. Fault maps findings to CWE IDs and generates a compliance summary with pass/fail per weakness.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge badge-new">New in v7</div>
+        <h3>Custom analyzer rules</h3>
+        <p>Define regex-based rules in <code class="mono" style="color:var(--brand-bright);font-size:13px">.fault.yaml</code> with file glob filters and severity levels. Enforce team conventions without writing a plugin.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge badge-new">New in v7</div>
+        <h3>Team organizations</h3>
+        <p>Create organizations with shared baselines, aggregated run history, member management, and audit trails. Pull team config with <code class="mono" style="color:var(--brand-bright);font-size:13px">fault config pull</code> to keep everyone aligned.</p>
+      </div>
+      <div class="feature-card">
+        <div class="badge badge-new">New in v7</div>
+        <h3>SSO &amp; webhooks</h3>
+        <p>Connect your identity provider via OIDC for single sign-on. Set up webhooks to get notified in Slack, Discord, or any HTTP endpoint when runs complete or specs drift.</p>
       </div>
     </div>
   </div>
@@ -1237,6 +1264,16 @@ footer a:hover { color: var(--text-muted); }
             <td>Requirements/spec coverage tracking</td>
             <td><span class="no">No</span></td>
             <td><span class="check">Yes (.fault-spec.yaml)</span></td>
+          </tr>
+          <tr>
+            <td>OWASP/CWE compliance reporting</td>
+            <td><span class="no">No</span></td>
+            <td><span class="check">Yes (compliance packs)</span></td>
+          </tr>
+          <tr>
+            <td>Custom team-defined rules</td>
+            <td><span class="partial">Plugin system</span></td>
+            <td><span class="check">Yes (YAML regex rules)</span></td>
           </tr>
         </tbody>
       </table>
