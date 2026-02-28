@@ -42,6 +42,7 @@ export { default as Breadcrumbs } from './Breadcrumbs.svelte';
 export { default as Pagination } from './Pagination.svelte';
 export { default as Navbar } from './Navbar.svelte';
 export { default as Sidebar } from './Sidebar.svelte';
+export { default as ThemeSwitcher } from './ThemeSwitcher.svelte';
 
 // Data Components
 export { default as Table } from './Table.svelte';

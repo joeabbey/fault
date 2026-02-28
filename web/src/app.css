@@ -30,7 +30,27 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-/* ===== Signal-Noir Dark Mode ===== */
+/* ===== Signal-Noir — Light mode ===== */
+
+:root {
+  --color-background: #faf8f7;
+  --color-foreground: #1a1523;
+  --color-muted: #78716c;
+  --color-muted-foreground: #a8a29e;
+  --color-border: rgba(244, 63, 94, 0.10);
+  --color-ring: #f43f5e;
+
+  --color-card: #ffffff;
+  --color-card-foreground: #1a1523;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #1a1523;
+  --color-input: rgba(244, 63, 94, 0.10);
+  --color-accent: #fef2f2;
+  --color-accent-foreground: #1a1523;
+}
+
+/* ===== Signal-Noir — Dark mode ===== */
+
 .dark {
   --color-background: #07080c;
   --color-foreground: #e2e8f4;
@@ -48,134 +68,59 @@
   --color-accent-foreground: #e2e8f4;
 }
 
-/* ===== Signal-Noir Light Mode (keep it dark — Fault is dark-only) ===== */
-:root {
-  --color-background: #07080c;
-  --color-foreground: #e2e8f4;
-  --color-muted: #64748b;
-  --color-muted-foreground: #475569;
-  --color-border: rgba(244, 63, 94, 0.06);
-  --color-ring: #f43f5e;
-
-  --color-card: #0e1017;
-  --color-card-foreground: #e2e8f4;
-  --color-popover: #0e1017;
-  --color-popover-foreground: #e2e8f4;
-  --color-input: rgba(244, 63, 94, 0.06);
-  --color-accent: #151821;
-  --color-accent-foreground: #e2e8f4;
+body {
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ===== Dot grid texture (matches landing page) ===== */
+/* ===== Dot grid texture ===== */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background-image: radial-gradient(rgba(244, 63, 94, 0.04) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(244, 63, 94, 0.03) 1px, transparent 1px);
   background-size: 24px 24px;
   pointer-events: none;
   z-index: 0;
 }
 
-body {
-  -webkit-font-smoothing: antialiased;
+.dark body::before {
+  background-image: radial-gradient(rgba(244, 63, 94, 0.04) 1px, transparent 1px);
 }
 
-/* ===== Sidebar styling ===== */
-
-/* Sidebar background — slightly raised surface */
-aside {
-  background: #0a0c12 !important;
-  border-color: rgba(244, 63, 94, 0.06) !important;
-}
-
-/* Active nav item — rose glow */
-aside a[class*="bg-primary"] {
-  background: rgba(244, 63, 94, 0.08) !important;
-  color: #fb7185 !important;
-}
-
-/* Nav hover — subtle rose tint */
-aside a:hover {
-  background: rgba(244, 63, 94, 0.04) !important;
-}
-
-/* Sidebar borders — match landing page */
-aside div[class*="border-t"],
-aside div[class*="border-b"] {
-  border-color: rgba(244, 63, 94, 0.06) !important;
-}
-
-/* ===== Card styling — glass surface with rose border on hover ===== */
+/* ===== Cards — rose border on hover ===== */
 [class*="bg-card"] {
-  border: 1px solid rgba(244, 63, 94, 0.06);
+  border: 1px solid rgba(244, 63, 94, 0.08);
   transition: border-color 0.2s ease;
 }
 
 [class*="bg-card"]:hover {
+  border-color: rgba(244, 63, 94, 0.16);
+}
+
+.dark [class*="bg-card"] {
+  border-color: rgba(244, 63, 94, 0.06);
+}
+
+.dark [class*="bg-card"]:hover {
   border-color: rgba(244, 63, 94, 0.12);
 }
 
-/* ===== Stat cards — rose accent glow ===== */
+/* ===== Stat cards ===== */
 [class*="StatCard"] {
   position: relative;
 }
 
-/* ===== Progress bar — rose color ===== */
-.bg-primary-500 {
-  background: #f43f5e !important;
-}
-
-/* ===== Buttons ===== */
-
-/* Primary button — solid rose */
-button[class*="bg-primary"],
-a[class*="bg-primary"] {
-  background: #f43f5e !important;
-  color: #fff !important;
-  border-color: transparent !important;
-}
-
-button[class*="bg-primary"]:hover,
-a[class*="bg-primary"]:hover {
-  background: #e11d48 !important;
-}
-
-/* ===== Badge — rose tint ===== */
-[class*="bg-primary-100"],
-[class*="bg-primary-50"] {
-  background: rgba(244, 63, 94, 0.08) !important;
-}
-
-[class*="text-primary-600"],
-[class*="text-primary-700"],
-[class*="text-primary-500"] {
-  color: #fb7185 !important;
-}
-
-/* ===== Dropdown / Popover ===== */
-[class*="bg-popover"] {
-  background: #0e1017 !important;
-  border: 1px solid rgba(244, 63, 94, 0.08) !important;
-}
-
-/* ===== Code blocks — match terminal aesthetic ===== */
+/* ===== Code / Mono ===== */
 code, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
 
-.bg-accent {
-  background: #0a0c12 !important;
-  border: 1px solid rgba(255, 255, 255, 0.04) !important;
-  border-radius: 8px !important;
-}
-
-/* ===== Ring on focused/recommended cards ===== */
+/* ===== Focus rings — rose ===== */
 .ring-2.ring-primary-500 {
   --tw-ring-color: #f43f5e !important;
 }
 
-/* ===== Scrollbar styling ===== */
+/* ===== Scrollbar — rose-tinted ===== */
 ::-webkit-scrollbar {
   width: 6px;
 }
@@ -193,8 +138,66 @@ code, .font-mono {
   background: rgba(244, 63, 94, 0.24);
 }
 
-/* ===== Checkbox marks in pricing — rose ===== */
-.text-primary-500 svg,
-svg.text-primary-500 {
+/* ===== Dark-only overrides (Signal-Noir surfaces) ===== */
+
+.dark aside {
+  background: #0a0c12 !important;
+  border-color: rgba(244, 63, 94, 0.06) !important;
+}
+
+.dark aside a[class*="bg-primary"] {
+  background: rgba(244, 63, 94, 0.08) !important;
+  color: #fb7185 !important;
+}
+
+.dark aside a:hover {
+  background: rgba(244, 63, 94, 0.04) !important;
+}
+
+.dark aside div[class*="border-t"],
+.dark aside div[class*="border-b"] {
+  border-color: rgba(244, 63, 94, 0.06) !important;
+}
+
+.dark button[class*="bg-primary"],
+.dark a[class*="bg-primary"] {
+  background: #f43f5e !important;
+  color: #fff !important;
+  border-color: transparent !important;
+}
+
+.dark button[class*="bg-primary"]:hover,
+.dark a[class*="bg-primary"]:hover {
+  background: #e11d48 !important;
+}
+
+.dark .bg-primary-500 {
+  background: #f43f5e !important;
+}
+
+.dark [class*="bg-primary-100"],
+.dark [class*="bg-primary-50"] {
+  background: rgba(244, 63, 94, 0.08) !important;
+}
+
+.dark [class*="text-primary-600"],
+.dark [class*="text-primary-700"],
+.dark [class*="text-primary-500"] {
+  color: #fb7185 !important;
+}
+
+.dark [class*="bg-popover"] {
+  background: #0e1017 !important;
+  border: 1px solid rgba(244, 63, 94, 0.08) !important;
+}
+
+.dark .bg-accent {
+  background: #0a0c12 !important;
+  border: 1px solid rgba(255, 255, 255, 0.04) !important;
+  border-radius: 8px !important;
+}
+
+.dark .text-primary-500 svg,
+.dark svg.text-primary-500 {
   color: #fb7185 !important;
 }

@@ -6,7 +6,7 @@
 	import { browser } from '$app/environment';
 	import { createRawSnippet } from 'svelte';
 	import { auth, isAuthenticated, isLoading, currentEmail } from '$lib/stores/auth';
-	import { DashboardLayout, Dropdown, Spinner } from '@jabbey/atlas';
+	import { DashboardLayout, Dropdown, Spinner, ThemeSwitcher, initTheme } from '@jabbey/atlas';
 
 	let { children: pageContent } = $props();
 
@@ -85,6 +85,7 @@
 
 	onMount(() => {
 		auth.init();
+		initTheme();
 
 		// Sidebar collapsed state
 		const storedCollapsed = localStorage.getItem('sidebarCollapsed');
@@ -141,7 +142,7 @@
 					//
 				</span>
 				{#if !sidebarCollapsed}
-					<span class="text-lg font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+					<span class="text-lg font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 						Fault
 					</span>
 				{/if}
@@ -150,24 +151,23 @@
 
 		{#snippet userMenu()}
 			<div class="space-y-1">
+				<div class="px-3 py-1.5">
+					<ThemeSwitcher />
+				</div>
 				{#if $currentEmail}
 					<Dropdown items={userMenuItems} align="start" onselect={handleUserMenuSelect}>
 						{#snippet trigger()}
 							<div
-								class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer"
-								style="color: #64748b;"
-								onmouseenter={(e) => e.currentTarget.style.background = 'rgba(244,63,94,0.04)'}
-								onmouseleave={(e) => e.currentTarget.style.background = 'transparent'}
+								class="flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer text-muted hover:bg-secondary-100 dark:hover:bg-secondary-800"
 							>
 								<div
-									class="h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0"
-									style="background: rgba(244,63,94,0.12); color: #fb7185;"
+									class="h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium flex-shrink-0 bg-primary-100 text-primary-400 dark:bg-primary-950 dark:text-primary-400"
 								>
 									{$currentEmail.charAt(0).toUpperCase()}
 								</div>
 								{#if !sidebarCollapsed}
 									<div class="flex-1 min-w-0">
-										<p class="text-sm font-medium truncate" style="color: #e2e8f4;">
+										<p class="text-sm font-medium truncate text-foreground">
 											{$currentEmail}
 										</p>
 									</div>
