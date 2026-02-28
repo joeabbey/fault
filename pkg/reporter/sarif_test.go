@@ -256,8 +256,8 @@ func TestSARIFReporterSchema(t *testing.T) {
 	if driver["name"] != "fault" {
 		t.Errorf("expected driver name 'fault', got %v", driver["name"])
 	}
-	if driver["version"] != "0.1.0" {
-		t.Errorf("expected driver version '0.1.0', got %v", driver["version"])
+	if driver["version"] != "0.7.0" {
+		t.Errorf("expected driver version '0.7.0', got %v", driver["version"])
 	}
 	if driver["informationUri"] != "https://github.com/joeabbey/fault" {
 		t.Errorf("expected informationUri, got %v", driver["informationUri"])
