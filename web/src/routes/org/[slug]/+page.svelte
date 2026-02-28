@@ -92,16 +92,15 @@
 		<div class="flex items-center justify-between">
 			<div class="flex items-center gap-4">
 				<button
-					class="text-sm cursor-pointer"
-					style="color: #64748b; background: none; border: none;"
+					class="text-sm cursor-pointer text-muted bg-transparent border-none"
 					onclick={() => goto('/org')}
 				>
 					Teams
 				</button>
-				<span style="color: #334155;">/</span>
+				<span class="text-muted-foreground">/</span>
 				<h1
-					class="text-2xl font-bold font-display"
-					style="color: #e2e8f4; letter-spacing: -0.5px;"
+					class="text-2xl font-bold font-display text-foreground"
+					style="letter-spacing: -0.5px;"
 				>
 					{org.name}
 				</h1>
@@ -127,21 +126,14 @@
 						accent: false
 					}
 				] as stat}
-					<div
-						class="rounded-xl p-5"
-						style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06); transition: border-color 0.2s;"
-						onmouseenter={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)')}
-						onmouseleave={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)')}
-					>
-						<p
-							class="text-xs font-medium uppercase tracking-wider mb-2"
-							style="color: #64748b;"
-						>
+					<div class="rounded-xl p-5 bg-card border border-border transition-[border-color] duration-200">
+						<p class="text-xs font-medium uppercase tracking-wider mb-2 text-muted">
 							{stat.label}
 						</p>
 						<p
 							class="text-2xl font-bold font-mono"
-							style="color: {stat.accent ? '#fb7185' : '#e2e8f4'}; letter-spacing: -1px;"
+							class:text-foreground={!stat.accent}
+							style="letter-spacing: -1px; {stat.accent ? 'color: #fb7185;' : ''}"
 						>
 							{stat.value}
 						</p>
@@ -151,56 +143,31 @@
 		{/if}
 
 		<!-- Recent Runs -->
-		<div
-			class="rounded-xl overflow-hidden"
-			style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-		>
-			<div class="px-4 py-3" style="border-bottom: 1px solid rgba(244,63,94,0.06);">
-				<h2 class="text-sm font-medium" style="color: #e2e8f4;">Recent Runs</h2>
+		<div class="rounded-xl overflow-hidden bg-card border border-border">
+			<div class="px-4 py-3 border-b border-border">
+				<h2 class="text-sm font-medium text-foreground">Recent Runs</h2>
 			</div>
 			<table class="w-full text-sm">
 				<thead>
-					<tr style="border-bottom: 1px solid rgba(244,63,94,0.06);">
-						<th
-							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-							style="color: #64748b;">Date</th
-						>
-						<th
-							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-							style="color: #64748b;">Branch</th
-						>
-						<th
-							class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider"
-							style="color: #64748b;">Commit</th
-						>
-						<th
-							class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider"
-							style="color: #f43f5e;">Errors</th
-						>
-						<th
-							class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider"
-							style="color: #fbbf24;">Warnings</th
-						>
-						<th
-							class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider"
-							style="color: #64748b;">Duration</th
-						>
+					<tr class="border-b border-border">
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Date</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Branch</th>
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">Commit</th>
+						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #f43f5e;">Errors</th>
+						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #fbbf24;">Warnings</th>
+						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">Duration</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each runs as run}
 						<tr
-							class="cursor-pointer transition-colors"
-							style="border-bottom: 1px solid rgba(244,63,94,0.04);"
-							onmouseenter={(e) =>
-								(e.currentTarget.style.background = 'rgba(244,63,94,0.02)')}
-							onmouseleave={(e) => (e.currentTarget.style.background = 'transparent')}
+							class="cursor-pointer transition-colors border-b border-border/50 hover:bg-[rgba(244,63,94,0.02)]"
 							onclick={() => goto(`/history/${run.id}`)}
 						>
-							<td class="px-4 py-3 font-mono text-xs" style="color: #94a3b8;">
+							<td class="px-4 py-3 font-mono text-xs text-muted">
 								{formatDate(run.timestamp)}
 							</td>
-							<td class="px-4 py-3" style="color: #e2e8f4;">
+							<td class="px-4 py-3 text-foreground">
 								<span
 									class="px-2 py-0.5 rounded text-xs font-mono"
 									style="background: rgba(244,63,94,0.06); color: #fb7185;"
@@ -208,29 +175,29 @@
 									{run.branch || '-'}
 								</span>
 							</td>
-							<td class="px-4 py-3 font-mono text-xs" style="color: #94a3b8;">
+							<td class="px-4 py-3 font-mono text-xs text-muted">
 								{run.commit_sha ? shortSHA(run.commit_sha) : '-'}
 							</td>
 							<td
 								class="px-4 py-3 text-right font-mono font-medium"
-								style="color: {run.errors > 0 ? '#f43f5e' : '#334155'};"
+								style="color: {run.errors > 0 ? '#f43f5e' : 'var(--color-muted-foreground)'};"
 							>
 								{run.errors}
 							</td>
 							<td
 								class="px-4 py-3 text-right font-mono font-medium"
-								style="color: {run.warnings > 0 ? '#fbbf24' : '#334155'};"
+								style="color: {run.warnings > 0 ? '#fbbf24' : 'var(--color-muted-foreground)'};"
 							>
 								{run.warnings}
 							</td>
-							<td class="px-4 py-3 text-right font-mono text-xs" style="color: #64748b;">
+							<td class="px-4 py-3 text-right font-mono text-xs text-muted">
 								{formatDuration(run.duration_ms)}
 							</td>
 						</tr>
 					{/each}
 					{#if runs.length === 0}
 						<tr>
-							<td colspan="6" class="px-4 py-8 text-center text-sm" style="color: #64748b;">
+							<td colspan="6" class="px-4 py-8 text-center text-sm text-muted">
 								No runs yet for this organization.
 							</td>
 						</tr>
@@ -242,14 +209,11 @@
 		<!-- Members + Audit side by side -->
 		<div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
 			<!-- Members -->
-			<div
-				class="rounded-xl overflow-hidden"
-				style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-			>
-				<div class="px-4 py-3" style="border-bottom: 1px solid rgba(244,63,94,0.06);">
-					<h2 class="text-sm font-medium" style="color: #e2e8f4;">Members</h2>
+			<div class="rounded-xl overflow-hidden bg-card border border-border">
+				<div class="px-4 py-3 border-b border-border">
+					<h2 class="text-sm font-medium text-foreground">Members</h2>
 				</div>
-				<div class="divide-y" style="border-color: rgba(244,63,94,0.04);">
+				<div class="divide-y divide-border/50">
 					{#each members as member}
 						<div class="px-4 py-3 flex items-center justify-between">
 							<div class="flex items-center gap-3">
@@ -260,11 +224,11 @@
 									{(member.email || member.name || '?').charAt(0).toUpperCase()}
 								</div>
 								<div>
-									<p class="text-sm" style="color: #e2e8f4;">
+									<p class="text-sm text-foreground">
 										{member.name || member.email || member.user_id}
 									</p>
 									{#if member.email && member.name}
-										<p class="text-xs" style="color: #64748b;">{member.email}</p>
+										<p class="text-xs text-muted">{member.email}</p>
 									{/if}
 								</div>
 							</div>
@@ -274,7 +238,7 @@
 									? 'rgba(244,63,94,0.08)'
 									: 'rgba(100,116,139,0.08)'}; color: {member.role === 'owner'
 									? '#fb7185'
-									: '#94a3b8'};"
+									: 'var(--color-muted)'};"
 							>
 								{member.role}
 							</span>
@@ -284,33 +248,30 @@
 			</div>
 
 			<!-- Audit Trail -->
-			<div
-				class="rounded-xl overflow-hidden"
-				style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-			>
-				<div class="px-4 py-3" style="border-bottom: 1px solid rgba(244,63,94,0.06);">
-					<h2 class="text-sm font-medium" style="color: #e2e8f4;">Audit Trail</h2>
+			<div class="rounded-xl overflow-hidden bg-card border border-border">
+				<div class="px-4 py-3 border-b border-border">
+					<h2 class="text-sm font-medium text-foreground">Audit Trail</h2>
 				</div>
-				<div class="divide-y" style="border-color: rgba(244,63,94,0.04);">
+				<div class="divide-y divide-border/50">
 					{#each auditEntries as entry}
 						<div class="px-4 py-3">
 							<div class="flex items-center justify-between mb-1">
-								<span class="text-sm" style="color: #e2e8f4;">
+								<span class="text-sm text-foreground">
 									{actionLabel(entry.action)}
 								</span>
-								<span class="text-xs font-mono" style="color: #475569;">
+								<span class="text-xs font-mono text-muted-foreground">
 									{formatDate(entry.created_at)}
 								</span>
 							</div>
 							{#if entry.user_email}
-								<p class="text-xs" style="color: #64748b;">
+								<p class="text-xs text-muted">
 									by {entry.user_email}
 								</p>
 							{/if}
 						</div>
 					{/each}
 					{#if auditEntries.length === 0}
-						<div class="px-4 py-8 text-center text-sm" style="color: #64748b;">
+						<div class="px-4 py-8 text-center text-sm text-muted">
 							No audit events yet.
 						</div>
 					{/if}

@@ -22,9 +22,7 @@
 	<title>Sign In - Fault</title>
 </svelte:head>
 
-<div class="min-h-screen flex items-center justify-center px-4" style="background: #07080c;">
-	<!-- Dot grid inherited from body::before -->
-
+<div class="min-h-screen flex items-center justify-center px-4 bg-background">
 	<div class="w-full max-w-sm relative z-10">
 		<!-- Logo -->
 		<div class="text-center mb-10">
@@ -35,11 +33,11 @@
 				>
 					//
 				</span>
-				<span class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+				<span class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 					Fault
 				</span>
 			</div>
-			<p style="color: #64748b; font-size: 14px;">Validate AI agent code changes</p>
+			<p class="text-muted" style="font-size: 14px;">Validate AI agent code changes</p>
 		</div>
 
 		{#if errorParam}
@@ -52,10 +50,7 @@
 		{/if}
 
 		<!-- Sign-in card -->
-		<div
-			class="rounded-xl p-6"
-			style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-		>
+		<div class="rounded-xl p-6 bg-card border border-border">
 			<button
 				onclick={handleLogin}
 				class="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold transition-all cursor-pointer"
@@ -83,12 +78,12 @@
 				</svg>
 				Sign in with Google
 			</button>
-			<p class="text-center text-xs mt-4" style="color: #334155;">
+			<p class="text-center text-xs mt-4 text-muted-foreground">
 				Free tier includes 50 LLM calls/month
 			</p>
 		</div>
 
-		<p class="text-center text-xs mt-6" style="color: #334155;">
+		<p class="text-center text-xs mt-6 text-muted-foreground">
 			<a href="https://fault.jabbey.io" style="color: #fb7185;" class="hover:underline">Learn more</a>
 			about Fault
 		</p>

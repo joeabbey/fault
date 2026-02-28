@@ -41,7 +41,7 @@
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
-		<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		<h1 class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 			Dashboard
 		</h1>
 		{#if usage}
@@ -74,18 +74,14 @@
 				{ label: 'Input Tokens', value: formatNumber(usage.tokens_input), accent: false },
 				{ label: 'Output Tokens', value: formatNumber(usage.tokens_output), accent: false }
 			] as stat}
-				<div
-					class="rounded-xl p-5"
-					style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06); transition: border-color 0.2s;"
-					onmouseenter={(e) => e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)'}
-					onmouseleave={(e) => e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'}
-				>
-					<p class="text-xs font-medium uppercase tracking-wider mb-2" style="color: #64748b;">
+				<div class="rounded-xl p-5 bg-card border border-border transition-[border-color] duration-200">
+					<p class="text-xs font-medium uppercase tracking-wider mb-2 text-muted">
 						{stat.label}
 					</p>
 					<p
 						class="text-2xl font-bold font-mono"
-						style="color: {stat.accent ? '#fb7185' : '#e2e8f4'}; letter-spacing: -1px;"
+						class:text-foreground={!stat.accent}
+						style="letter-spacing: -1px; {stat.accent ? 'color: #fb7185;' : ''}"
 					>
 						{stat.value}
 					</p>
@@ -94,21 +90,21 @@
 		</div>
 
 		<!-- Usage Meter -->
-		<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+		<div class="rounded-xl p-6 bg-card border border-border">
 			<div class="flex items-center justify-between mb-4">
-				<h2 class="text-sm font-medium" style="color: #e2e8f4;">Usage This Month</h2>
-				<span class="text-xs font-mono" style="color: #334155;">{usage.month}</span>
+				<h2 class="text-sm font-medium text-foreground">Usage This Month</h2>
+				<span class="text-xs font-mono text-muted-foreground">{usage.month}</span>
 			</div>
 			<div class="flex items-center gap-4">
 				<div class="flex-1">
-					<div class="w-full rounded-full h-2" style="background: #151821;">
+					<div class="w-full rounded-full h-2 bg-accent">
 						<div
 							class="h-2 rounded-full transition-all duration-700"
 							style="width: {usagePercent}%; background: {meterColor}; box-shadow: 0 0 12px {meterColor}40;"
 						></div>
 					</div>
 				</div>
-				<span class="text-sm font-medium font-mono whitespace-nowrap" style="color: #e2e8f4;">
+				<span class="text-sm font-medium font-mono whitespace-nowrap text-foreground">
 					{usage.llm_calls} / {usage.llm_limit === 0 ? '&infin;' : usage.llm_limit}
 				</span>
 			</div>
@@ -128,14 +124,11 @@
 		</div>
 
 		<!-- Quick Actions -->
-		<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
-			<h2 class="text-sm font-medium mb-4" style="color: #e2e8f4;">Quick Actions</h2>
+		<div class="rounded-xl p-6 bg-card border border-border">
+			<h2 class="text-sm font-medium mb-4 text-foreground">Quick Actions</h2>
 			<div class="flex flex-wrap gap-3">
 				<button
-					class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
-					style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
-					onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; e.currentTarget.style.background = 'rgba(244,63,94,0.04)'; }}
-					onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; e.currentTarget.style.background = '#151821'; }}
+					class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-accent text-foreground border border-border hover:border-[rgba(244,63,94,0.18)] hover:bg-[rgba(244,63,94,0.04)]"
 					onclick={() => goto('/api-keys')}
 				>
 					Rotate API Key
@@ -152,10 +145,7 @@
 					</button>
 				{:else}
 					<button
-						class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
-						style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
-						onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; e.currentTarget.style.background = 'rgba(244,63,94,0.04)'; }}
-						onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; e.currentTarget.style.background = '#151821'; }}
+						class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-accent text-foreground border border-border hover:border-[rgba(244,63,94,0.18)] hover:bg-[rgba(244,63,94,0.04)]"
 						onclick={() => goto('/billing')}
 					>
 						Manage Billing

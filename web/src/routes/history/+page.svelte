@@ -69,7 +69,7 @@
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
-		<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		<h1 class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 			Audit History
 		</h1>
 	</div>
@@ -95,18 +95,14 @@
 					{ label: 'Avg Errors', value: stats.avg_errors.toFixed(1), accent: false },
 					{ label: 'Avg Duration', value: formatDuration(stats.avg_duration_ms), accent: false }
 				] as stat}
-					<div
-						class="rounded-xl p-5"
-						style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06); transition: border-color 0.2s;"
-						onmouseenter={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)')}
-						onmouseleave={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)')}
-					>
-						<p class="text-xs font-medium uppercase tracking-wider mb-2" style="color: #64748b;">
+					<div class="rounded-xl p-5 bg-card border border-border transition-[border-color] duration-200">
+						<p class="text-xs font-medium uppercase tracking-wider mb-2 text-muted">
 							{stat.label}
 						</p>
 						<p
 							class="text-2xl font-bold font-mono"
-							style="color: {stat.accent ? '#fb7185' : '#e2e8f4'}; letter-spacing: -1px;"
+							class:text-foreground={!stat.accent}
+							style="letter-spacing: -1px; {stat.accent ? 'color: #fb7185;' : ''}"
 						>
 							{stat.value}
 						</p>
@@ -117,8 +113,8 @@
 
 		<!-- Issues Over Time Chart -->
 		{#if chartData.length >= 2}
-			<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
-				<h2 class="text-sm font-medium mb-4" style="color: #e2e8f4;">Issues Over Time</h2>
+			<div class="rounded-xl p-6 bg-card border border-border">
+				<h2 class="text-sm font-medium mb-4 text-foreground">Issues Over Time</h2>
 				<svg viewBox="0 0 300 90" class="w-full" style="max-height: 120px;">
 					<path d={chartPath} fill="none" stroke="#fb7185" stroke-width="1.5" />
 					{#each chartData as point}
@@ -135,20 +131,20 @@
 		{/if}
 
 		<!-- Runs Table -->
-		<div class="rounded-xl overflow-hidden" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+		<div class="rounded-xl overflow-hidden bg-card border border-border">
 			<table class="w-full text-sm">
 				<thead>
-					<tr style="border-bottom: 1px solid rgba(244,63,94,0.06);">
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+					<tr class="border-b border-border">
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
 							Date
 						</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
 							Branch
 						</th>
-						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+						<th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-muted">
 							Commit
 						</th>
-						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">
 							Files
 						</th>
 						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #f43f5e;">
@@ -157,7 +153,7 @@
 						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #fbbf24;">
 							Warnings
 						</th>
-						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+						<th class="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-muted">
 							Duration
 						</th>
 					</tr>
@@ -165,16 +161,13 @@
 				<tbody>
 					{#each runs as run}
 						<tr
-							class="cursor-pointer transition-colors"
-							style="border-bottom: 1px solid rgba(244,63,94,0.04);"
-							onmouseenter={(e) => (e.currentTarget.style.background = 'rgba(244,63,94,0.02)')}
-							onmouseleave={(e) => (e.currentTarget.style.background = 'transparent')}
+							class="cursor-pointer transition-colors border-b border-border/50 hover:bg-[rgba(244,63,94,0.02)]"
 							onclick={() => goto(`/history/${run.id}`)}
 						>
-							<td class="px-4 py-3 font-mono text-xs" style="color: #94a3b8;">
+							<td class="px-4 py-3 font-mono text-xs text-muted">
 								{formatDate(run.timestamp)}
 							</td>
-							<td class="px-4 py-3" style="color: #e2e8f4;">
+							<td class="px-4 py-3 text-foreground">
 								<span
 									class="px-2 py-0.5 rounded text-xs font-mono"
 									style="background: rgba(244,63,94,0.06); color: #fb7185;"
@@ -182,27 +175,27 @@
 									{run.branch || '-'}
 								</span>
 							</td>
-							<td class="px-4 py-3 font-mono text-xs" style="color: #94a3b8;">
+							<td class="px-4 py-3 font-mono text-xs text-muted">
 								{run.commit_sha ? shortSHA(run.commit_sha) : '-'}
 							</td>
-							<td class="px-4 py-3 text-right font-mono" style="color: #e2e8f4;">
+							<td class="px-4 py-3 text-right font-mono text-foreground">
 								{run.files_changed}
 							</td>
-							<td class="px-4 py-3 text-right font-mono font-medium" style="color: {run.errors > 0 ? '#f43f5e' : '#334155'};">
+							<td class="px-4 py-3 text-right font-mono font-medium" style="color: {run.errors > 0 ? '#f43f5e' : 'var(--color-muted-foreground)'};">
 								{run.errors}
 							</td>
-							<td class="px-4 py-3 text-right font-mono font-medium" style="color: {run.warnings > 0 ? '#fbbf24' : '#334155'};">
+							<td class="px-4 py-3 text-right font-mono font-medium" style="color: {run.warnings > 0 ? '#fbbf24' : 'var(--color-muted-foreground)'};">
 								{run.warnings}
 							</td>
-							<td class="px-4 py-3 text-right font-mono text-xs" style="color: #64748b;">
+							<td class="px-4 py-3 text-right font-mono text-xs text-muted">
 								{formatDuration(run.duration_ms)}
 							</td>
 						</tr>
 					{/each}
 					{#if runs.length === 0}
 						<tr>
-							<td colspan="7" class="px-4 py-8 text-center text-sm" style="color: #64748b;">
-								No audit runs yet. Run <code class="font-mono px-1.5 py-0.5 rounded" style="background: #151821; color: #fb7185;">fault audit --upload</code> to get started.
+							<td colspan="7" class="px-4 py-8 text-center text-sm text-muted">
+								No audit runs yet. Run <code class="font-mono px-1.5 py-0.5 rounded bg-accent" style="color: #fb7185;">fault audit --upload</code> to get started.
 							</td>
 						</tr>
 					{/if}

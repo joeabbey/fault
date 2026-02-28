@@ -110,7 +110,7 @@
 </svelte:head>
 
 <div class="space-y-6">
-	<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+	<h1 class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 		Billing
 	</h1>
 
@@ -130,12 +130,12 @@
 
 		<!-- Current plan -->
 		{#if subscription}
-			<div class="rounded-xl p-6" style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);">
+			<div class="rounded-xl p-6 bg-card border border-border">
 				<div class="flex items-center justify-between">
 					<div>
-						<h2 class="text-sm font-medium" style="color: #64748b;">Current Plan</h2>
+						<h2 class="text-sm font-medium text-muted">Current Plan</h2>
 						<div class="flex items-center gap-3 mt-1">
-							<span class="text-xl font-bold capitalize font-display" style="color: #e2e8f4;">
+							<span class="text-xl font-bold capitalize font-display text-foreground">
 								{subscription.plan}
 							</span>
 							<span
@@ -148,10 +148,7 @@
 					</div>
 					{#if subscription.plan !== 'free'}
 						<button
-							class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
-							style="background: #151821; color: #e2e8f4; border: 1px solid rgba(244,63,94,0.06);"
-							onmouseenter={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)'; }}
-							onmouseleave={(e) => { e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+							class="px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer bg-accent text-foreground border border-border hover:border-[rgba(244,63,94,0.18)]"
 							onclick={handlePortal}
 							disabled={openingPortal}
 						>
@@ -169,10 +166,8 @@
 		<div class="grid grid-cols-1 md:grid-cols-3 gap-5">
 			{#each plans as plan}
 				<div
-					class="rounded-xl p-6 relative"
-					style="background: #0e1017; border: {recommendedPlan === plan.id ? '2px solid #f43f5e' : '1px solid rgba(244,63,94,0.06)'}; transition: border-color 0.2s;"
-					onmouseenter={(e) => { if (recommendedPlan !== plan.id) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.15)'; }}
-					onmouseleave={(e) => { if (recommendedPlan !== plan.id) e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)'; }}
+					class="rounded-xl p-6 relative bg-card transition-[border-color] duration-200"
+					style="border: {recommendedPlan === plan.id ? '2px solid #f43f5e' : '1px solid var(--color-border)'};"
 				>
 					{#if recommendedPlan === plan.id}
 						<div class="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -185,18 +180,18 @@
 						</div>
 					{/if}
 
-					<h3 class="text-lg font-bold font-display" style="color: #e2e8f4;">{plan.name}</h3>
+					<h3 class="text-lg font-bold font-display text-foreground">{plan.name}</h3>
 					<div class="mt-2">
-						<span class="text-3xl font-bold font-display" style="color: #e2e8f4;">{plan.price}</span>
+						<span class="text-3xl font-bold font-display text-foreground">{plan.price}</span>
 						{#if plan.period}
-							<span style="color: #64748b;">{plan.period}</span>
+							<span class="text-muted">{plan.period}</span>
 						{/if}
 					</div>
-					<p class="mt-2 text-sm" style="color: #64748b;">{plan.description}</p>
+					<p class="mt-2 text-sm text-muted">{plan.description}</p>
 
 					<ul class="mt-6 space-y-2">
 						{#each plan.features as feature}
-							<li class="flex items-start gap-2 text-sm" style="color: #e2e8f4;">
+							<li class="flex items-start gap-2 text-sm text-foreground">
 								<svg class="h-4 w-4 mt-0.5 flex-shrink-0" style="color: #fb7185;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 								</svg>
@@ -208,16 +203,14 @@
 					<div class="mt-6">
 						{#if subscription?.plan === plan.id}
 							<button
-								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default"
-								style="background: #151821; color: #64748b; border: 1px solid rgba(244,63,94,0.06);"
+								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default bg-accent text-muted border border-border"
 								disabled
 							>
 								Current Plan
 							</button>
 						{:else if plan.id === 'free'}
 							<button
-								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default"
-								style="background: #151821; color: #64748b; border: 1px solid rgba(244,63,94,0.06);"
+								class="w-full px-4 py-2.5 rounded-lg text-sm font-medium cursor-default bg-accent text-muted border border-border"
 								disabled
 							>
 								Included
@@ -225,9 +218,9 @@
 						{:else}
 							<button
 								class="w-full px-4 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer"
-								style="background: {recommendedPlan === plan.id ? '#f43f5e' : '#151821'}; color: {recommendedPlan === plan.id ? '#fff' : '#e2e8f4'}; border: {recommendedPlan === plan.id ? 'none' : '1px solid rgba(244,63,94,0.06)'};"
+								style="background: {recommendedPlan === plan.id ? '#f43f5e' : 'var(--color-accent)'}; color: {recommendedPlan === plan.id ? '#fff' : 'var(--color-foreground)'}; border: {recommendedPlan === plan.id ? 'none' : '1px solid var(--color-border)'};"
 								onmouseenter={(e) => e.currentTarget.style.background = recommendedPlan === plan.id ? '#e11d48' : 'rgba(244,63,94,0.04)'}
-								onmouseleave={(e) => e.currentTarget.style.background = recommendedPlan === plan.id ? '#f43f5e' : '#151821'}
+								onmouseleave={(e) => e.currentTarget.style.background = recommendedPlan === plan.id ? '#f43f5e' : 'var(--color-accent)'}
 								onclick={() => handleCheckout(plan.id)}
 								disabled={checkingOut === plan.id}
 							>

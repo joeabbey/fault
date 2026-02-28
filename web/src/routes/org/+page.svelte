@@ -34,7 +34,7 @@
 
 <div class="space-y-6">
 	<div class="flex items-center justify-between">
-		<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		<h1 class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 			Team
 		</h1>
 	</div>
@@ -51,12 +51,9 @@
 			{error}
 		</div>
 	{:else if orgs.length === 0}
-		<div
-			class="rounded-xl p-8 text-center"
-			style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-		>
-			<p class="text-sm mb-2" style="color: #64748b;">No organizations yet.</p>
-			<p class="text-xs" style="color: #475569;">
+		<div class="rounded-xl p-8 text-center bg-card border border-border">
+			<p class="text-sm mb-2 text-muted">No organizations yet.</p>
+			<p class="text-xs text-muted-foreground">
 				Organizations are available on the Team plan. Create one from the API or upgrade your plan.
 			</p>
 		</div>
@@ -64,10 +61,7 @@
 		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 			{#each orgs as org}
 				<button
-					class="rounded-xl p-5 text-left cursor-pointer transition-colors w-full"
-					style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-					onmouseenter={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.18)')}
-					onmouseleave={(e) => (e.currentTarget.style.borderColor = 'rgba(244,63,94,0.06)')}
+					class="rounded-xl p-5 text-left cursor-pointer transition-[border-color] duration-200 w-full bg-card border border-border"
 					onclick={() => goto(`/org/${org.slug}`)}
 				>
 					<div class="flex items-center gap-3 mb-3">
@@ -78,10 +72,10 @@
 							{org.name.charAt(0).toUpperCase()}
 						</div>
 						<div class="flex-1 min-w-0">
-							<p class="text-sm font-semibold truncate" style="color: #e2e8f4;">
+							<p class="text-sm font-semibold truncate text-foreground">
 								{org.name}
 							</p>
-							<p class="text-xs font-mono" style="color: #64748b;">
+							<p class="text-xs font-mono text-muted">
 								{org.slug}
 							</p>
 						</div>
@@ -93,7 +87,7 @@
 						>
 							{org.plan}
 						</span>
-						<span class="text-xs" style="color: #475569;">
+						<span class="text-xs text-muted-foreground">
 							Created {formatDate(org.created_at)}
 						</span>
 					</div>

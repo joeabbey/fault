@@ -43,7 +43,7 @@
 			case 'missing':
 				return { bg: 'rgba(244,63,94,0.1)', color: '#fb7185' };
 			default:
-				return { bg: 'rgba(100,116,139,0.1)', color: '#64748b' };
+				return { bg: 'rgba(100,116,139,0.1)', color: 'var(--color-muted)' };
 		}
 	}
 
@@ -61,7 +61,7 @@
 <div class="space-y-6">
 	<!-- Header -->
 	<div class="flex items-center justify-between">
-		<h1 class="text-2xl font-bold font-display" style="color: #e2e8f4; letter-spacing: -0.5px;">
+		<h1 class="text-2xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 			Spec Compliance
 		</h1>
 	</div>
@@ -78,29 +78,20 @@
 			{error}
 		</div>
 	{:else if results.length === 0}
-		<div
-			class="rounded-xl p-8 text-center"
-			style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-		>
-			<p class="text-sm mb-2" style="color: #64748b;">No spec validation results yet.</p>
-			<p class="text-xs" style="color: #475569;">
-				Add a <code class="font-mono px-1.5 py-0.5 rounded" style="background: #151821; color: #fb7185;">.fault-spec.yaml</code>
-				to your repo and run <code class="font-mono px-1.5 py-0.5 rounded" style="background: #151821; color: #fb7185;">fault check --spec .fault-spec.yaml</code>
+		<div class="rounded-xl p-8 text-center bg-card border border-border">
+			<p class="text-sm mb-2 text-muted">No spec validation results yet.</p>
+			<p class="text-xs text-muted-foreground">
+				Add a <code class="font-mono px-1.5 py-0.5 rounded bg-accent" style="color: #fb7185;">.fault-spec.yaml</code>
+				to your repo and run <code class="font-mono px-1.5 py-0.5 rounded bg-accent" style="color: #fb7185;">fault check --spec .fault-spec.yaml</code>
 			</p>
 		</div>
 	{:else}
 		<!-- Results list -->
 		{#each results as result}
-			<div
-				class="rounded-xl overflow-hidden"
-				style="background: #0e1017; border: 1px solid rgba(244,63,94,0.06);"
-			>
+			<div class="rounded-xl overflow-hidden bg-card border border-border">
 				<!-- Summary header -->
 				<button
-					class="w-full px-6 py-4 flex items-center gap-4 cursor-pointer transition-colors"
-					style="background: transparent; border: none; text-align: left;"
-					onmouseenter={(e) => (e.currentTarget.style.background = 'rgba(244,63,94,0.02)')}
-					onmouseleave={(e) => (e.currentTarget.style.background = 'transparent')}
+					class="w-full px-6 py-4 flex items-center gap-4 cursor-pointer transition-colors bg-transparent border-none text-left hover:bg-[rgba(244,63,94,0.02)]"
 					onclick={() => toggleExpand(result.id)}
 				>
 					<!-- Score gauge -->
@@ -109,7 +100,7 @@
 							<circle
 								cx="18" cy="18" r="16"
 								fill="none"
-								stroke="#151821"
+								stroke="var(--color-accent)"
 								stroke-width="3"
 							/>
 							<circle
@@ -131,10 +122,10 @@
 
 					<!-- Title and date -->
 					<div class="flex-1 min-w-0">
-						<p class="text-sm font-medium truncate" style="color: #e2e8f4;">
+						<p class="text-sm font-medium truncate text-foreground">
 							{result.spec_title || 'Untitled Spec'}
 						</p>
-						<p class="text-xs font-mono mt-0.5" style="color: #64748b;">
+						<p class="text-xs font-mono mt-0.5 text-muted">
 							{formatDate(result.created_at)}
 						</p>
 					</div>
@@ -142,7 +133,7 @@
 					<!-- Coverage bar -->
 					<div class="hidden sm:flex items-center gap-3 flex-shrink-0" style="width: 200px;">
 						<div class="flex-1">
-							<div class="w-full rounded-full h-2 flex overflow-hidden" style="background: #151821;">
+							<div class="w-full rounded-full h-2 flex overflow-hidden bg-accent">
 								{#if result.total_requirements > 0}
 									<div
 										class="h-2"
@@ -159,15 +150,15 @@
 								{/if}
 							</div>
 						</div>
-						<span class="text-xs font-mono whitespace-nowrap" style="color: #94a3b8;">
+						<span class="text-xs font-mono whitespace-nowrap text-muted">
 							{result.implemented_count}/{result.total_requirements}
 						</span>
 					</div>
 
 					<!-- Expand icon -->
 					<svg
-						class="h-4 w-4 flex-shrink-0 transition-transform"
-						style="color: #64748b; transform: {expandedId === result.id ? 'rotate(180deg)' : 'rotate(0)'};"
+						class="h-4 w-4 flex-shrink-0 transition-transform text-muted"
+						style="transform: {expandedId === result.id ? 'rotate(180deg)' : 'rotate(0)'};"
 						fill="none" stroke="currentColor" viewBox="0 0 24 24"
 					>
 						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -176,20 +167,20 @@
 
 				<!-- Expanded: requirements table -->
 				{#if expandedId === result.id && result.result_json}
-					<div style="border-top: 1px solid rgba(244,63,94,0.06);">
+					<div class="border-t border-border">
 						<table class="w-full text-sm">
 							<thead>
-								<tr style="border-bottom: 1px solid rgba(244,63,94,0.04);">
-									<th class="px-6 py-2 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+								<tr class="border-b border-border/50">
+									<th class="px-6 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">
 										ID
 									</th>
-									<th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+									<th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">
 										Status
 									</th>
-									<th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+									<th class="px-4 py-2 text-left text-xs font-medium uppercase tracking-wider text-muted">
 										Evidence
 									</th>
-									<th class="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider" style="color: #64748b;">
+									<th class="px-4 py-2 text-right text-xs font-medium uppercase tracking-wider text-muted">
 										Confidence
 									</th>
 								</tr>
@@ -197,8 +188,8 @@
 							<tbody>
 								{#each result.result_json as req}
 									{@const badge = statusBadge(req.status)}
-									<tr style="border-bottom: 1px solid rgba(244,63,94,0.03);">
-										<td class="px-6 py-2 font-mono text-xs" style="color: #e2e8f4;">
+									<tr class="border-b border-border/30">
+										<td class="px-6 py-2 font-mono text-xs text-foreground">
 											{req.id}
 										</td>
 										<td class="px-4 py-2">
@@ -209,7 +200,7 @@
 												{req.status}
 											</span>
 										</td>
-										<td class="px-4 py-2 text-xs max-w-xs truncate" style="color: #94a3b8;">
+										<td class="px-4 py-2 text-xs max-w-xs truncate text-muted">
 											{req.evidence}
 										</td>
 										<td class="px-4 py-2 text-right font-mono text-xs" style="color: {scoreColor(req.confidence)};">

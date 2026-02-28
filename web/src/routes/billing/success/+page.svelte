@@ -95,9 +95,9 @@
 
 		<!-- Text -->
 		<h1
-			class="text-2xl font-bold font-display mb-2"
+			class="text-2xl font-bold font-display mb-2 text-foreground"
 			style="
-				color: #e2e8f4; letter-spacing: -0.5px;
+				letter-spacing: -0.5px;
 				opacity: {mounted ? 1 : 0};
 				transform: translateY({mounted ? 0 : 8}px);
 				transition: all 0.5s ease 0.3s;
@@ -106,9 +106,8 @@
 			You're all set
 		</h1>
 		<p
-			class="text-sm mb-1"
+			class="text-sm mb-1 text-muted"
 			style="
-				color: #64748b;
 				opacity: {mounted ? 1 : 0};
 				transform: translateY({mounted ? 0 : 8}px);
 				transition: all 0.5s ease 0.4s;
@@ -117,9 +116,8 @@
 			Your subscription is now active.
 		</p>
 		<p
-			class="text-xs font-mono"
+			class="text-xs font-mono text-muted-foreground"
 			style="
-				color: #334155;
 				opacity: {mounted ? 1 : 0};
 				transition: opacity 0.5s ease 0.5s;
 			"
