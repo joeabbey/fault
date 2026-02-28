@@ -16,7 +16,7 @@ RUN npm ci
 RUN npm run build
 
 # Stage 2: Build Go binary
-FROM golang:1.22-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 RUN apk add --no-cache git openssh-client
 
