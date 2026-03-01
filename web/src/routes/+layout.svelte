@@ -151,9 +151,11 @@
 
 		{#snippet userMenu()}
 			<div class="space-y-1">
-				<div class="px-3 py-1.5">
-					<ThemeSwitcher />
-				</div>
+				{#if !sidebarCollapsed}
+					<div class="px-3 py-1.5">
+						<ThemeSwitcher />
+					</div>
+				{/if}
 				{#if $currentEmail}
 					<Dropdown items={userMenuItems} align="start" onselect={handleUserMenuSelect}>
 						{#snippet trigger()}
