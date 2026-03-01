@@ -159,7 +159,7 @@ type RunUpload struct {
 	Branch          string           `json:"branch"`
 	CommitSHA       string           `json:"commit_sha"`
 	CommitRange     string           `json:"commit_range"`
-	Duration        time.Duration    `json:"duration_ms"`
+	DurationMs      int64            `json:"duration_ms"`
 	FilesChanged    int              `json:"files_changed"`
 	Issues          []analyzer.Issue `json:"issues"`
 	ConfidenceScore *float64         `json:"confidence_score,omitempty"`

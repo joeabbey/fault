@@ -1394,7 +1394,7 @@ func uploadAuditRun(cfg *config.Config, result *analyzer.AnalysisResult, repo *g
 		Branch:       result.Branch,
 		CommitSHA:    headSHA,
 		CommitRange:  result.CommitRange,
-		Duration:     result.Duration,
+		DurationMs:   result.Duration.Milliseconds(),
 		FilesChanged: result.FilesChanged,
 		Issues:       result.Issues,
 		Summary:      result.Summary,
