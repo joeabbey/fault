@@ -84,7 +84,7 @@ func checkCmd() *cobra.Command {
 	cmd.Flags().StringVar(&format, "format", "terminal", "Output format: terminal, json, sarif, github")
 	cmd.Flags().BoolVar(&useBaseline, "baseline", false, "Only report issues not in .fault-baseline.json")
 	cmd.Flags().BoolVar(&compact, "compact", false, "Compact single-line output (for CI/hooks)")
-	cmd.Flags().StringVar(&specFile, "spec", "", "Path to .fault-spec.yaml for requirements validation")
+	cmd.Flags().StringVar(&specFile, "spec", "", "Path to spec file (.fault-spec.yaml or .md) for requirements validation")
 	cmd.Flags().StringVar(&compliance, "compliance", "", "Compliance pack to check (e.g., owasp-top-10-2021, cwe-top-25-2023)")
 
 	return cmd
@@ -264,7 +264,7 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 		}
 
 		// Try structured spec (YAML with requirements) first
-		if _, parseErr := spec.ParseSpec(specContent); parseErr == nil {
+		if _, parseErr := spec.ParseYAMLSpec(specContent); parseErr == nil {
 			specTitle := filepath.Base(specPath)
 			structuredResult, err := client.AnalyzeSpecStructured(ctx, string(specContent), diffSummary, specTitle)
 			if err != nil {

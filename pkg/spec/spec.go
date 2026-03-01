@@ -3,13 +3,22 @@ package spec
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
 // SpecFileName is the default spec file name.
 const SpecFileName = ".fault-spec.yaml"
+
+// Supported Markdown extensions for spec files.
+var markdownExtensions = map[string]bool{
+	".md":       true,
+	".markdown": true,
+	".mdown":    true,
+}
 
 // Spec represents a parsed specification file.
 type Spec struct {
@@ -46,18 +55,47 @@ var validStatuses = map[string]bool{
 	"verified":      true,
 }
 
-// LoadSpec reads and parses a .fault-spec.yaml file.
+// LoadSpec reads and parses a spec file. It dispatches to the appropriate
+// parser based on the file extension: .md/.markdown → Markdown, otherwise YAML.
 func LoadSpec(path string) (*Spec, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading spec file: %w", err)
 	}
 
+	ext := strings.ToLower(filepath.Ext(path))
+	if markdownExtensions[ext] {
+		return ParseMarkdownSpec(data)
+	}
+
 	return ParseSpec(data)
 }
 
-// ParseSpec parses spec YAML bytes into a Spec.
+// ParseSpec parses spec bytes, trying YAML first, then Markdown as a fallback.
 func ParseSpec(data []byte) (*Spec, error) {
+	// Try YAML first
+	var s Spec
+	if err := yaml.Unmarshal(data, &s); err == nil {
+		if err := s.Validate(); err == nil {
+			return &s, nil
+		}
+	}
+
+	// Try Markdown
+	if md, err := ParseMarkdownSpec(data); err == nil {
+		return md, nil
+	}
+
+	// Return the YAML error for backwards compatibility
+	var s2 Spec
+	if err := yaml.Unmarshal(data, &s2); err != nil {
+		return nil, fmt.Errorf("parsing spec: %w", err)
+	}
+	return nil, s2.Validate()
+}
+
+// ParseYAMLSpec parses spec YAML bytes into a Spec (YAML only, no fallback).
+func ParseYAMLSpec(data []byte) (*Spec, error) {
 	var s Spec
 	if err := yaml.Unmarshal(data, &s); err != nil {
 		return nil, fmt.Errorf("parsing spec YAML: %w", err)
