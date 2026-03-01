@@ -21,7 +21,7 @@ clean:
 
 release: clean
 	mkdir -p dist
-	GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/fault-linux-amd64 ./cmd/fault
-	GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/fault-linux-arm64 ./cmd/fault
-	GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/fault-darwin-arm64 ./cmd/fault
-	GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/fault-darwin-amd64 ./cmd/fault
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o dist/fault-linux-amd64 ./cmd/fault
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build $(LDFLAGS) -o dist/fault-linux-arm64 ./cmd/fault
+	CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build $(LDFLAGS) -o dist/fault-darwin-arm64 ./cmd/fault
+	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build $(LDFLAGS) -o dist/fault-darwin-amd64 ./cmd/fault
