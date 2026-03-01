@@ -263,8 +263,8 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 			return
 		}
 
-		// Try structured spec (YAML with requirements) first
-		if _, parseErr := spec.ParseYAMLSpec(specContent); parseErr == nil {
+		// Try structured spec (YAML or Markdown with extractable requirements) first
+		if _, parseErr := spec.ParseSpec(specContent); parseErr == nil {
 			specTitle := filepath.Base(specPath)
 			structuredResult, err := client.AnalyzeSpecStructured(ctx, string(specContent), diffSummary, specTitle)
 			if err != nil {
