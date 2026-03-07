@@ -50,6 +50,7 @@ func main() {
 	rootCmd.AddCommand(watchCmd())
 	rootCmd.AddCommand(auditCmd())
 	rootCmd.AddCommand(configCmd())
+	rootCmd.AddCommand(specCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -263,6 +264,12 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 			return
 		}
 
+		// Load spec baseline for augmenting unstructured spec
+		specBaseline, err := analyzer.LoadSpecBaseline(filepath.Join(repoRoot, analyzer.SpecBaselineFileName))
+		if err != nil {
+			log.Printf("warning: could not load spec baseline: %v", err)
+		}
+
 		// Try structured spec (YAML or Markdown with extractable requirements) first
 		if _, parseErr := spec.ParseSpec(specContent); parseErr == nil {
 			specTitle := filepath.Base(specPath)
@@ -276,11 +283,18 @@ func runLLMAnalysis(cfg *config.Config, diff *git.Diff, parsedFiles map[string]*
 			return
 		}
 
-		// Fall back to unstructured spec comparison
-		specResult, err := client.AnalyzeSpec(ctx, string(specContent), diffSummary)
+		// Fall back to unstructured spec comparison with baseline augmentation
+		augmentedSpec := analyzer.AugmentSpecContent(string(specContent), specBaseline)
+
+		specResult, err := client.AnalyzeSpec(ctx, augmentedSpec, diffSummary)
 		if err != nil {
 			log.Printf("warning: LLM spec comparison failed: %v", err)
 			return
+		}
+
+		// Filter accepted unexpected items
+		if specBaseline != nil {
+			llm.FilterSpecResultUnexpected(specResult, specBaseline.AcceptedUnexpected)
 		}
 
 		specIssues := llm.SpecResultToIssues(specResult)
@@ -1512,4 +1526,247 @@ func printComplianceResult(result *analyzer.ComplianceResult) {
 	for _, v := range result.Violations {
 		fmt.Printf("  %s: %s (%d occurrences)\n", v.CWEID, v.IssueID, v.Count)
 	}
+}
+
+func specCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "spec",
+		Short: "Manage the spec compliance baseline",
+		Long:  "Track which spec requirements are already implemented, so future checks only flag remaining work.",
+	}
+
+	cmd.AddCommand(specAcceptCmd())
+	cmd.AddCommand(specShowCmd())
+	cmd.AddCommand(specResetCmd())
+
+	return cmd
+}
+
+func specAcceptCmd() *cobra.Command {
+	var (
+		branch           string
+		acceptUnexpected bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "accept",
+		Short: "Run spec analysis and record implemented items in the baseline",
+		Long:  "Runs spec comparison WITHOUT the existing baseline (raw spec), then merges newly-implemented items into .fault-spec-baseline.json.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSpecAccept(branch, acceptUnexpected)
+		},
+	}
+
+	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
+	cmd.Flags().BoolVar(&acceptUnexpected, "accept-unexpected", false, "Also accept unexpected changes into the baseline")
+
+	return cmd
+}
+
+func runSpecAccept(branch string, acceptUnexpected bool) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	cfg, err := config.Load(cwd)
+	if err != nil {
+		return fmt.Errorf("loading config: %w", err)
+	}
+
+	if !cfg.LLM.Enabled {
+		return fmt.Errorf("LLM analysis must be enabled in .fault.yaml (llm.enabled: true)")
+	}
+	if cfg.LLM.SpecFile == "" {
+		return fmt.Errorf("no spec file configured in .fault.yaml (llm.spec_file)")
+	}
+
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	repoRoot, err := repo.RepoRoot()
+	if err != nil {
+		return fmt.Errorf("getting repo root: %w", err)
+	}
+
+	// Get diff
+	diff, err := getDiff(repo, false, false, branch)
+	if err != nil {
+		return fmt.Errorf("getting diff: %w", err)
+	}
+
+	if len(diff.Files) == 0 {
+		fmt.Println("No changes detected")
+		return nil
+	}
+
+	// Read raw spec (no baseline augmentation)
+	specPath := cfg.LLM.SpecFile
+	if !filepath.IsAbs(specPath) {
+		specPath = filepath.Join(repoRoot, specPath)
+	}
+
+	specContent, err := os.ReadFile(specPath)
+	if err != nil {
+		return fmt.Errorf("reading spec file %s: %w", specPath, err)
+	}
+
+	// Run spec analysis against raw spec
+	ctx := context.Background()
+	client := cloudapi.New(cfg.LLM.APIURL, cfg.LLM.APIKey)
+	diffSummary := llm.BuildDiffSummary(diff)
+
+	fmt.Println("Running spec analysis...")
+	specResult, err := client.AnalyzeSpec(ctx, string(specContent), diffSummary)
+	if err != nil {
+		return fmt.Errorf("spec analysis failed: %w", err)
+	}
+
+	// Load or create baseline
+	baselinePath := filepath.Join(repoRoot, analyzer.SpecBaselineFileName)
+	baseline, err := analyzer.LoadSpecBaseline(baselinePath)
+	if err != nil {
+		return fmt.Errorf("loading spec baseline: %w", err)
+	}
+	if baseline == nil {
+		baseline = &analyzer.SpecBaseline{
+			Version:  1,
+			SpecFile: cfg.LLM.SpecFile,
+		}
+	}
+
+	// Merge implemented items
+	implAdded := analyzer.MergeImplemented(baseline, specResult.Implemented)
+
+	// Optionally accept unexpected items
+	unexpAdded := 0
+	if acceptUnexpected && len(specResult.Unexpected) > 0 {
+		unexpAdded = analyzer.MergeAcceptedUnexpected(baseline, specResult.Unexpected)
+	}
+
+	// Save baseline
+	if err := analyzer.SaveSpecBaseline(baselinePath, baseline); err != nil {
+		return fmt.Errorf("saving spec baseline: %w", err)
+	}
+
+	// Print summary
+	fmt.Printf("\nSpec analysis complete (score: %.0f%%)\n", specResult.Score*100)
+	fmt.Printf("  Implemented: %d items (%d new)\n", len(specResult.Implemented), implAdded)
+	fmt.Printf("  Missing:     %d items\n", len(specResult.Missing))
+	fmt.Printf("  Unexpected:  %d items", len(specResult.Unexpected))
+	if unexpAdded > 0 {
+		fmt.Printf(" (%d accepted)", unexpAdded)
+	}
+	fmt.Println()
+
+	fmt.Printf("\nBaseline: %d implemented", len(baseline.Implemented))
+	if len(baseline.AcceptedUnexpected) > 0 {
+		fmt.Printf(", %d accepted unexpected", len(baseline.AcceptedUnexpected))
+	}
+	fmt.Println()
+	fmt.Printf("File: %s\n", baselinePath)
+
+	if len(specResult.Missing) > 0 {
+		fmt.Println("\nRemaining requirements:")
+		for _, item := range specResult.Missing {
+			fmt.Printf("  - %s\n", item)
+		}
+	}
+
+	return nil
+}
+
+func specShowCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "show",
+		Short: "Display the current spec baseline",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			repoRoot, err := repo.RepoRoot()
+			if err != nil {
+				return fmt.Errorf("getting repo root: %w", err)
+			}
+
+			baselinePath := filepath.Join(repoRoot, analyzer.SpecBaselineFileName)
+			baseline, err := analyzer.LoadSpecBaseline(baselinePath)
+			if err != nil {
+				return fmt.Errorf("loading spec baseline: %w", err)
+			}
+
+			if baseline == nil {
+				fmt.Println("No spec baseline found. Run 'fault spec accept' to create one.")
+				return nil
+			}
+
+			fmt.Printf("Spec baseline (v%d)\n", baseline.Version)
+			fmt.Printf("  Spec file: %s\n", baseline.SpecFile)
+			fmt.Printf("  Updated:   %s\n", baseline.UpdatedAt.Format(time.RFC3339))
+
+			if len(baseline.Implemented) > 0 {
+				fmt.Printf("\nImplemented (%d):\n", len(baseline.Implemented))
+				for _, item := range baseline.Implemented {
+					fmt.Printf("  - %s\n", item)
+				}
+			}
+
+			if len(baseline.AcceptedUnexpected) > 0 {
+				fmt.Printf("\nAccepted unexpected (%d):\n", len(baseline.AcceptedUnexpected))
+				for _, item := range baseline.AcceptedUnexpected {
+					fmt.Printf("  - %s\n", item)
+				}
+			}
+
+			return nil
+		},
+	}
+
+	return cmd
+}
+
+func specResetCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "reset",
+		Short: "Remove the spec baseline file",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("getting working directory: %w", err)
+			}
+
+			repo, err := git.NewRepo(cwd)
+			if err != nil {
+				return fmt.Errorf("opening repo: %w", err)
+			}
+
+			repoRoot, err := repo.RepoRoot()
+			if err != nil {
+				return fmt.Errorf("getting repo root: %w", err)
+			}
+
+			baselinePath := filepath.Join(repoRoot, analyzer.SpecBaselineFileName)
+			if err := os.Remove(baselinePath); err != nil {
+				if os.IsNotExist(err) {
+					fmt.Println("No spec baseline file to remove.")
+					return nil
+				}
+				return fmt.Errorf("removing spec baseline: %w", err)
+			}
+
+			fmt.Printf("Removed %s\n", baselinePath)
+			return nil
+		},
+	}
+
+	return cmd
 }

@@ -97,6 +97,38 @@ func buildSpecPrompt(specContent string, diff *git.Diff) string {
 	return b.String()
 }
 
+// FilterSpecResultUnexpected removes unexpected items from the result that match
+// accepted entries in the baseline. Uses bidirectional strings.Contains fuzzy matching
+// (same as matchesBaseline in baseline.go). Returns the number of items removed.
+func FilterSpecResultUnexpected(result *SpecResult, acceptedUnexpected []string) int {
+	if result == nil || len(result.Unexpected) == 0 || len(acceptedUnexpected) == 0 {
+		return 0
+	}
+
+	filtered := make([]string, 0, len(result.Unexpected))
+	removed := 0
+	for _, item := range result.Unexpected {
+		if matchesAnyAccepted(item, acceptedUnexpected) {
+			removed++
+		} else {
+			filtered = append(filtered, item)
+		}
+	}
+	result.Unexpected = filtered
+	return removed
+}
+
+func matchesAnyAccepted(item string, accepted []string) bool {
+	lower := strings.ToLower(item)
+	for _, a := range accepted {
+		aLower := strings.ToLower(a)
+		if strings.Contains(lower, aLower) || strings.Contains(aLower, lower) {
+			return true
+		}
+	}
+	return false
+}
+
 // validateSpecResult ensures the result has valid data and clamped scores.
 func validateSpecResult(result SpecResult) SpecResult {
 	if result.Implemented == nil {

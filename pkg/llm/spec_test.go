@@ -197,6 +197,61 @@ func TestSpecResultToIssues_Empty(t *testing.T) {
 	}
 }
 
+func TestFilterSpecResultUnexpected_WithMatches(t *testing.T) {
+	result := &SpecResult{
+		Unexpected: []string{"Debug logging added", "New API endpoint", "Extra config file"},
+	}
+
+	removed := FilterSpecResultUnexpected(result, []string{"debug logging", "extra config"})
+
+	if removed != 2 {
+		t.Errorf("removed = %d, want 2", removed)
+	}
+	if len(result.Unexpected) != 1 {
+		t.Fatalf("Unexpected count = %d, want 1", len(result.Unexpected))
+	}
+	if result.Unexpected[0] != "New API endpoint" {
+		t.Errorf("Unexpected[0] = %q, want %q", result.Unexpected[0], "New API endpoint")
+	}
+}
+
+func TestFilterSpecResultUnexpected_NoMatches(t *testing.T) {
+	result := &SpecResult{
+		Unexpected: []string{"Debug logging added", "New API endpoint"},
+	}
+
+	removed := FilterSpecResultUnexpected(result, []string{"unrelated item"})
+
+	if removed != 0 {
+		t.Errorf("removed = %d, want 0", removed)
+	}
+	if len(result.Unexpected) != 2 {
+		t.Errorf("Unexpected count = %d, want 2", len(result.Unexpected))
+	}
+}
+
+func TestFilterSpecResultUnexpected_EmptyInputs(t *testing.T) {
+	// Nil result
+	removed := FilterSpecResultUnexpected(nil, []string{"item"})
+	if removed != 0 {
+		t.Errorf("removed = %d, want 0 for nil result", removed)
+	}
+
+	// Empty unexpected
+	result := &SpecResult{Unexpected: []string{}}
+	removed = FilterSpecResultUnexpected(result, []string{"item"})
+	if removed != 0 {
+		t.Errorf("removed = %d, want 0 for empty unexpected", removed)
+	}
+
+	// Empty accepted
+	result = &SpecResult{Unexpected: []string{"something"}}
+	removed = FilterSpecResultUnexpected(result, []string{})
+	if removed != 0 {
+		t.Errorf("removed = %d, want 0 for empty accepted", removed)
+	}
+}
+
 func TestCompareSpec_ScoreClamping(t *testing.T) {
 	outOfRange := SpecResult{
 		Implemented: make([]string, 0),

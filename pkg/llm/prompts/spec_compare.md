@@ -27,5 +27,10 @@ Rules:
 - "score" is a float between 0.0 and 1.0 representing how well the diff matches the spec
   - 1.0 = perfect match (all spec items implemented, no unexpected changes)
   - 0.0 = no match at all
+- If the specification contains an "## Already Implemented" section, those items
+  have been completed in prior changes. Do NOT include them in "missing". Only
+  include them in "implemented" if the current diff also modifies that area.
+- The "score" should reflect how well the diff satisfies remaining (not yet
+  implemented) spec requirements, ignoring already-implemented items.
 - All arrays must be present (use empty arrays [] if nothing applies)
 - Return ONLY valid JSON, no markdown fences or additional text
