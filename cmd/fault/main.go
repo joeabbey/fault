@@ -30,7 +30,7 @@ import (
 )
 
 // Version is set at build time via -ldflags
-var Version = "0.7.5"
+var Version = "0.7.6"
 
 func main() {
 	rootCmd := &cobra.Command{
