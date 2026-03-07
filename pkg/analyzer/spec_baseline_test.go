@@ -159,6 +159,45 @@ func TestFilterSpecUnexpected_EmptyAccepted(t *testing.T) {
 	}
 }
 
+func TestMatchBaselineToRequirements_Matches(t *testing.T) {
+	baseline := &SpecBaseline{
+		Implemented: []string{"User authentication", "Password hashing"},
+	}
+	ids := []string{"REQ-1", "REQ-2", "REQ-3"}
+	descs := []string{
+		"User authentication with JWT",
+		"Dashboard layout",
+		"Password hashing with bcrypt",
+	}
+
+	matched := MatchBaselineToRequirements(baseline, ids, descs)
+
+	if !matched["REQ-1"] {
+		t.Error("REQ-1 should match 'User authentication'")
+	}
+	if matched["REQ-2"] {
+		t.Error("REQ-2 should not match")
+	}
+	if !matched["REQ-3"] {
+		t.Error("REQ-3 should match 'Password hashing'")
+	}
+}
+
+func TestMatchBaselineToRequirements_NilBaseline(t *testing.T) {
+	matched := MatchBaselineToRequirements(nil, []string{"REQ-1"}, []string{"Something"})
+	if len(matched) != 0 {
+		t.Errorf("matched count = %d, want 0 for nil baseline", len(matched))
+	}
+}
+
+func TestMatchBaselineToRequirements_EmptyBaseline(t *testing.T) {
+	baseline := &SpecBaseline{Implemented: []string{}}
+	matched := MatchBaselineToRequirements(baseline, []string{"REQ-1"}, []string{"Something"})
+	if len(matched) != 0 {
+		t.Errorf("matched count = %d, want 0 for empty baseline", len(matched))
+	}
+}
+
 func TestAugmentSpecContent_NilBaseline(t *testing.T) {
 	spec := "# My Spec\n\n- Feature A"
 	result := AugmentSpecContent(spec, nil)

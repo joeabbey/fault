@@ -67,6 +67,22 @@ func (r *Repo) BranchDiff(baseBranch string) (*Diff, error) {
 	return ParseDiff(output, "branch")
 }
 
+// EmptyCommit creates an ephemeral commit with an empty tree.
+// Useful for diffing the entire repo contents against nothing.
+func (r *Repo) EmptyCommit() (string, error) {
+	treeHash, err := r.git("hash-object", "-t", "tree", "/dev/null")
+	if err != nil {
+		return "", fmt.Errorf("creating empty tree: %w", err)
+	}
+	treeHash = strings.TrimSpace(treeHash)
+
+	commitHash, err := r.git("commit-tree", treeHash, "-m", "empty")
+	if err != nil {
+		return "", fmt.Errorf("creating empty commit: %w", err)
+	}
+	return strings.TrimSpace(commitHash), nil
+}
+
 // AutoDiff returns staged changes if anything is staged, otherwise unstaged.
 func (r *Repo) AutoDiff() (*Diff, error) {
 	staged, err := r.StagedDiff()

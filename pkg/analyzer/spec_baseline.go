@@ -116,6 +116,27 @@ func matchesAccepted(item string, accepted []string) bool {
 	return false
 }
 
+// MatchBaselineToRequirements fuzzy-matches baseline Implemented strings against
+// requirement descriptions. Returns a set of matched requirement IDs.
+func MatchBaselineToRequirements(baseline *SpecBaseline, reqIDs []string, reqDescs []string) map[string]bool {
+	matched := make(map[string]bool)
+	if baseline == nil || len(baseline.Implemented) == 0 {
+		return matched
+	}
+
+	for i, desc := range reqDescs {
+		descLower := strings.ToLower(desc)
+		for _, impl := range baseline.Implemented {
+			implLower := strings.ToLower(impl)
+			if strings.Contains(descLower, implLower) || strings.Contains(implLower, descLower) {
+				matched[reqIDs[i]] = true
+				break
+			}
+		}
+	}
+	return matched
+}
+
 // AugmentSpecContent appends an "Already Implemented" section to the spec content
 // listing items from the baseline. Returns spec unchanged if baseline is nil or empty.
 func AugmentSpecContent(specContent string, baseline *SpecBaseline) string {

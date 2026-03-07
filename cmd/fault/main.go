@@ -1536,6 +1536,7 @@ func specCmd() *cobra.Command {
 	}
 
 	cmd.AddCommand(specAcceptCmd())
+	cmd.AddCommand(specStatusCmd())
 	cmd.AddCommand(specShowCmd())
 	cmd.AddCommand(specResetCmd())
 
@@ -1546,6 +1547,7 @@ func specAcceptCmd() *cobra.Command {
 	var (
 		branch           string
 		acceptUnexpected bool
+		init             bool
 	)
 
 	cmd := &cobra.Command{
@@ -1553,17 +1555,18 @@ func specAcceptCmd() *cobra.Command {
 		Short: "Run spec analysis and record implemented items in the baseline",
 		Long:  "Runs spec comparison WITHOUT the existing baseline (raw spec), then merges newly-implemented items into .fault-spec-baseline.json.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runSpecAccept(branch, acceptUnexpected)
+			return runSpecAccept(branch, acceptUnexpected, init)
 		},
 	}
 
 	cmd.Flags().StringVar(&branch, "branch", "", "Check changes since branch (e.g., main)")
 	cmd.Flags().BoolVar(&acceptUnexpected, "accept-unexpected", false, "Also accept unexpected changes into the baseline")
+	cmd.Flags().BoolVar(&init, "init", false, "Bootstrap baseline from the entire repo (diff against empty tree)")
 
 	return cmd
 }
 
-func runSpecAccept(branch string, acceptUnexpected bool) error {
+func runSpecAccept(branch string, acceptUnexpected bool, initMode bool) error {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("getting working directory: %w", err)
@@ -1589,6 +1592,15 @@ func runSpecAccept(branch string, acceptUnexpected bool) error {
 	repoRoot, err := repo.RepoRoot()
 	if err != nil {
 		return fmt.Errorf("getting repo root: %w", err)
+	}
+
+	// For --init, create an empty commit to diff the entire repo against
+	if initMode {
+		emptyCommit, err := repo.EmptyCommit()
+		if err != nil {
+			return fmt.Errorf("creating empty commit for init: %w", err)
+		}
+		branch = emptyCommit
 	}
 
 	// Get diff
@@ -1674,6 +1686,171 @@ func runSpecAccept(branch string, acceptUnexpected bool) error {
 			fmt.Printf("  - %s\n", item)
 		}
 	}
+
+	return nil
+}
+
+func specStatusCmd() *cobra.Command {
+	var specFile string
+
+	cmd := &cobra.Command{
+		Use:   "status",
+		Short: "Show spec progress: what's implemented and what remains",
+		Long:  "Parses the spec file locally (no LLM, no diff needed) and shows which requirements are implemented based on the baseline and code anchors.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runSpecStatus(specFile)
+		},
+	}
+
+	cmd.Flags().StringVar(&specFile, "spec", "", "Path to spec file (default: from .fault.yaml or .fault-spec.yaml)")
+
+	return cmd
+}
+
+func runSpecStatus(specFileFlag string) error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("getting working directory: %w", err)
+	}
+
+	repo, err := git.NewRepo(cwd)
+	if err != nil {
+		return fmt.Errorf("opening repo: %w", err)
+	}
+
+	repoRoot, err := repo.RepoRoot()
+	if err != nil {
+		return fmt.Errorf("getting repo root: %w", err)
+	}
+
+	// Resolve spec file path
+	specPath := specFileFlag
+	if specPath == "" {
+		// Try config first
+		cfg, err := config.Load(cwd)
+		if err == nil && cfg.LLM.SpecFile != "" {
+			specPath = cfg.LLM.SpecFile
+		}
+	}
+	if specPath == "" {
+		// Auto-detect .fault-spec.yaml
+		specPath = spec.SpecFileName
+	}
+	if !filepath.IsAbs(specPath) {
+		specPath = filepath.Join(repoRoot, specPath)
+	}
+
+	// Parse spec file locally
+	parsedSpec, err := spec.LoadSpec(specPath)
+	if err != nil {
+		return fmt.Errorf("parsing spec file %s: %w", specPath, err)
+	}
+
+	if len(parsedSpec.Requirements) == 0 {
+		fmt.Println("No requirements found in spec file.")
+		return nil
+	}
+
+	// Scan for spec anchors in code
+	anchors, err := spec.ExtractAnchorsFromDir(repoRoot)
+	if err != nil {
+		log.Printf("warning: could not scan for anchors: %v", err)
+	}
+	anchorsByReq := spec.GroupAnchorsByReqID(anchors)
+
+	// Load baseline if it exists
+	baseline, err := analyzer.LoadSpecBaseline(filepath.Join(repoRoot, analyzer.SpecBaselineFileName))
+	if err != nil {
+		log.Printf("warning: could not load spec baseline: %v", err)
+	}
+
+	// Match baseline items to requirements
+	reqIDs := make([]string, len(parsedSpec.Requirements))
+	reqDescs := make([]string, len(parsedSpec.Requirements))
+	for i, req := range parsedSpec.Requirements {
+		reqIDs[i] = req.ID
+		reqDescs[i] = req.Description
+	}
+	baselineMatched := analyzer.MatchBaselineToRequirements(baseline, reqIDs, reqDescs)
+
+	// Classify requirements
+	type reqStatus struct {
+		req       spec.Requirement
+		done      bool
+		reason    string // "anchored", "baseline", "status:implemented", "status:verified"
+		anchorCnt int
+	}
+
+	var implemented, remaining []reqStatus
+	for _, req := range parsedSpec.Requirements {
+		rs := reqStatus{req: req, anchorCnt: len(anchorsByReq[req.ID])}
+
+		switch {
+		case req.Status == "implemented" || req.Status == "verified":
+			rs.done = true
+			rs.reason = "status:" + req.Status
+		case len(anchorsByReq[req.ID]) > 0:
+			rs.done = true
+			rs.reason = "anchored"
+		case baselineMatched[req.ID]:
+			rs.done = true
+			rs.reason = "baseline"
+		}
+
+		if rs.done {
+			implemented = append(implemented, rs)
+		} else {
+			remaining = append(remaining, rs)
+		}
+	}
+
+	total := len(parsedSpec.Requirements)
+	doneCount := len(implemented)
+
+	// Print header
+	relSpec, _ := filepath.Rel(repoRoot, specPath)
+	if relSpec == "" {
+		relSpec = specPath
+	}
+	fmt.Printf("Spec: %s (%d requirements)\n", relSpec, total)
+	if baseline != nil {
+		fmt.Printf("Baseline: %d implemented, last updated %s\n",
+			len(baseline.Implemented), baseline.UpdatedAt.Format("2006-01-02"))
+	}
+	fmt.Println()
+
+	// Print remaining (most actionable — show first)
+	if len(remaining) > 0 {
+		fmt.Printf("Remaining (%d):\n", len(remaining))
+		for _, rs := range remaining {
+			status := ""
+			if rs.req.Status != "" {
+				status = fmt.Sprintf(" (%s)", rs.req.Status)
+			}
+			fmt.Printf("  %-12s %s%s\n", rs.req.ID, rs.req.Description, status)
+		}
+		fmt.Println()
+	}
+
+	// Print implemented
+	if len(implemented) > 0 {
+		fmt.Printf("Implemented (%d):\n", len(implemented))
+		for _, rs := range implemented {
+			evidence := rs.reason
+			if rs.anchorCnt > 0 {
+				evidence = fmt.Sprintf("%d anchors", rs.anchorCnt)
+			}
+			fmt.Printf("  %-12s %s [%s]\n", rs.req.ID, rs.req.Description, evidence)
+		}
+		fmt.Println()
+	}
+
+	// Progress summary
+	pct := 0
+	if total > 0 {
+		pct = doneCount * 100 / total
+	}
+	fmt.Printf("Progress: %d/%d (%d%%)\n", doneCount, total, pct)
 
 	return nil
 }
