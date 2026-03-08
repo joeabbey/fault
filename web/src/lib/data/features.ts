@@ -9,12 +9,12 @@ export const features: Feature[] = [
 	{
 		title: 'Works completely offline',
 		description:
-			'All sixteen analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.'
+			'All 17 analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.'
 	},
 	{
 		title: 'Manifest-aware validation',
 		description:
-			'Validates imports against your actual project dependencies \u2014 package.json, go.mod, Cargo.toml, pom.xml, build.gradle, .csproj, composer.json, Gemfile, Package.swift, and 23 more.'
+			'Validates imports against your actual project dependencies \u2014 package.json, go.mod, Cargo.toml, pom.xml, build.gradle, .csproj, composer.json, Gemfile, Package.swift, and 21 more.'
 	},
 	{
 		title: 'Git native',
@@ -53,7 +53,7 @@ export const features: Feature[] = [
 	{
 		title: 'Post-merge audit',
 		description:
-			'Run fault audit --commits 5 to scan code that already shipped. Catches regressions after merge, uploads results to the cloud dashboard with trend analytics.',
+			'Run fault audit --commits 5 to scan code that already shipped. Catches regressions after merge. Upload results to the cloud dashboard with trend analytics (Pro).',
 		badge: 'New in v6',
 		badgeVariant: 'default'
 	},
@@ -67,7 +67,9 @@ export const features: Feature[] = [
 	{
 		title: 'VS Code extension',
 		description:
-			'See Fault findings inline as you code. The extension runs analysis on save and shows diagnostics, quick-fixes, and code actions in the editor.'
+			'See Fault findings inline as you code. The extension runs analysis on save and shows diagnostics, quick-fixes, and code actions in the editor.',
+		badge: 'Beta',
+		badgeVariant: 'default'
 	},
 	{
 		title: 'AI-enhanced validation',

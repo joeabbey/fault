@@ -14,9 +14,11 @@ export const pricing: PricingTier[] = [
 		price: '$0',
 		description: 'All static analyzers. Unlimited local use. No account required.',
 		features: [
-			'16 analyzers including spec validation, concurrency, resource leaks',
+			'17 analyzers including spec validation, concurrency, resource leaks',
 			'42 languages with full cross-file analysis',
-			'32 manifest formats for dependency validation',
+			'30+ manifest formats for dependency validation',
+			'OWASP Top 10 & CWE Top 25 compliance packs',
+			'Custom analyzer rules via .fault.yaml',
 			'Terminal, JSON, SARIF output',
 			'Auto-fix engine (fault fix)',
 			'Watch mode (fault watch)',
@@ -50,12 +52,12 @@ export const pricing: PricingTier[] = [
 		description: 'Shared rules, compliance, and visibility across your team.',
 		features: [
 			'Everything in Pro',
-			'Organization-wide shared baselines (fault.team.yaml)',
-			'OWASP Top 10 & CWE Top 25 compliance packs',
+			'Organization-wide shared baselines & config (fault config pull)',
+			'Organization compliance tracking & reports',
 			'Webhook notifications (Slack, Discord, HTTP)',
 			'Team dashboard with change audit trail',
-			'Custom analyzer rules',
-			'SSO integration'
+			'Member management & audit logs',
+			'SSO integration (OIDC)'
 		],
 		cta: { label: 'Contact us', href: 'mailto:joe@jabbey.io' }
 	}

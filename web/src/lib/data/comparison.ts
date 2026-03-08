@@ -8,7 +8,7 @@ export const comparisonColumns = ['Check', 'Single-file linter', 'Fault'];
 
 export const comparisonRows: ComparisonRow[] = [
 	{ check: 'Broken imports across files', linter: 'No', fault: 'Yes' },
-	{ check: 'Phantom packages not in manifest', linter: 'No', fault: 'Yes (32 formats)' },
+	{ check: 'Phantom packages not in manifest', linter: 'No', fault: 'Yes (30+ formats)' },
 	{ check: 'Signature changes with stale callers', linter: 'No', fault: 'Yes' },
 	{ check: 'Swallowed errors & missing catch', linter: 'Partial', fault: 'Yes (42 languages)' },
 	{ check: 'Dead exported code', linter: 'No', fault: 'Yes' },

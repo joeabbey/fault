@@ -18,12 +18,13 @@
 			period: '',
 			description: 'All static analyzers. Unlimited local use. No account required.',
 			features: [
-				'15 analyzers including concurrency, resource leaks, migration safety',
+				'17 analyzers including concurrency, resource leaks, migration safety',
 				'42 languages with full cross-file analysis',
-				'32 manifest formats for dependency validation',
+				'30+ manifest formats for dependency validation',
+				'OWASP Top 10 & CWE Top 25 compliance packs',
+				'Custom analyzer rules via .fault.yaml',
 				'Terminal, JSON, SARIF output',
-				'Auto-fix engine',
-				'Watch mode',
+				'Auto-fix engine & watch mode',
 				'Pre-commit hook & GitHub PR comments',
 				'Works offline'
 			]
@@ -52,12 +53,12 @@
 			description: 'Shared rules, compliance, and visibility across your team.',
 			features: [
 				'Everything in Pro',
-				'Organization-wide shared baselines',
-				'OWASP Top 10 & CWE Top 25 compliance packs',
+				'Organization-wide shared baselines & config (fault config pull)',
+				'Organization compliance tracking & reports',
 				'Webhook notifications (Slack, Discord, HTTP)',
 				'Team dashboard with change audit trail',
-				'Custom analyzer rules',
-				'SSO integration'
+				'Member management & audit logs',
+				'SSO integration (OIDC)'
 			]
 		}
 	];
