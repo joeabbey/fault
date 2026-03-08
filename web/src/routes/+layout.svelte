@@ -10,7 +10,7 @@
 
 	let { children: pageContent } = $props();
 
-	const publicRoutes = ['/login', '/docs'];
+	const publicRoutes = ['/login', '/logout', '/docs'];
 	let sidebarCollapsed = $state(false);
 
 	const activeNavId = $derived.by(() => {
@@ -146,6 +146,8 @@
 	<div class="min-h-screen flex items-center justify-center bg-background">
 		<Spinner size="lg" />
 	</div>
+{:else if isPublicPage}
+	{@render pageContent()}
 {:else if $isAuthenticated}
 	<DashboardLayout {navItems} {activeNavId} bind:collapsed={sidebarCollapsed}>
 		{#snippet logo()}
@@ -210,8 +212,6 @@
 			</div>
 		{/snippet}
 	</DashboardLayout>
-{:else if isPublicPage}
-	{@render pageContent()}
 {:else}
 	{@render pageContent()}
 {/if}
