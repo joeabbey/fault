@@ -11,7 +11,8 @@
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "@jabbey/atlas": "file:./vendor/atlas"
+    "@jabbey/atlas": "file:./vendor/atlas",
+    "marked": "^17.0.4"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
