@@ -16,7 +16,9 @@
 		}))
 	);
 
-	const html = $derived(marked.parse(data.markdown) as string);
+	// Strip the first H1 from markdown — DocsRenderer already renders title as <h1>
+	const strippedMarkdown = $derived(data.markdown.replace(/^#\s+.+\n+/, ''));
+	const html = $derived(marked.parse(strippedMarkdown) as string);
 
 	const navItems = [
 		{ label: 'Docs', href: '/docs' },

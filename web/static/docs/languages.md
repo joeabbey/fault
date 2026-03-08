@@ -6,48 +6,48 @@ Fault supports **42 programming languages** with full analysis and auto-fix acro
 
 | Language | Imports | Exports | Symbols | Security rules | Auto-fix |
 |----------|:--:|:--:|:--:|:--:|:--:|
-| **Go** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **TypeScript / JavaScript** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Python** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Java** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Rust** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Ruby** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Kotlin** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **C#** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **PHP** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Swift** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **C** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **C++** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Objective-C** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Dart** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Scala** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **R** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Elixir** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Lua** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Perl** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **PowerShell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Groovy** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Bash / Shell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Zig** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Nim** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Crystal** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **V** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **D** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Haskell** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Clojure** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Erlang** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **F#** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **OCaml** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Julia** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Fortran** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Solidity** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Terraform** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Protobuf** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Visual Basic** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **COBOL** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Ada** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Pascal** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **SQL** | :white_check_mark: | | | :white_check_mark: | :white_check_mark: |
+| **Go** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **TypeScript / JavaScript** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Python** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Java** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Rust** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Ruby** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Kotlin** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **C#** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **PHP** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Swift** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **C** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **C++** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Objective-C** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Dart** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Scala** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **R** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Elixir** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Lua** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Perl** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **PowerShell** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Groovy** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Bash / Shell** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Zig** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Nim** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Crystal** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **V** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **D** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Haskell** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Clojure** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Erlang** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **F#** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **OCaml** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Julia** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Fortran** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Solidity** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Terraform** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Protobuf** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Visual Basic** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **COBOL** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Ada** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Pascal** | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **SQL** | ✓ | | | ✓ | ✓ |
 
 > All 42 languages get full support including auto-fix, security rules, and the core analyzers: imports, consistency, references, tests, patterns, hallucination, complexity, concurrency, resource, migration, and doc drift.
 
