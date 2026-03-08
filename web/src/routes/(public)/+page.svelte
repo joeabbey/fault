@@ -239,8 +239,13 @@
 	/>
 
 	<!-- Final CTA -->
-	<section class="py-[72px] max-[768px]:py-12 border-t border-border">
-		<div class="mx-auto max-w-[1140px] px-7 text-center">
+	<section class="relative py-[72px] max-[768px]:py-12 border-t border-border">
+		<!-- Ambient glow -->
+		<div
+			class="pointer-events-none absolute left-1/2 top-0 h-[400px] w-[600px] -translate-x-1/2"
+			style="background: radial-gradient(ellipse at center, rgba(244,63,94,0.04) 0%, transparent 70%)"
+		></div>
+		<div class="relative z-[1] mx-auto max-w-[1140px] px-7 text-center">
 			<h2
 				class="mb-4 text-[34px] font-bold leading-[1.15] tracking-[-0.5px] max-[768px]:text-[26px]"
 			>

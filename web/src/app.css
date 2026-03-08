@@ -70,6 +70,68 @@
 
 body {
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* ===== Headings — Bricolage Grotesque display font ===== */
+h1, h2, h3 {
+  font-family: 'Bricolage Grotesque', var(--font-display), sans-serif;
+}
+
+/* ===== Navbar — frosted glass on public pages ===== */
+.dark nav.sticky {
+  background: rgba(7, 8, 12, 0.88) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* ===== Terminal scanlines ===== */
+.dark [class*="min-h-"][class*="font-mono"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.015) 2px,
+    rgba(0, 0, 0, 0.015) 4px
+  );
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* ===== Hover lift effects ===== */
+.dark section [class*="rounded-full"][class*="border"] {
+  transition: all 0.2s ease;
+}
+
+.dark section [class*="rounded-full"][class*="border"]:hover {
+  transform: translateY(-1px);
+}
+
+.dark section [class*="rounded-[10px]"][class*="border"] {
+  transition: all 0.2s ease;
+}
+
+.dark section [class*="rounded-[10px]"][class*="border"]:hover {
+  transform: translateY(-1px);
+}
+
+.dark section [class*="rounded-lg"][class*="border"][class*="bg-card"] {
+  transition: all 0.2s ease;
+}
+
+.dark section [class*="rounded-lg"][class*="border"][class*="bg-card"]:hover {
+  transform: translateY(-1px);
+}
+
+/* ===== Terminal line-in animation (global for Tailwind arbitrary values) ===== */
+@keyframes lineIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* ===== Dot grid texture ===== */
