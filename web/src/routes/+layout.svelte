@@ -6,11 +6,11 @@
 	import { browser } from '$app/environment';
 	import { createRawSnippet } from 'svelte';
 	import { auth, isAuthenticated, isLoading, currentEmail } from '$lib/stores/auth';
-	import { DashboardLayout, Dropdown, Spinner, ThemeSwitcher, initTheme } from '@jabbey/atlas';
+	import { DashboardLayout, Dropdown, Spinner } from '@jabbey/atlas';
 
 	let { children: pageContent } = $props();
 
-	const publicRoutes = ['/login'];
+	const publicRoutes = ['/login', '/docs'];
 	let sidebarCollapsed = $state(false);
 
 	const activeNavId = $derived.by(() => {
@@ -85,7 +85,12 @@
 
 	onMount(() => {
 		auth.init();
-		initTheme();
+
+		// Theme initialization
+		const stored = localStorage.getItem('theme');
+		if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+			document.documentElement.classList.add('dark');
+		}
 
 		// Sidebar collapsed state
 		const storedCollapsed = localStorage.getItem('sidebarCollapsed');
@@ -100,7 +105,7 @@
 	$effect(() => {
 		if (browser && !$isLoading) {
 			const pathname = $page.url.pathname;
-			const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+			const isPublicRoute = pathname === '/' || publicRoutes.some((route) => pathname.startsWith(route));
 
 			if ($isAuthenticated) {
 				if (pathname === '/login') {
@@ -125,6 +130,16 @@
 			goto('/login');
 		}
 	}
+
+	function toggleTheme() {
+		document.documentElement.classList.toggle('dark');
+		localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+	}
+
+	const isPublicPage = $derived.by(() => {
+		const pathname = $page.url.pathname;
+		return pathname === '/' || publicRoutes.some((route) => pathname.startsWith(route));
+	});
 </script>
 
 {#if $isLoading}
@@ -153,7 +168,15 @@
 			<div class="space-y-1">
 				{#if !sidebarCollapsed}
 					<div class="px-3 py-1.5">
-						<ThemeSwitcher />
+						<button
+							onclick={toggleTheme}
+							class="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors cursor-pointer"
+						>
+							<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+							</svg>
+							Toggle theme
+						</button>
 					</div>
 				{/if}
 				{#if $currentEmail}
@@ -187,6 +210,8 @@
 			</div>
 		{/snippet}
 	</DashboardLayout>
+{:else if isPublicPage}
+	{@render pageContent()}
 {:else}
 	{@render pageContent()}
 {/if}
