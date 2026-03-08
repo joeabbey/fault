@@ -42,7 +42,14 @@ export { default as Breadcrumbs } from './Breadcrumbs.svelte';
 export { default as Pagination } from './Pagination.svelte';
 export { default as Navbar } from './Navbar.svelte';
 export { default as Sidebar } from './Sidebar.svelte';
-export { default as ThemeSwitcher } from './ThemeSwitcher.svelte';
 
 // Data Components
 export { default as Table } from './Table.svelte';
+
+// Marketing Components
+export { default as Hero } from './Hero.svelte';
+export { default as StatsBar } from './StatsBar.svelte';
+export { default as FeatureGrid } from './FeatureGrid.svelte';
+export { default as ComparisonTable } from './ComparisonTable.svelte';
+export { default as StepsList } from './StepsList.svelte';
+export { default as DocsRenderer } from './DocsRenderer.svelte';

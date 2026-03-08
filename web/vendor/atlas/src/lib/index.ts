@@ -7,7 +7,6 @@
 
 // Utilities
 export { cn } from './utils/cn';
-export { theme, initTheme, type Theme } from './utils/theme';
 
 // Tokens
 export * from './tokens';
@@ -51,9 +50,15 @@ export {
 	Pagination,
 	Navbar,
 	Sidebar,
-	ThemeSwitcher,
 	// Data
-	Table
+	Table,
+	// Marketing
+	Hero,
+	StatsBar,
+	FeatureGrid,
+	ComparisonTable,
+	StepsList,
+	DocsRenderer
 } from './components';
 
 // Layout Patterns
