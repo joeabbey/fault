@@ -20,9 +20,6 @@ import (
 //go:embed install.sh
 var installScript []byte
 
-//go:embed landing.html
-var landingPage []byte
-
 // Config holds configuration for the cloud API server.
 type Config struct {
 	Port        string
@@ -249,9 +246,6 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("POST /api/v1/billing/webhook", s.billingHandlers.HandleWebhook)
 	}
 
-	// Public: landing page at exact root path
-	s.mux.HandleFunc("GET /{$}", handleLandingPage)
-
 	// Public: serve install script for `curl -sSf https://fault.jabbey.io/install.sh | sh`
 	s.mux.HandleFunc("GET /install.sh", handleInstallScript)
 
@@ -260,12 +254,6 @@ func (s *Server) registerRoutes() {
 		s.mux.HandleFunc("GET /", s.spaHandler())
 		s.logger.Info("SPA serving enabled", "web_dir", s.cfg.WebDir)
 	}
-}
-
-func handleLandingPage(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("Cache-Control", "public, max-age=3600")
-	w.Write(landingPage)
 }
 
 func handleInstallScript(w http.ResponseWriter, r *http.Request) {
