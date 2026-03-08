@@ -75,7 +75,7 @@
 </script>
 
 <section
-	class={cn('relative py-20 pb-8', className)}
+	class={cn('relative overflow-hidden py-20 pb-8', className)}
 >
 	<!-- Radial glow -->
 	<div
@@ -84,7 +84,7 @@
 	></div>
 
 	<div class="relative z-[1] mx-auto max-w-[1140px] px-7">
-		<div class="grid items-center gap-14 max-[900px]:grid-cols-1" style="grid-template-columns: 1.2fr 1fr;">
+		<div class="grid items-center gap-14 grid-cols-1 min-[901px]:grid-cols-[1.2fr_1fr]">
 			<!-- Left: text content -->
 			<div>
 				{#if badge}

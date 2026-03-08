@@ -8,6 +8,7 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="Fault - Catch AI agent mistakes before they ship" />
 	<meta name="twitter:description" content="Pre-commit validation for AI-generated code. 42 languages, 16 analyzers, works completely offline." />
+	<meta name="theme-color" content="#07080c" />
 </svelte:head>
 
 <script lang="ts">

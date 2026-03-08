@@ -1,6 +1,7 @@
 <svelte:head>
 	<title>Documentation - Fault</title>
 	<meta name="description" content="Fault documentation. Installation, integrations, language support, and CI configuration." />
+	<meta name="theme-color" content="#07080c" />
 </svelte:head>
 
 <script lang="ts">
