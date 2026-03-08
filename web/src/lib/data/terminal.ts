@@ -6,31 +6,49 @@ export interface TerminalLine {
 
 export const terminalLines: TerminalLine[] = [
 	{ text: '$ fault check --staged', type: 'command', delay: 0 },
-	{ text: '', type: 'info', delay: 0.5 },
-	{ text: '  scanning 47 files across 3 languages...', type: 'info', delay: 0.7 },
-	{ text: '', type: 'info', delay: 1.4 },
-	{ text: '  \u2717 phantom-import  api/routes.ts:3', type: 'error', delay: 1.6 },
+	{ text: '', type: 'info', delay: 0.6 },
 	{
-		text: '    imports "fastify-cors" \u2014 not in package.json',
+		text: '  <span class="text-error-400 font-semibold">error</span>  <span class="text-secondary-600">[imports]</span> api/routes.ts:3',
+		type: 'info',
+		delay: 0.9
+	},
+	{
+		text: '  Import "fastify-cors" could not be resolved',
+		type: 'info',
+		delay: 1.1
+	},
+	{ text: '', type: 'info', delay: 1.6 },
+	{
+		text: '    <span class="text-secondary-700">3 |</span>  import cors from "fastify-cors"   <span class="text-primary-400 font-semibold">&lt;-- here</span>',
 		type: 'info',
 		delay: 1.8
 	},
-	{ text: '', type: 'info', delay: 2.4 },
-	{ text: '  \u2717 swallowed-error  pkg/db.go:42', type: 'error', delay: 2.6 },
+	{ text: '', type: 'info', delay: 2.3 },
 	{
-		text: '    error from db.Query() assigned to blank identifier',
+		text: '  <span class="text-error-400 font-semibold">error</span>  <span class="text-secondary-600">[error-handling]</span> pkg/db.go:42',
 		type: 'info',
-		delay: 2.8
+		delay: 2.5
 	},
-	{ text: '', type: 'info', delay: 3.4 },
-	{ text: '  ! missing-test  src/auth.py:15', type: 'warning', delay: 3.6 },
 	{
-		text: '    verify_token() modified but tests not updated',
+		text: '  Error from db.Query() assigned to blank identifier',
 		type: 'info',
-		delay: 3.8
+		delay: 2.7
 	},
-	{ text: '', type: 'info', delay: 4.4 },
-	{ text: '  \u2713 44 files passed', type: 'success', delay: 4.6 },
-	{ text: '', type: 'info', delay: 5.0 },
-	{ text: '  2 errors, 1 warning \u2014 commit blocked.', type: 'summary', delay: 5.2 }
+	{ text: '', type: 'info', delay: 3.2 },
+	{
+		text: '  <span class="text-warning-400 font-semibold">warning</span>  <span class="text-secondary-600">[tests]</span> src/auth.py:15',
+		type: 'info',
+		delay: 3.4
+	},
+	{
+		text: '  verify_token() modified but tests not updated',
+		type: 'info',
+		delay: 3.6
+	},
+	{ text: '', type: 'info', delay: 4.1 },
+	{
+		text: '  3 issues (<span class="text-error-400">2 errors</span>, <span class="text-warning-400">1 warning</span>) in 3 files \u2014 89ms',
+		type: 'summary',
+		delay: 4.3
+	}
 ];
