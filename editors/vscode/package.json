@@ -1,13 +1,22 @@
 {
   "name": "fault-vscode",
   "displayName": "Fault - AI Code Validator",
-  "description": "Integrates the Fault AI code validator into VS Code. Catches bugs, security issues, and logic errors in your diffs.",
+  "description": "Catch broken imports, swallowed errors, hallucinated APIs, and 14 more issue types in AI-generated code. 42 languages, runs offline.",
   "version": "0.1.0",
   "publisher": "joeabbey",
   "license": "MIT",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#07080c",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/joeabbey/fault"
+  },
+  "homepage": "https://fault.jabbey.io",
+  "bugs": {
+    "url": "https://github.com/joeabbey/fault/issues"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -21,11 +30,16 @@
     "ai",
     "code review",
     "linter",
-    "static analysis"
+    "static analysis",
+    "pre-commit",
+    "imports",
+    "security"
   ],
   "activationEvents": [
     "onLanguage:javascript",
     "onLanguage:typescript",
+    "onLanguage:javascriptreact",
+    "onLanguage:typescriptreact",
     "onLanguage:python",
     "onLanguage:go",
     "onLanguage:java",
@@ -76,7 +90,8 @@
   "scripts": {
     "build": "node esbuild.mjs",
     "watch": "node esbuild.mjs --watch",
-    "package": "npx @vscode/vsce package --no-dependencies"
+    "package": "npx @vscode/vsce package --no-dependencies",
+    "publish": "npx @vscode/vsce publish --no-dependencies"
   },
   "devDependencies": {
     "@types/vscode": "^1.85.0",
