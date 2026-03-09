@@ -271,6 +271,25 @@ func (m *mockStore) ListAuditEntries(_ context.Context, orgID string, limit, off
 	return make([]AuditEntry, 0), nil
 }
 
+func (m *mockStore) GetAllUsage(_ context.Context, userID string) ([]MonthlyUsage, error) {
+	var result []MonthlyUsage
+	for key, u := range m.usage {
+		if strings.HasPrefix(key, userID+":") {
+			result = append(result, *u)
+		}
+	}
+	return result, nil
+}
+
+func (m *mockStore) DeleteUser(_ context.Context, userID string) error {
+	for hash, u := range m.users {
+		if u.ID == userID {
+			delete(m.users, hash)
+		}
+	}
+	return nil
+}
+
 func (m *mockStore) findUserByID(id string) *User {
 	for _, u := range m.users {
 		if u.ID == id {

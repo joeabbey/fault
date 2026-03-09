@@ -1,11 +1,7 @@
-<svelte:head>
-	<title>Documentation - Fault</title>
-	<meta name="description" content="Fault documentation. Installation, integrations, language support, and CI configuration." />
-	<meta name="theme-color" content="#07080c" />
-</svelte:head>
-
 <script lang="ts">
 	import { Navbar } from '@jabbey/atlas';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import { theme } from '$lib/stores/theme';
 	import { docs } from '$lib/data/docs';
 
 	const navItems = [
@@ -14,7 +10,13 @@
 	];
 </script>
 
-<div class="dark min-h-screen bg-background text-foreground">
+<svelte:head>
+	<title>Documentation - Fault</title>
+	<meta name="description" content="Fault documentation. Installation, integrations, language support, and CI configuration." />
+	<meta name="theme-color" content={$theme === 'dark' ? '#07080c' : '#faf8f7'} />
+</svelte:head>
+
+<div class:dark={$theme === 'dark'} class="min-h-screen bg-background text-foreground">
 	<!-- Navbar -->
 	<Navbar brandHref="/" items={navItems} sticky>
 		{#snippet logo()}
@@ -29,6 +31,7 @@
 			</span>
 		{/snippet}
 		{#snippet actions()}
+			<ThemeToggle />
 			<a
 				href="/login"
 				class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
@@ -90,6 +93,8 @@
 					<a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
 					<a href="https://github.com/joeabbey/fault" class="transition-colors hover:text-foreground">GitHub</a>
 					<a href="mailto:joe@jabbey.io" class="transition-colors hover:text-foreground">Contact</a>
+					<a href="/terms" class="transition-colors hover:text-foreground">Terms</a>
+					<a href="/privacy" class="transition-colors hover:text-foreground">Privacy</a>
 				</div>
 			</div>
 		</div>

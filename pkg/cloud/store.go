@@ -173,7 +173,63 @@ type Store interface {
 	InsertAuditEntry(ctx context.Context, entry *AuditEntry) error
 	ListAuditEntries(ctx context.Context, orgID string, limit, offset int) ([]AuditEntry, error)
 
+	GetAllUsage(ctx context.Context, userID string) ([]MonthlyUsage, error)
+
+	DeleteUser(ctx context.Context, userID string) error
+
 	Close()
+}
+
+// GetAllUsage returns all usage rows for a user, ordered by month descending.
+func (s *PostgresStore) GetAllUsage(ctx context.Context, userID string) ([]MonthlyUsage, error) {
+	rows, err := s.pool.Query(ctx,
+		`SELECT user_id, month, llm_calls, tokens_input, tokens_output, analyses
+		 FROM usage WHERE user_id = $1 ORDER BY month DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("listing usage: %w", err)
+	}
+	defer rows.Close()
+
+	var result []MonthlyUsage
+	for rows.Next() {
+		var u MonthlyUsage
+		if err := rows.Scan(&u.UserID, &u.Month, &u.LLMCalls, &u.TokensInput, &u.TokensOutput, &u.Analyses); err != nil {
+			return nil, fmt.Errorf("scanning usage row: %w", err)
+		}
+		result = append(result, u)
+	}
+	return result, rows.Err()
+}
+
+// DeleteUser removes a user and all associated data within a transaction.
+func (s *PostgresStore) DeleteUser(ctx context.Context, userID string) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("beginning transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Delete in dependency order
+	tables := []struct {
+		query string
+		col   string
+	}{
+		{"DELETE FROM audit_entries WHERE actor_id = $1", "actor_id"},
+		{"DELETE FROM org_members WHERE user_id = $1", "user_id"},
+		{"DELETE FROM spec_results WHERE user_id = $1", "user_id"},
+		{"DELETE FROM runs WHERE user_id = $1", "user_id"},
+		{"DELETE FROM usage WHERE user_id = $1", "user_id"},
+		{"DELETE FROM subscriptions WHERE user_id = $1", "user_id"},
+		{"DELETE FROM users WHERE id = $1", "id"},
+	}
+
+	for _, t := range tables {
+		if _, err := tx.Exec(ctx, t.query, userID); err != nil {
+			return fmt.Errorf("deleting from %s: %w", t.col, err)
+		}
+	}
+
+	return tx.Commit(ctx)
 }
 
 // HashAPIKey computes the SHA-256 hash of a raw API key.

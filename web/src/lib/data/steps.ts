@@ -12,7 +12,7 @@ export const steps: Step[] = [
 	{
 		title: 'Pre-commit: Fault validates the diff',
 		description:
-			'When you commit, fault check --staged runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs 17 analyzers in parallel.'
+			'When you commit, fault check --staged runs via the pre-commit hook. It parses every changed file, resolves imports and references, and runs 16 analyzers in parallel.'
 	},
 	{
 		title: 'Auto-fix or commit with confidence',

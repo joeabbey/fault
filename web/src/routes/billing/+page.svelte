@@ -18,7 +18,7 @@
 			period: '',
 			description: 'All static analyzers. Unlimited local use. No account required.',
 			features: [
-				'17 analyzers including concurrency, resource leaks, migration safety',
+				'16 analyzers including concurrency, resource leaks, migration safety',
 				'42 languages with full cross-file analysis',
 				'30+ manifest formats for dependency validation',
 				'OWASP Top 10 & CWE Top 25 compliance packs',

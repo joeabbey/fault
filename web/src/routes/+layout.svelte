@@ -6,11 +6,12 @@
 	import { browser } from '$app/environment';
 	import { createRawSnippet } from 'svelte';
 	import { auth, isAuthenticated, isLoading, currentEmail } from '$lib/stores/auth';
+	import { theme } from '$lib/stores/theme';
 	import { DashboardLayout, Dropdown, Spinner } from '@jabbey/atlas';
 
 	let { children: pageContent } = $props();
 
-	const publicRoutes = ['/login', '/logout', '/docs'];
+	const publicRoutes = ['/login', '/logout', '/docs', '/terms', '/privacy'];
 	let sidebarCollapsed = $state(false);
 
 	const activeNavId = $derived.by(() => {
@@ -85,12 +86,7 @@
 
 	onMount(() => {
 		auth.init();
-
-		// Theme initialization
-		const stored = localStorage.getItem('theme');
-		if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-			document.documentElement.classList.add('dark');
-		}
+		theme.init();
 
 		// Sidebar collapsed state
 		const storedCollapsed = localStorage.getItem('sidebarCollapsed');
@@ -132,8 +128,7 @@
 	}
 
 	function toggleTheme() {
-		document.documentElement.classList.toggle('dark');
-		localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+		theme.toggle();
 	}
 
 	const isPublicPage = $derived.by(() => {

@@ -8,11 +8,13 @@
 	<meta name="twitter:card" content="summary_large_image" />
 	<meta name="twitter:title" content="Fault - Catch AI agent mistakes before they ship" />
 	<meta name="twitter:description" content="Pre-commit validation for AI-generated code. 42 languages, 16 analyzers, works completely offline." />
-	<meta name="theme-color" content="#07080c" />
+	<meta name="theme-color" content={$theme === 'dark' ? '#07080c' : '#faf8f7'} />
 </svelte:head>
 
 <script lang="ts">
 	import { Navbar, Hero, StatsBar, FeatureGrid, ComparisonTable, StepsList, PricingSection } from '@jabbey/atlas';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
+	import { theme } from '$lib/stores/theme';
 	import { hero } from '$lib/data/hero';
 	import { terminalLines } from '$lib/data/terminal';
 	import { stats } from '$lib/data/stats';
@@ -67,7 +69,7 @@
 	}
 </script>
 
-<div class="dark min-h-screen bg-background text-foreground">
+<div class:dark={$theme === 'dark'} class="min-h-screen bg-background text-foreground">
 	<!-- Navbar -->
 	<Navbar brandHref="/" items={navItems} sticky>
 		{#snippet logo()}
@@ -82,6 +84,7 @@
 			</span>
 		{/snippet}
 		{#snippet actions()}
+			<ThemeToggle />
 			<a
 				href="/login"
 				class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
@@ -291,6 +294,8 @@
 					<a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
 					<a href="https://github.com/joeabbey/fault" class="transition-colors hover:text-foreground">GitHub</a>
 					<a href="mailto:joe@jabbey.io" class="transition-colors hover:text-foreground">Contact</a>
+					<a href="/terms" class="transition-colors hover:text-foreground">Terms</a>
+					<a href="/privacy" class="transition-colors hover:text-foreground">Privacy</a>
 				</div>
 			</div>
 		</div>

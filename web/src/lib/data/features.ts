@@ -9,7 +9,7 @@ export const features: Feature[] = [
 	{
 		title: 'Works completely offline',
 		description:
-			'All 17 analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.'
+			'All 16 analyzers run locally against your git diff. No API calls, no network access, no data leaves your machine. Works on planes and in air-gapped environments.'
 	},
 	{
 		title: 'Manifest-aware validation',

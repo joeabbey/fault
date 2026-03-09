@@ -12,6 +12,7 @@ import (
 const (
 	FreeLLMLimit = 50
 	ProLLMLimit  = 1000
+	TeamLLMLimit = 5000
 )
 
 // LimitsStorageAdapter wraps the cloud Store to satisfy magma's limits.Storage interface.
@@ -80,7 +81,7 @@ func planForName(name string) limits.SimplePlan {
 	case "team":
 		return limits.SimplePlan{
 			PlanName:    "team",
-			Limits:      map[string]int{"llm_calls": limits.Unlimited},
+			Limits:      map[string]int{"llm_calls": TeamLLMLimit},
 			AutoApprove: true,
 		}
 	default:

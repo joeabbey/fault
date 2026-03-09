@@ -19,7 +19,11 @@ import (
 // Version is set at build time via ldflags.
 var Version = "0.1.0-dev"
 
-const defaultAnthropicModel = "claude-sonnet-4-20250514"
+// Model selection: Haiku for classification tasks, Sonnet for complex analysis.
+const (
+	confidenceModel = "claude-haiku-4-5-20251001"
+	specModel       = "claude-sonnet-4-20250514"
+)
 
 // HealthResponse is returned by the health check endpoint.
 type HealthResponse struct {
@@ -204,7 +208,7 @@ func (h *Handlers) HandleAnalyzeConfidence(w http.ResponseWriter, r *http.Reques
 		userPrompt = fmt.Sprintf("Language: %s\n\n%s", req.Language, req.Diff)
 	}
 
-	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt, confidenceModel)
 	if err != nil {
 		h.logger.Error("anthropic API call failed", "error", err)
 		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
@@ -250,7 +254,7 @@ func (h *Handlers) HandleAnalyzeSpec(w http.ResponseWriter, r *http.Request) {
 	}
 
 	userPrompt := buildSpecUserPrompt(req.Spec, req.Diff, req.Language)
-	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt, specModel)
 	if err != nil {
 		h.logger.Error("anthropic API call failed", "error", err)
 		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
@@ -296,7 +300,7 @@ func (h *Handlers) HandleAnalyzeSpecStructured(w http.ResponseWriter, r *http.Re
 	}
 
 	userPrompt := buildSpecUserPrompt(req.Spec, req.Diff, req.Language)
-	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt)
+	result, usage, err := callAnthropic(r.Context(), systemPrompt, userPrompt, specModel)
 	if err != nil {
 		h.logger.Error("anthropic API call failed", "error", err)
 		http.Error(w, `{"error":"LLM analysis failed"}`, http.StatusBadGateway)
@@ -405,15 +409,14 @@ func buildSpecUserPrompt(spec string, diff string, language string) string {
 
 // callAnthropic sends a prompt to the Anthropic Claude API and returns the raw JSON result
 // along with token usage. The prompt is split into an LLM system prompt and a user prompt.
-func callAnthropic(ctx context.Context, systemPrompt string, userPrompt string) (json.RawMessage, Usage, error) {
+func callAnthropic(ctx context.Context, systemPrompt string, userPrompt string, model string) (json.RawMessage, Usage, error) {
 	apiKey := strings.TrimSpace(os.Getenv("ANTHROPIC_API_KEY"))
 	if apiKey == "" {
 		return nil, Usage{}, fmt.Errorf("ANTHROPIC_API_KEY not set")
 	}
 
-	model := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL"))
-	if model == "" {
-		model = defaultAnthropicModel
+	if override := strings.TrimSpace(os.Getenv("ANTHROPIC_MODEL")); override != "" {
+		model = override
 	}
 	opts := []llm.Option{llm.WithModel(model)}
 	client := llm.NewClient(apiKey, opts...)

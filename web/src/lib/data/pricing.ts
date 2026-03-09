@@ -14,7 +14,7 @@ export const pricing: PricingTier[] = [
 		price: '$0',
 		description: 'All static analyzers. Unlimited local use. No account required.',
 		features: [
-			'17 analyzers including spec validation, concurrency, resource leaks',
+			'16 analyzers including spec validation, concurrency, resource leaks',
 			'42 languages with full cross-file analysis',
 			'30+ manifest formats for dependency validation',
 			'OWASP Top 10 & CWE Top 25 compliance packs',

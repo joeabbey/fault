@@ -193,7 +193,9 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("POST /api/v1/analyze/spec", s.handlers.HandleAnalyzeSpec)
 	s.mux.HandleFunc("POST /api/v1/analyze/spec/structured", s.handlers.HandleAnalyzeSpecStructured)
 	s.mux.HandleFunc("GET /api/v1/usage", s.handlers.HandleUsage)
+	s.mux.HandleFunc("GET /api/v1/export", s.handlers.HandleExportData)
 	s.mux.HandleFunc("POST /api/v1/api-keys/rotate", s.handlers.HandleRotateKey)
+	s.mux.HandleFunc("DELETE /api/v1/account", s.handlers.HandleDeleteAccount)
 
 	// Runs routes
 	s.mux.HandleFunc("POST /api/v1/runs", s.handlers.HandleCreateRun)

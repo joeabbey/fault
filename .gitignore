@@ -25,6 +25,10 @@ coverage.out
 # Cache
 .fault-cache/
 
+# Editors
+editors/vscode/node_modules/
+editors/vscode/out/
+
 # Web frontend
 web/node_modules/
 web/.svelte-kit/
