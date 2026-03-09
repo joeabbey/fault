@@ -11,7 +11,7 @@
 
 	let { children: pageContent } = $props();
 
-	const publicRoutes = ['/login', '/logout', '/docs', '/terms', '/privacy'];
+	const publicRoutes = ['/login', '/logout', '/docs', '/terms', '/privacy', '/about'];
 	let sidebarCollapsed = $state(false);
 
 	const activeNavId = $derived.by(() => {

@@ -1,7 +1,14 @@
 <script lang="ts">
+	import { Navbar } from '@jabbey/atlas';
+	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import { theme } from '$lib/stores/theme';
 
 	const lastUpdated = 'March 8, 2026';
+
+	const navItems = [
+		{ label: 'Docs', href: '/docs' },
+		{ label: 'GitHub', href: 'https://github.com/joeabbey/fault' }
+	];
 </script>
 
 <svelte:head>
@@ -10,17 +17,31 @@
 </svelte:head>
 
 <div class:dark={$theme === 'dark'} class="min-h-screen bg-background text-foreground">
-	<div class="mx-auto max-w-3xl px-6 py-16">
-		<a
-			href="/"
-			class="inline-flex items-center gap-2 text-sm text-muted hover:text-foreground transition-colors mb-10"
-		>
-			<svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-			</svg>
-			Back to Fault
-		</a>
+	<!-- Navbar -->
+	<Navbar brandHref="/" items={navItems} sticky>
+		{#snippet logo()}
+			<span
+				class="inline-flex items-center justify-center w-7 h-7 rounded-md text-xs font-bold tracking-tighter font-mono"
+				style="background: #f43f5e; color: #07080c; letter-spacing: -1px;"
+			>
+				//
+			</span>
+			<span class="text-lg font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
+				Fault
+			</span>
+		{/snippet}
+		{#snippet actions()}
+			<ThemeToggle />
+			<a
+				href="/login"
+				class="rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-600"
+			>
+				Dashboard
+			</a>
+		{/snippet}
+	</Navbar>
 
+	<div class="mx-auto max-w-3xl px-6 py-16">
 		<h1 class="text-3xl font-bold font-display text-foreground" style="letter-spacing: -0.5px;">
 			Terms of Use
 		</h1>
@@ -157,4 +178,28 @@
 			</section>
 		</div>
 	</div>
+
+	<!-- Footer -->
+	<footer class="border-t border-border py-10">
+		<div class="mx-auto max-w-[1140px] px-7">
+			<div class="flex items-center justify-between max-[768px]:flex-col max-[768px]:gap-4">
+				<div class="flex items-center gap-2">
+					<span
+						class="inline-flex items-center justify-center w-6 h-6 rounded-md text-[10px] font-bold tracking-tighter font-mono"
+						style="background: #f43f5e; color: #07080c; letter-spacing: -1px;"
+					>
+						//
+					</span>
+					<span class="text-sm font-semibold text-foreground">Fault</span>
+				</div>
+				<div class="flex items-center gap-6 text-sm text-muted-foreground">
+					<a href="/docs" class="transition-colors hover:text-foreground">Docs</a>
+					<a href="https://github.com/joeabbey/fault" class="transition-colors hover:text-foreground">GitHub</a>
+					<a href="mailto:joe@jabbey.io" class="transition-colors hover:text-foreground">Contact</a>
+					<a href="/terms" class="transition-colors hover:text-foreground">Terms</a>
+					<a href="/privacy" class="transition-colors hover:text-foreground">Privacy</a>
+				</div>
+			</div>
+		</div>
+	</footer>
 </div>
